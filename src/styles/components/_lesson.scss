@@ -9,6 +9,11 @@
  *   Gabarit d'une leçon : barre latérale de navigation + colonne de
  *   contenu. La largeur de lecture vient de `.o-wrapper--medium`, le
  *   rythme des listes de `.o-stack`, la grille du pager de `.o-grid--halves`.
+ *
+ *   La barre latérale porte le symbole de la marque en filigrane, débordant
+ *   de son bord droit - même parti pris que `.c-header__content` : un décor
+ *   posé dans un pseudo-élément, donc hors du HTML et hors de portée des
+ *   lecteurs d'écran.
 **/
 
 /*******************************************************************************
@@ -21,6 +26,7 @@
 @use "../settings/spacing";
 @use "../settings/typography";
 @use "../tools/fonts";
+@use "../tools/logo";
 @use "../tools/mq" as mq;
 
 /*******************************************************************************
@@ -41,21 +47,139 @@
 *******************************************************************************/
 
 .c-lesson__sidebar {
+  position: relative;
   flex-shrink: 0;
   padding: spacing.get("lg");
   background: colors.get("surface");
   border-bottom: rem.convert(1px) solid colors.get("border");
+
+  // Le filigrane déborde du bord : sans quoi il pousserait la page en
+  // largeur. « clip » plutôt que « hidden » - on ne veut pas d'un
+  // conteneur défilable sur cet axe, seulement une découpe.
+  overflow: clip;
+  // Le pseudo-élément est en z-index négatif : sans contexte
+  // d'empilement propre, il passerait DERRIÈRE le fond de la barre.
+  isolation: isolate;
+
+  // Le sommaire se replie SOUS « medium », et seulement quand le script a
+  // posé « js » sur <html>. Sans script, rien de tout ceci ne s'applique :
+  // le sommaire reste déplié, ce qui est le bon repli de secours.
+  @include mq.mq($until: medium) {
+    :root.js & .c-lesson__nav {
+      display: none;
+    }
+
+    :root.js &.is-nav-open .c-lesson__nav {
+      display: block;
+    }
+  }
 
   @include mq.mq($from: medium) {
     position: sticky;
     top: 0;
     width: rem.convert(288px);
     height: 100vh;
+    // Rétabli après le « clip » ci-dessus : la navigation doit défiler
+    // quand elle dépasse. Un axe découpé, l'autre défilable - la seule
+    // combinaison que « clip » autorise avec « auto ».
     overflow-y: auto;
     border-bottom: 0;
     border-right: rem.convert(1px) solid colors.get("border");
+
+    // Le filigrane ne vit qu'ici : replié en burger, la barre ne fait plus
+    // qu'une centaine de pixels de haut, où une marque de 176 px serait
+    // tranchée par le haut - le défaut qu'on vient justement de corriger.
+    &::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      // Un SEUL bord qui coupe, le droit. Débordant aussi par le bas, la
+      // marque était tranchée sur deux côtés et ne se lisait plus comme un
+      // logo - juste comme une forme claire posée là.
+      right: rem.convert(-52px);
+      bottom: spacing.get("xl");
+      width: rem.convert(176px);
+      aspect-ratio: logo.$logo-ratio;
+      background-image: logo.logo(colors.$primary);
+      background-repeat: no-repeat;
+      background-size: contain;
+      opacity: 0.06;
+      transform: rotate(-15deg);
+    }
   }
 }
+
+  .c-lesson__burger {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: rem.convert(40px);
+    height: rem.convert(40px);
+    padding: 0;
+    color: colors.get("text");
+    background: transparent;
+    border: rem.convert(1px) solid colors.get("border");
+    border-radius: spacing.radius("sm");
+    cursor: pointer;
+    transition: background-color 150ms ease;
+
+    &:hover {
+      background-color: colors.get("surface-muted");
+    }
+
+    @include mq.mq($until: medium) {
+      :root.js & {
+        display: inline-flex;
+      }
+    }
+  }
+
+    // Trois barres dessinées en CSS : une icône de trois traits ne mérite
+    // ni fichier ni SVG dans le HTML. La barre du milieu est l'élément
+    // lui-même, les deux autres ses pseudo-éléments.
+    .c-lesson__burger-icon {
+      position: relative;
+      display: block;
+      width: rem.convert(18px);
+      height: rem.convert(2px);
+      background: currentColor;
+      border-radius: rem.convert(999px);
+      transition: background-color 150ms ease;
+
+      &::before,
+      &::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: currentColor;
+        border-radius: inherit;
+        transition: transform 150ms ease;
+      }
+
+      &::before {
+        transform: translateY(rem.convert(-6px));
+      }
+
+      &::after {
+        transform: translateY(rem.convert(6px));
+      }
+    }
+
+    // Ouvert : la barre du milieu s'efface, les deux autres se croisent.
+    .is-nav-open .c-lesson__burger-icon {
+      background: transparent;
+
+      &::before {
+        transform: rotate(45deg);
+      }
+
+      &::after {
+        transform: rotate(-45deg);
+      }
+    }
 
   .c-lesson__home-link {
     display: inline-flex;

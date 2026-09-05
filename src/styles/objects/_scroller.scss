@@ -1,0 +1,40 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Scroller
+ * Type: Object
+ * Description:
+ *   Fait défiler son contenu horizontalement plutôt que de laisser
+ *   déborder la page. Sert aux blocs qu'on ne peut pas rétrécir sans les
+ *   rendre illisibles : un tableau à cinq colonnes sur un écran de 390 px.
+ *
+ *   Sans lui, le tableau élargit le document entier - toute la page se met
+ *   à défiler de côté, titres et paragraphes compris, pour un seul élément
+ *   trop large.
+ *
+ *   Il est posé automatiquement autour des tableaux du contenu markdown,
+ *   par `scripts/rehype-scrollable-tables.mjs`. Rien à écrire dans un
+ *   `.mdx` ; en `.astro`, on l'ajoute à la main :
+ *
+ *     <div class="o-scroller" tabindex="0">
+ *       <table>…</table>
+ *     </div>
+ *
+ *   Le `tabindex="0"` n'est pas décoratif : une zone qui défile doit
+ *   pouvoir recevoir le focus, sans quoi elle est inatteignable au clavier.
+ *   Le contour de focus vient de `generic/_focus.scss`, comme partout.
+**/
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.o-scroller {
+  max-width: 100%;
+  overflow-x: auto;
+  // Le défilement s'arrête sur les bords du bloc au lieu de se propager
+  // à la page : on ne fait pas glisser le document en balayant un tableau.
+  overscroll-behavior-x: contain;
+}

@@ -98,21 +98,42 @@ const currentModuleIds = (byModule.get(currentModule) ?? [])
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description ?? title} />
     <meta name="generator" content={`Socle ${SOCLE_VERSION}`} />
+    {/* Pose « js » sur <html> AVANT le rendu : c'est ce qui autorise le CSS
+        à replier le sommaire sur mobile. Sans script, la classe n'arrive
+        jamais, le sommaire reste déplié - et reste donc utilisable. Inline
+        et dans le <head> pour qu'aucune image du menu ouvert ne s'affiche
+        avant d'être repliée. */}
+    <script is:inline>document.documentElement.classList.add('js');</script>
     <title>{title}</title>
   </head>
   <body>
     <div class="c-lesson">
       <!-- Barre latérale -->
       <aside class="c-lesson__sidebar">
-        <a href="/" class="c-lesson__home-link">
-          ← Accueil
-        </a>
+        <div class="c-lesson__bar o-cluster o-cluster--between o-cluster--middle">
+          <a href="/" class="c-lesson__home-link">
+            ← Accueil
+          </a>
+
+          {/* Visible sous « medium » et seulement si le script a tourné :
+              un bouton qui ne replierait rien ne doit pas s'afficher. */}
+          <button
+            type="button"
+            class="c-lesson__burger"
+            data-nav-toggle
+            aria-expanded="false"
+            aria-controls="lesson-nav"
+          >
+            <span class="u-hidden-visually" data-nav-toggle-label>Afficher le sommaire</span>
+            <span class="c-lesson__burger-icon" aria-hidden="true" />
+          </button>
+        </div>
 
         <div class="c-lesson__progress">
           <ProgressBar lessonIds={currentModuleIds} />
         </div>
 
-        <nav aria-label="Navigation des leçons">
+        <nav id="lesson-nav" class="c-lesson__nav" aria-label="Navigation des leçons">
           {
             modules.map(([moduleName, lessons]) => (
               <div class="c-lesson__module">
@@ -239,6 +260,35 @@ const currentModuleIds = (byModule.get(currentModule) ?? [])
 
     <script>
       import { isCompleted, toggleCompleted, PROGRESS_EVENT } from '../scripts/progress';
+
+      // Sommaire repliable (mobile)
+      //
+      // Le repli est CSS : le script ne fait que poser l'état. Il ne
+      // s'occupe pas non plus de refermer au clic sur un lien - la page
+      // change, le sommaire repart replié tout seul.
+      const navToggle = document.querySelector<HTMLButtonElement>('[data-nav-toggle]');
+      const sidebar = document.querySelector<HTMLElement>('.c-lesson__sidebar');
+      if (navToggle && sidebar) {
+        const label = navToggle.querySelector<HTMLElement>('[data-nav-toggle-label]');
+        const setOpen = (open: boolean) => {
+          sidebar.classList.toggle('is-nav-open', open);
+          navToggle.setAttribute('aria-expanded', String(open));
+          if (label) label.textContent = open ? 'Masquer le sommaire' : 'Afficher le sommaire';
+        };
+
+        navToggle.addEventListener('click', () => {
+          setOpen(!sidebar.classList.contains('is-nav-open'));
+        });
+
+        // Échap referme, et rend le focus au bouton : sans ça, on se
+        // retrouve à tabuler dans un sommaire qu'on croyait fermé.
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && sidebar.classList.contains('is-nav-open')) {
+            setOpen(false);
+            navToggle.focus();
+          }
+        });
+      }
 
       // Bouton « Marquer comme terminé »
       const btn = document.querySelector<HTMLButtonElement>('[data-complete-btn]');
