@@ -5,6 +5,8 @@ import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 import ProgressBar from '../components/ProgressBar.astro';
 import Footer from '../components/Footer.astro';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { isLocked, SOCLE_VERSION } from '../../scripts/config.mjs';
 
 // =============================================================
@@ -54,6 +56,33 @@ const flat = modules.flatMap(([, lessons]) => lessons).filter((l) => !isLocked(l
 const currentIndex = flat.findIndex((l) => l.id === id);
 const prev = currentIndex > 0 ? flat[currentIndex - 1] : null;
 const next = currentIndex < flat.length - 1 ? flat[currentIndex + 1] : null;
+
+// --- PDF résumé du module ------------------------------------------
+// Le dossier fait le module, comme dans build-slides.mjs : « module-1/
+// lecon-2 » appartient à « module-1 », dont le deck est « module-1.pdf ».
+const moduleDir = id.split('/')[0];
+const moduleLessons = all
+  .filter((l) => l.id.startsWith(`${moduleDir}/`) && !isLocked(l.id))
+  .sort((a, b) => a.data.order - b.data.order);
+
+// Le bouton n'apparaît qu'à la FIN du module, sur sa dernière leçon
+// ouverte. Une leçon verrouillée en queue de module ne décale rien :
+// elle est hors du tri, donc la dernière leçon lisible fait la fin.
+const isLastOfModule = moduleLessons.at(-1)?.id === id;
+
+// … et seulement si le PDF est là où il sera SERVI, c'est-à-dire dans
+// public/slides/. Le vérifier dans slides/ ne prouverait rien : ce dossier
+// de travail n'est servi ni en dev ni au build, seul `npm run bundle` en
+// recopie le contenu - le bouton s'afficherait sur un lien mort. C'est
+// `npm run slides` qui alimente public/slides/, et il réclame Chrome.
+const modulePdf =
+  isLastOfModule && existsSync(join(process.cwd(), 'public/slides/modules', `${moduleDir}.pdf`))
+    ? `/slides/modules/${moduleDir}.pdf`
+    : null;
+
+// Le nom du fichier tel qu'il atterrira dans les téléchargements de
+// l'apprenant : « module-1.pdf » ne lui dirait rien.
+const pdfName = `${currentModule.replace(/[\\/:*?"<>|]/g, '-')}.pdf`;
 
 // Identifiants des leçons du module courant, pour la barre de
 // progression. Verrouillées exclues, sinon le module resterait
@@ -149,8 +178,8 @@ const currentModuleIds = (byModule.get(currentModule) ?? [])
             <slot />
           </div>
 
-          <!-- Marquer comme terminé -->
-          <div class="c-lesson__complete">
+          <!-- Marquer comme terminé, et le PDF du module sur sa dernière leçon -->
+          <div class="c-lesson__complete o-cluster o-cluster--middle">
             <button
               type="button"
               data-complete-btn
@@ -159,6 +188,14 @@ const currentModuleIds = (byModule.get(currentModule) ?? [])
             >
               Marquer comme terminé
             </button>
+
+            {
+              modulePdf && (
+                <a href={modulePdf} download={pdfName} class="c-button c-button--primary">
+                  Télécharger le PDF résumé
+                </a>
+              )
+            }
           </div>
 
           <!-- Navigation précédent / suivant -->

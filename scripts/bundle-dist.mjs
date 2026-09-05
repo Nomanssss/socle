@@ -9,9 +9,14 @@
 //     _astro/, fonts/             ← ses assets
 //     slides/
 //       index.html                ← sommaire des présentations
-//       module-1-lecon-1.html     ← deck projetable (double-clic)
-//       module-1-lecon-1.pdf      ← même deck, imprimable
-//       assets/                   ← images des decks HTML (chemins relatifs)
+//       lecons/
+//         module-1-lecon-1.html   ← deck projetable (double-clic)
+//         module-1-lecon-1.pdf    ← même deck, imprimable
+//         assets/                 ← images des decks HTML
+//       modules/
+//         module-1.html           ← tout le module, projetable
+//         module-1.pdf            ← même chose, le « PDF résumé » du site
+//         assets/                 ← images du HTML de module (chemins relatifs)
 //     LISEZ-MOI.txt               ← comment ouvrir le paquet
 //
 // Prérequis : dist/ construit (npm run build) et les decks générés
@@ -28,6 +33,11 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SLIDES_DIR = join(ROOT, 'slides');
 const DIST = join(ROOT, 'dist');
 const DIST_SLIDES = join(DIST, 'slides');
+// Deux rangements distincts, parce que ce sont deux usages : les decks de
+// leçon se projettent en cours, le PDF de module se donne à l'apprenant.
+// À plat, les 25 fichiers du cours de démonstration se mélangeaient.
+const DIST_LESSONS = join(DIST_SLIDES, 'lecons');
+const DIST_MODULES = join(DIST_SLIDES, 'modules');
 const MANIFEST = join(SLIDES_DIR, 'manifest.json');
 
 const ok = (m) => console.log(`  ✓ ${m}`);
@@ -59,7 +69,8 @@ if (!Array.isArray(manifest) || manifest.length === 0) {
 // On repart d'un dossier propre : un deck supprimé d'un build à l'autre
 // ne doit pas survivre dans le paquet livré.
 rmSync(DIST_SLIDES, { recursive: true, force: true });
-mkdirSync(DIST_SLIDES, { recursive: true });
+mkdirSync(DIST_LESSONS, { recursive: true });
+mkdirSync(DIST_MODULES, { recursive: true });
 
 console.log('\nPrésentations');
 
@@ -72,8 +83,8 @@ for (const entry of manifest) {
   for (const ext of ['html', 'pdf']) {
     const src = join(SLIDES_DIR, `${entry.slug}.${ext}`);
     if (existsSync(src)) {
-      copyFileSync(src, join(DIST_SLIDES, `${entry.slug}.${ext}`));
-      formats[ext] = `${entry.slug}.${ext}`;
+      copyFileSync(src, join(DIST_LESSONS, `${entry.slug}.${ext}`));
+      formats[ext] = `lecons/${entry.slug}.${ext}`;
     }
   }
 
@@ -92,6 +103,43 @@ if (decks.length === 0) fail('Aucun deck rendu trouvé dans slides/.');
 ok(`${decks.length} deck(s) copié(s) dans dist/slides/${missing ? ` (${missing} ignoré(s))` : ''}`);
 
 // -------------------------------------------------------------
+// 2 bis. Les decks de module
+//
+// Un deck par dossier de leçons (« module-1.pdf ») : c'est le « PDF
+// résumé » que la dernière leçon du module propose au téléchargement.
+// Il n'a pas d'entrée au manifeste - celui-ci décrit les leçons, et le
+// nom du fichier se déduit de leur identifiant : « module-1/lecon-2 »
+// appartient à « module-1 ». Une liste de plus finirait par diverger.
+// -------------------------------------------------------------
+const moduleDecks = new Map(); // libellé du module → { slug, formats }
+
+for (const entry of manifest) {
+  const slug = String(entry.id).split('/')[0];
+  const key = entry.module ?? 'Présentations';
+  if (!slug || !String(entry.id).includes('/') || moduleDecks.has(key)) continue;
+
+  const formats = {};
+  for (const ext of ['html', 'pdf']) {
+    const src = join(SLIDES_DIR, `${slug}.${ext}`);
+    if (existsSync(src)) {
+      copyFileSync(src, join(DIST_MODULES, `${slug}.${ext}`));
+      formats[ext] = `modules/${slug}.${ext}`;
+    }
+  }
+  if (!formats.html && !formats.pdf) continue;
+  if (!formats.pdf) warn(`${slug} : PDF de module manquant (npm run slides)`);
+  moduleDecks.set(key, { slug, formats });
+}
+
+if (moduleDecks.size > 0) {
+  ok(`${moduleDecks.size} deck(s) de module copié(s) dans dist/slides/`);
+} else {
+  // Le bouton « Télécharger le PDF résumé » du site pointe dessus :
+  // absents, les pages de fin de module n'afficheront rien.
+  warn('aucun deck de module trouvé dans slides/ (npm run slides)');
+}
+
+// -------------------------------------------------------------
 // 2 bis. Images des decks HTML
 // -------------------------------------------------------------
 // Contrairement aux polices (embarquées en base64 par marp/_fonts.scss),
@@ -107,15 +155,22 @@ ok(`${decks.length} deck(s) copié(s) dans dist/slides/${missing ? ` (${missing}
 // vérification que la cible est bien un fichier avant de la copier.
 const ASSET_REF = /assets\/([A-Za-z0-9][A-Za-z0-9._-]*\.[A-Za-z0-9]{2,5})(?![A-Za-z0-9])/g;
 
-const referenced = new Set();
-for (const deck of decks) {
-  if (!deck.formats.html) continue;
-  const html = readFileSync(join(DIST_SLIDES, deck.formats.html), 'utf8');
-  for (const m of html.matchAll(ASSET_REF)) referenced.add(m[1]);
-}
+/**
+ * Copie, à côté des HTML donnés, les images qu'ils citent.
+ *
+ * Un dossier d'images PAR dossier de decks : Marp écrit « assets/x.png »
+ * relativement au fichier HTML, or lecons/ et modules/ sont deux niveaux
+ * distincts. Un seul « slides/assets/ » partagé casserait les deux.
+ */
+function copyAssetsFor(htmlPaths, targetDir, label) {
+  const referenced = new Set();
+  for (const rel of htmlPaths) {
+    const html = readFileSync(join(DIST_SLIDES, rel), 'utf8');
+    for (const m of html.matchAll(ASSET_REF)) referenced.add(m[1]);
+  }
+  if (referenced.size === 0) return;
 
-if (referenced.size > 0) {
-  mkdirSync(join(DIST_SLIDES, 'assets'), { recursive: true });
+  mkdirSync(join(targetDir, 'assets'), { recursive: true });
   let copied = 0;
   for (const name of referenced) {
     const src = join(SLIDES_DIR, 'assets', name);
@@ -123,11 +178,24 @@ if (referenced.size > 0) {
       warn(`image citée mais introuvable : slides/assets/${name}`);
       continue;
     }
-    copyFileSync(src, join(DIST_SLIDES, 'assets', name));
+    copyFileSync(src, join(targetDir, 'assets', name));
     copied += 1;
   }
-  ok(`${copied} image(s) copiée(s) dans dist/slides/assets/`);
+  if (copied > 0) ok(`${copied} image(s) copiée(s) dans ${label}`);
 }
+
+copyAssetsFor(
+  decks.filter((d) => d.formats.html).map((d) => d.formats.html),
+  DIST_LESSONS,
+  'dist/slides/lecons/assets/'
+);
+copyAssetsFor(
+  [...moduleDecks.values()].filter((d) => d.formats.html).map((d) => d.formats.html),
+  DIST_MODULES,
+  'dist/slides/modules/assets/'
+);
+
+
 
 // -------------------------------------------------------------
 // 3. Sommaire des présentations
@@ -167,7 +235,19 @@ const rows = modules
   .map(
     ([name, group]) => `      <section class="module">
         <h2>${escape(name)}</h2>
-        <ul>
+${
+  moduleDecks.has(name)
+    ? `        <p class="module-pdf deck-links">Tout le module :${
+        moduleDecks.get(name).formats.html
+          ? ` <a href="${moduleDecks.get(name).formats.html}">Présenter (HTML)</a>`
+          : ''
+      }${
+        moduleDecks.get(name).formats.pdf
+          ? ` <a href="${moduleDecks.get(name).formats.pdf}">PDF</a>`
+          : ''
+      }</p>\n`
+    : ''
+}        <ul>
 ${group.decks
   .map(
     (deck) => `          <li>
@@ -277,6 +357,7 @@ ${faces}
 
   .deck-title { font-weight: 600; }
   .deck-links { display: flex; gap: 0.75rem; white-space: nowrap; }
+  .module-pdf { margin: -0.5rem 0 1.25rem; align-items: baseline; gap: 0.5rem; }
 
   .deck-links a {
     padding: 0.15rem 0.6rem;
@@ -353,18 +434,28 @@ depuis un fichier local, la progression et les quiz ne marcheraient pas).
 
 LES PRÉSENTATIONS
 -----------------
-Dans le sous-dossier « slides », une présentation par leçon :
+Le sous-dossier « slides » en contient deux autres :
+
+  slides/lecons/ — une présentation par leçon, en deux formats.
 
   · <leçon>.html — se projette dans le navigateur (flèches pour
     changer de slide, F pour le plein écran). S'ouvre par double-clic,
     sans serveur et sans connexion. Les polices sont embarquées dans
-    le fichier ; les images sont dans le sous-dossier « assets », donc
-    gardez le dossier « slides » entier si vous le déplacez.
+    le fichier ; les images sont dans « lecons/assets », donc gardez
+    le dossier « lecons » entier si vous le déplacez.
 
   · <leçon>.pdf — un seul fichier, rien autour : c'est le format à
     envoyer si vous ne transmettez qu'une présentation.
 
-  · slides/index.html — le sommaire des présentations.
+  slides/modules/ — un module entier par fichier, mêmes deux formats.
+
+  · <module>.pdf — toutes les leçons du module à la suite. C'est le
+    « PDF résumé » que le site propose à la fin de chaque module.
+
+  · <module>.html — le même, projetable. Ses images sont dans
+    « modules/assets ».
+
+  · slides/index.html — le sommaire, qui pointe vers les deux.
 
 Généré par « npm run bundle ».
 `;

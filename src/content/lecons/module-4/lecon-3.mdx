@@ -27,13 +27,18 @@ dist/
   _astro/, fonts/             ses assets
   slides/
     index.html                sommaire des présentations
-    module-1-lecon-1.html     deck projetable
-    module-1-lecon-1.pdf      même deck, imprimable
-    assets/                   images des decks
+    lecons/
+      module-1-lecon-1.html   deck projetable
+      module-1-lecon-1.pdf    même deck, imprimable
+      assets/                 images des decks
+    modules/
+      module-1.html           tout le module, projetable
+      module-1.pdf            le même, le « PDF résumé »
+      assets/                 images du HTML de module
   LISEZ-MOI.txt               mode d'emploi pour le destinataire
 ```
 
-L'ordre des opérations compte : `npm run build` **vide** `dist/` à chaque passage, donc les présentations y sont ajoutées après. C'est tout ce que fait la commande de bundle.
+L'ordre des opérations compte : `npm run build` **vide** `dist/` à chaque passage, donc les présentations y sont ajoutées après. Elles sont en revanche *générées* avant : le PDF résumé de chaque module part dans `public/slides/modules/`, et le site ne propose le bouton de téléchargement que s'il l'y trouve.
 
 ## La limite à connaître avant d'envoyer le dossier
 

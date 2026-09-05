@@ -123,12 +123,33 @@ D'où une règle simple : **redimensionnez la source à 2 560 px de large au max
 ## Générer les slides
 
 ```bash
-npm run slides                                   # PDF (défaut)
-npm run slides:html                              # HTML, aucune dépendance
-node scripts/build-slides.mjs --format=pptx      # PPTX
+npm run slides       # PDF de tout : chaque leçon, chaque module
+npm run slides:html  # les mêmes en HTML autonome
 ```
 
-`npm run slides` compile d'abord le thème Sass (`slides:theme`), puis génère **un deck par leçon** dans `slides/<module>-<lecon>.<ext>`. Toutes les leçons sont retraitées à chaque fois.
+Chacune compile d'abord le thème Sass (`slides:theme`), puis génère **un deck par leçon** dans `slides/<module>-<lecon>.<ext>` et **un par module** dans `slides/<module>.<ext>`.
+
+### Ne régénérer qu'une partie
+
+Tout retraiter coûte plusieurs minutes en PDF (Marp ouvre Chrome pour chaque deck). Deux réglages **indépendants** permettent de viser : le **format** produit, et la **portée**.
+
+| | PDF | HTML | PPTX |
+| --- | --- | --- | --- |
+| **Tout** | `npm run slides` | `npm run slides:html` | `npm run slides:pptx` |
+| **Les leçons seules** | `npm run slides:lecons` | `npm run slides:lecons:html` | — |
+| **Les modules seuls** | `npm run slides:modules` | `npm run slides:modules:html` | — |
+
+Les cases vides ne manquent pas : elles se demandent directement, les deux drapeaux se combinant librement.
+
+```bash
+node scripts/build-slides.mjs --format=pptx --only=modules
+```
+
+`--format=` accepte `pdf` (défaut), `html`, `pptx` ; `--only=` accepte `tout` (défaut), `lecons`, `modules`. Les variables d'environnement `SLIDES_FORMAT` et `SLIDES_ONLY` font la même chose.
+
+> ⚠️ `--only=modules` **assemble quand même** le contenu des leçons — c'est lui qui compose les decks de module. Ce qu'il évite, c'est le rendu Marp de chacune, la seule étape qui coûte. Une leçon corrigée est donc bien reprise dans le PDF du module, sans qu'on ait à régénérer son deck à elle.
+
+Dans tous les cas, les leçons concernées sont **entièrement** retraitées : il n'y a pas de cache par fichier.
 
 ### La slide de titre est automatique
 
@@ -335,13 +356,58 @@ Les chemins d'images sont écrits **relativement au `.mdx`** : le script les con
 
 ---
 
+### Le PDF résumé d'un module
+
+En plus d'un deck par leçon, le générateur produit **un deck par module** : `slides/module-1.pdf` (livré dans `dist/slides/modules/`) enchaîne les leçons du dossier `module-1/`, dans l'ordre, les verrouillées en moins.
+
+Sa structure suit les modèles du thème :
+
+| Slide | Modèle | Contenu |
+| --- | --- | --- |
+| Ouverture du module | `lead` | le libellé du module, seul |
+| Début de chaque leçon | `section` | le titre de la leçon, sur le fond plein de la couleur principale |
+| Le reste | inchangé | le contenu des slides de la leçon, tel quel |
+
+La slide de titre d'une leçon existe donc en deux versions, pour deux rôles : `lead` quand elle **ouvre** le deck de sa leçon — avec la couverture en bandeau et le nom du module en sous-titre — et `section` quand elle n'est plus qu'un **intercalaire** au milieu du deck du module. Le corps qui suit, lui, est assemblé une seule fois et sert aux deux.
+
+Le site s'en sert : la **dernière leçon de chaque module** affiche un bouton primaire « Télécharger le PDF résumé », à côté de « Marquer comme terminé ».
+
+Le module, ici, c'est le **dossier** (`module-1/` → `module-1.pdf`) et non le champ `module:` du frontmatter : il faut un nom de fichier, et « Module 1 - Prendre le template en main » n'en fait pas un bon. Le libellé, lui, titre la première slide et nomme le fichier tel qu'il arrivera dans les téléchargements de l'apprenant. Si un dossier réunit des leçons qui annoncent des `module:` différents, le build le signale et retient le premier.
+
+#### Où vit le fichier, et pourquoi là
+
+`slides/` est un **dossier de travail** à la racine : Astro ne le sert pas en développement et ne le copie pas au build. Seul `npm run bundle` en verse le contenu dans le paquet, à la toute fin. Un bouton pointant vers `slides/` ne mènerait donc nulle part sur `localhost:4321`, ni sur un site publié avec `npm run build`.
+
+`slides/` est un **dossier de travail** à la racine, pas un dossier du site : `astro build` ne le regarde pas, et `dist/` n'en contient rien. Seul `npm run bundle` en verse le contenu dans le paquet, à la toute fin. Un bouton pointant vers `slides/` mènerait donc à un 404 sur tout site publié avec `npm run build`.
+
+`npm run slides` recopie donc chaque PDF de module dans **`public/slides/modules/`** — `public/` étant le dossier dont Astro copie le contenu tel quel dans `dist/`. Le sous-dossier `modules/` reproduit le rangement du paquet, pour que l'URL soit la même partout :
+
+| | `/slides/modules/module-1.pdf` |
+| --- | --- |
+| `npm run dev` | servi depuis `public/` |
+| `npm run build` | copié dans `dist/` par Astro |
+| `npm run bundle` | idem, puis `bundle-dist` ajoute `lecons/` à côté |
+
+> ⚠️ En développement, Vite sert aussi les fichiers de la **racine du projet** : `/slides/module-1.pdf` y répond, et `/socle.config.json` aussi. C'est une commodité du serveur de dev, absente du site construit — ne vous y fiez pas pour juger si un lien tiendra en production.
+
+Le deck d'un module suit le **format demandé**, comme celui d'une leçon : `npm run slides` en fait un PDF, `npm run slides:html` un HTML projetable. Les deux arrivent dans le paquet, sous `dist/slides/modules/`.
+
+Seul le **PDF** passe en plus dans `public/` : c'est le seul format que le bouton du site propose, et y verser aussi les HTML alourdirait chaque build pour un fichier que rien ne lie. `public/slides/modules/` est dans `.gitignore` — c'est un produit de `npm run slides`.
+
+Deux garde-fous :
+
+- le bouton n'apparaît **que si le PDF est dans `public/slides/modules/`** au moment où le site se construit. Sur un dépôt où `npm run slides` n'a jamais tourné (il réclame Chrome), il n'y a pas de bouton plutôt qu'un lien mort ;
+- `npm run bundle` génère **les slides avant le site**. Dans l'autre sens, sur un dépôt tout neuf, le site se construirait alors que `public/slides/modules/` est encore vide : aucun bouton, et le paquet livré serait muet là-dessus.
+
+---
+
 ## Livrer le cours : `npm run bundle`
 
 ```bash
 npm run bundle
 ```
 
-Assemble dans `dist/` **tout ce qu'il faut pour transmettre le cours** : le site, et une présentation par leçon aux deux formats.
+Assemble dans `dist/` **tout ce qu'il faut pour transmettre le cours** : le site, une présentation par leçon aux deux formats, et le PDF de chaque module. Les présentations sont rangées en deux dossiers, parce que ce sont deux usages — `lecons/` se projette en cours, `modules/` se donne à l'apprenant.
 
 ```
 dist/
@@ -349,13 +415,18 @@ dist/
   _astro/, fonts/             ses assets
   slides/
     index.html                sommaire des présentations
-    module-1-lecon-1.html     deck projetable
-    module-1-lecon-1.pdf      même deck, imprimable
-    assets/                   images des decks HTML
+    lecons/
+      module-1-lecon-1.html   deck projetable
+      module-1-lecon-1.pdf    même deck, imprimable
+      assets/                 images des decks HTML
+    modules/
+      module-1.html           tout le module, projetable
+      module-1.pdf            le même, le « PDF résumé » du site
+      assets/                 images du HTML de module
   LISEZ-MOI.txt               comment ouvrir le paquet
 ```
 
-L'ordre compte : `astro build` **vide** `dist/` à chaque passage, donc les slides y sont ajoutées après. C'est tout ce que fait `scripts/bundle-dist.mjs`, qui refuse de tourner si le site n'a pas été construit.
+L'ordre compte, et dans les deux sens : les slides sont **générées avant** le site — qui vérifie leur présence pour décider d'afficher le bouton « PDF résumé » — puis **copiées après** lui, `astro build` vidant `dist/` à chaque passage. D'où la séquence de `npm run bundle` : `slides` → `slides:html` → `build` → `bundle-dist`. Ce dernier refuse de tourner si le site n'a pas été construit.
 
 ### Le site a besoin d'un serveur, les slides non
 
@@ -817,6 +888,8 @@ La règle habituelle - « on ne versionne pas ce qu'une commande sait reconstrui
 | `public/fonts/*.woff2` | `apply-brand` les télécharge depuis Google Fonts. Ignorés, ils rendraient le premier `npm run dev` dépendant du réseau |
 | `src/styles/settings/_brand.scss` | les couleurs et familles compilées, pour que le SCSS résolve sans étape préalable |
 | `src/styles/generic/_fonts.scss` | les `@font-face` du site |
+
+À l'inverse, `public/slides/` — les PDF de module que `npm run slides` publie pour le site — est ignoré : c'est un produit de build comme un autre, et il pèse.
 | `fonts.lock.json` | la trace de ce qui a été téléchargé - c'est ce qui permet à `npm run brand` de ne rien refaire quand rien n'a changé |
 
 Un clone compile donc **hors ligne**. Le revers : après un changement de police, ces fichiers apparaissent dans vos diffs. C'est voulu — un changement de charte est un changement de projet, il mérite d'être visible dans l'historique.

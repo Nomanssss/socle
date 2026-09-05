@@ -19,7 +19,12 @@
     "slides:preview": "node scripts/preview-slides.mjs",
     "slides": "npm run slides:theme && node scripts/build-slides.mjs",
     "slides:html": "npm run slides:theme && node scripts/build-slides.mjs --format=html",
-    "bundle": "npm run build && npm run slides && npm run slides:html && node scripts/bundle-dist.mjs",
+    "slides:pptx": "npm run slides:theme && node scripts/build-slides.mjs --format=pptx",
+    "slides:lecons": "npm run slides:theme && node scripts/build-slides.mjs --only=lecons",
+    "slides:lecons:html": "npm run slides:theme && node scripts/build-slides.mjs --format=html --only=lecons",
+    "slides:modules": "npm run slides:theme && node scripts/build-slides.mjs --only=modules",
+    "slides:modules:html": "npm run slides:theme && node scripts/build-slides.mjs --format=html --only=modules",
+    "bundle": "npm run slides && npm run slides:html && npm run build && node scripts/bundle-dist.mjs",
     "reset": "node scripts/reset-content.mjs"
   },
   "keywords": [

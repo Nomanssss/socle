@@ -1,5 +1,5 @@
 // =============================================================
-// build-slides.mjs - génère un deck Marp (PDF) par leçon
+// build-slides.mjs - génère un deck Marp par leçon, et un par module
 //
 // Pour chaque leçon (src/content/lecons/**/*.mdx) :
 //   1. lit le frontmatter (title, module, duration, cover, slidePoints) ;
@@ -9,13 +9,29 @@
 //      sinon un deck minimal depuis slidePoints ;
 //   4. écrit le .md assemblé dans slides/ puis le rend avec Marp.
 //
+// Puis, pour chaque module (= un dossier de src/content/lecons/) :
+// un deck « module-1.pdf » qui enchaîne les leçons du dossier, dans
+// l'ordre. C'est le « PDF résumé » que la dernière leçon du module
+// propose au téléchargement, verrouillées exclues.
+//
+// Il suit le format demandé, comme les decks de leçon : PDF pour le
+// bouton du site, HTML pour le projeter. Seul le PDF passe en plus
+// dans public/ - c'est le seul format que le site propose.
+//
 // Prérequis : le thème doit être compilé (npm run slides:theme).
 //
+// Deux réglages indépendants : le FORMAT produit, et la PORTÉE - ce qu'on
+// régénère. Régénérer les quatre decks de module quand on vient de
+// retoucher une seule leçon coûte plusieurs minutes pour rien.
+//
 // Usage :
-//   node scripts/build-slides.mjs                  → PDF (défaut)
-//   node scripts/build-slides.mjs --format=html    → HTML
-//   node scripts/build-slides.mjs --format=pptx    → PPTX
-//   (SLIDES_FORMAT=html node scripts/build-slides.mjs fonctionne aussi)
+//   node scripts/build-slides.mjs                  → PDF, tout
+//   node scripts/build-slides.mjs --format=html    → HTML (ou pptx)
+//   node scripts/build-slides.mjs --only=lecons    → les leçons seules
+//   node scripts/build-slides.mjs --only=modules   → les modules seuls
+//   (SLIDES_FORMAT et SLIDES_ONLY font la même chose en variables)
+//
+// Les deux se combinent : --format=html --only=modules.
 //
 // Écrit aussi « slides/manifest.json » : la liste des decks avec leur
 // titre et leur module, dont « bundle-dist.mjs » se sert pour fabriquer
@@ -25,7 +41,7 @@
 // (Marp s'appuie dessus). Le format html n'en a pas besoin.
 // =============================================================
 
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, copyFileSync } from 'node:fs';
 import { join, dirname, resolve, basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import matter from 'gray-matter';
@@ -35,6 +51,16 @@ import { isLocked, unknownLocked } from './config.mjs';
 const ROOT = process.cwd();
 const LESSONS_DIR = join(ROOT, 'src/content/lecons');
 const OUT_DIR = join(ROOT, 'slides');
+// Le site LIE les PDF de module (bouton « Télécharger le PDF résumé ») :
+// ils doivent donc être servis par Astro, ce que slides/ n'est pas - c'est
+// un dossier de travail à la racine, qu'Astro ignore en dev comme au build.
+// public/ est le seul endroit dont le contenu est servi tel quel dans les
+// deux cas. Les decks de LEÇON, eux, n'y vont pas : rien ne les lie depuis
+// le site, et bundle-dist les met dans le paquet livré.
+//
+// Le sous-dossier « modules » reproduit le rangement de dist/slides/, pour
+// que l'URL soit la même en dev et dans le paquet : /slides/modules/…
+const PUBLIC_SLIDES = join(ROOT, 'public/slides/modules');
 const THEME = join(OUT_DIR, 'theme.css');
 
 /**
@@ -74,6 +100,17 @@ if (!(FORMAT in FORMAT_FLAG)) {
   console.error(`Format inconnu : "${FORMAT}" (attendu : pdf, html, pptx).`);
   process.exit(1);
 }
+
+// Portée : ce qu'on régénère. « tout » par défaut - le cas courant, et
+// celui que npm run bundle utilise.
+const onlyArg = process.argv.slice(2).find((a) => a.startsWith('--only='));
+const ONLY = (onlyArg ? onlyArg.slice('--only='.length) : process.env.SLIDES_ONLY) || 'tout';
+if (!['tout', 'lecons', 'modules'].includes(ONLY)) {
+  console.error(`Portée inconnue : "${ONLY}" (attendu : tout, lecons, modules).`);
+  process.exit(1);
+}
+const DO_LESSONS = ONLY !== 'modules';
+const DO_MODULES = ONLY !== 'lecons';
 
 if (!existsSync(THEME)) {
   console.error('Thème introuvable. Lance d’abord : npm run slides:theme');
@@ -144,8 +181,35 @@ for (const rel of allLessons) {
 
 if (cleaned > 0) console.log(`  · ${cleaned} fichier(s) d'une leçon verrouillée retiré(s) de slides/`);
 
+// L'extension produite par le format demandé. Hors des boucles : les
+// decks de leçon comme ceux de module s'en servent.
+const ext = FORMAT === 'pptx' ? 'pptx' : FORMAT === 'html' ? 'html' : 'pdf';
+
+/** Rend un .md assemblé avec Marp, dans le format demandé. */
+function render(mdPath, outPath) {
+  const args = ['--no-stdin', '--theme', THEME, '--allow-local-files'];
+  if (FORMAT_FLAG[FORMAT]) args.push(FORMAT_FLAG[FORMAT]);
+  args.push('-o', outPath, mdPath);
+  execFileSync(MARP_BIN, args, { stdio: 'inherit' });
+}
+
+/** L'en-tête Marp d'un deck : les mêmes réglages pour tous. */
+function marpHeader(title) {
+  let head = '---\n';
+  head += 'marp: true\n';
+  head += 'theme: socle\n';
+  head += 'paginate: true\n';
+  if (title) head += `title: ${yamlString(title)}\n`;
+  head += '---\n\n';
+  return head;
+}
+
 const generated = [];
 const manifest = [];
+
+// Les corps de deck, groupés par dossier de module : de quoi enchaîner
+// les leçons d'un module sans les réassembler.
+const byModuleDir = new Map();
 
 for (const rel of lessons) {
   const file = join(LESSONS_DIR, rel);
@@ -155,17 +219,12 @@ for (const rel of lessons) {
   const id = rel.replace(/\.mdx$/, ''); // ex : module-1/lecon-1
   const slug = id.replace(/[/\\]/g, '-'); // ex : module-1-lecon-1
 
-  // -- En-tête Marp --------------------------------------------------------
-  let md = '---\n';
-  md += 'marp: true\n';
-  md += 'theme: socle\n';
-  md += 'paginate: true\n';
-  if (data.title) md += `title: ${yamlString(data.title)}\n`;
-  md += '---\n\n';
-
   // -- Slide de titre ------------------------------------------------------
-  md += '<!-- _class: lead -->\n';
-  md += '<!-- _paginate: false -->\n\n';
+  // Elle existe en DEUX versions, pour deux rôles : « lead » ouvre le deck
+  // de la leçon, « section » n'est qu'un intercalaire dans celui du module.
+  // Le corps qui suit, lui, est le même - assemblé une fois, servi deux fois.
+  let leadSlide = '<!-- _class: lead -->\n';
+  leadSlide += '<!-- _paginate: false -->\n\n';
   // La couverture alimente le bandeau haut de la slide de titre. On ne passe
   // pas par `![bg]` : cette syntaxe répartit l'image en colonnes (left/right)
   // et ne sait pas cadrer une bande en hauteur. La directive, elle, expose
@@ -175,37 +234,55 @@ for (const rel of lessons) {
   const bandSource = data.cover ? resolve(dir, String(data.cover)) : DEFAULT_BAND;
   if (bandSource) {
     const staged = stageImage(bandSource, OUT_DIR);
-    if (staged) md += `<!-- _backgroundImage: url('${staged}') -->\n`;
+    if (staged) leadSlide += `<!-- _backgroundImage: url('${staged}') -->\n`;
   }
-  md += '\n';
-  md += `# ${data.title ?? id}\n\n`;
-  if (data.module) md += `**${data.module}**\n`;
+  leadSlide += '\n';
+  leadSlide += `# ${data.title ?? id}\n\n`;
+  if (data.module) leadSlide += `**${data.module}**\n`;
 
-  // -- Corps ---------------------------------------------------------------
+  // L'intercalaire, lui, se réduit au titre : le nom du module est déjà sur
+  // la première slide du deck, et le fond plein du modèle « section » ne
+  // s'accommode ni d'une couverture ni d'un sous-titre. La pagination y
+  // reste active - on est au milieu d'un deck, plus à son ouverture.
+  const sectionSlide = `<!-- _class: section -->\n\n# ${data.title ?? id}\n`;
+
+  // -- Corps, commun aux deux versions -------------------------------------
+  let content = '';
   const slidesFile = join(dir, `${basename(file, '.mdx')}.slides.md`);
   if (existsSync(slidesFile)) {
-    const body = stageImages(readFileSync(slidesFile, 'utf8').trim(), dir, OUT_DIR);
-    md += `\n---\n\n${body}\n`;
+    const lessonSlides = stageImages(readFileSync(slidesFile, 'utf8').trim(), dir, OUT_DIR);
+    content += `\n---\n\n${lessonSlides}\n`;
   } else if (Array.isArray(data.slidePoints) && data.slidePoints.length) {
-    md += '\n---\n\n## Points clés\n\n';
-    for (const point of data.slidePoints) md += `- ${point}\n`;
+    content += '\n---\n\n## Points clés\n\n';
+    for (const point of data.slidePoints) content += `- ${point}\n`;
   } else {
-    md += '\n---\n\n## Résumé\n\nRetrouvez cette leçon en ligne.\n';
+    content += '\n---\n\n## Résumé\n\nRetrouvez cette leçon en ligne.\n';
   }
 
   // -- Écriture + rendu ----------------------------------------------------
-  const mdPath = join(OUT_DIR, `${slug}.md`);
-  writeFileSync(mdPath, md);
+  // Le corps est assemblé même quand on ne rend que les modules : c'est lui
+  // qui les compose. Seul le rendu Marp, qui coûte, est conditionnel.
+  if (DO_LESSONS) {
+    const mdPath = join(OUT_DIR, `${slug}.md`);
+    writeFileSync(mdPath, marpHeader(data.title) + leadSlide + content);
 
-  const ext = FORMAT === 'pptx' ? 'pptx' : FORMAT === 'html' ? 'html' : 'pdf';
-  const outPath = join(OUT_DIR, `${slug}.${ext}`);
-  const args = ['--no-stdin', '--theme', THEME, '--allow-local-files'];
-  if (FORMAT_FLAG[FORMAT]) args.push(FORMAT_FLAG[FORMAT]);
-  args.push('-o', outPath, mdPath);
+    const outPath = join(OUT_DIR, `${slug}.${ext}`);
+    console.log(`→ ${id}  (${ext})`);
+    render(mdPath, outPath);
+    generated.push(outPath);
+  }
 
-  console.log(`→ ${id}  (${ext})`);
-  execFileSync(MARP_BIN, args, { stdio: 'inherit' });
-  generated.push(outPath);
+  // Le dossier fait le module : « module-1/lecon-2.mdx » → « module-1 ».
+  const moduleDir = rel.includes('/') || rel.includes('\\') ? rel.split(/[/\\]/)[0] : null;
+  if (moduleDir) {
+    const bucket = byModuleDir.get(moduleDir) ?? { label: null, labels: new Set(), bodies: [] };
+    bucket.label ??= data.module ?? null;
+    if (data.module) bucket.labels.add(data.module);
+    bucket.bodies.push(sectionSlide + content);
+    byModuleDir.set(moduleDir, bucket);
+  } else {
+    console.warn(`  ⚠ ${rel} n'est pas dans un dossier de module : absente du PDF de module.`);
+  }
   manifest.push({
     id,
     slug,
@@ -216,12 +293,94 @@ for (const rel of lessons) {
   });
 }
 
+// -------------------------------------------------------------
+// Un deck par module
+//
+// La dernière leçon d'un module propose « Télécharger le PDF résumé » :
+// c'est ce fichier. Il enchaîne les corps déjà assemblés plus haut,
+// derrière une slide de titre au nom du module - donc exactement ce que
+// l'apprenant a vu leçon après leçon, sans rien de recomposé. Les
+// leçons verrouillées n'y sont pas : elles ne sont pas dans `lessons`.
+//
+// Le module, c'est le DOSSIER (« module-1/ » → « module-1.pdf »), et
+// non le champ « module: » du frontmatter : il faut un nom de fichier,
+// et un libellé comme « Module 1 - Prendre le template en main » n'en
+// fait pas un bon. Le libellé, lui, titre la première slide.
+// -------------------------------------------------------------
+
+// Un module dont toutes les leçons sont verrouillées n'a plus de deck :
+// on retire celui d'avant, même raison que pour les leçons.
+let cleanedModules = 0;
+for (const rel of allLessons) {
+  const dir = rel.includes('/') || rel.includes('\\') ? rel.split(/[/\\]/)[0] : null;
+  if (!dir || byModuleDir.has(dir)) continue;
+  for (const e of ['md', 'html', 'pdf', 'pptx']) {
+    const stale = join(OUT_DIR, `${dir}.${e}`);
+    if (existsSync(stale)) {
+      rmSync(stale);
+      cleanedModules += 1;
+    }
+  }
+  const stalePublic = join(PUBLIC_SLIDES, `${dir}.pdf`);
+  if (existsSync(stalePublic)) {
+    rmSync(stalePublic);
+    cleanedModules += 1;
+  }
+}
+if (cleanedModules > 0) {
+  console.log(`  · ${cleanedModules} fichier(s) d'un module entièrement verrouillé retiré(s) de slides/`);
+}
+
+const moduleDecks = [];
+
+for (const [dir, { label, labels, bodies }] of DO_MODULES ? byModuleDir : []) {
+  // Deux libellés dans un même dossier : on prend le premier, mais on le
+  // dit. Silencieux, le PDF s'intitulerait d'après une leçon au hasard.
+  if (labels.size > 1) {
+    console.warn(
+      `  ⚠ ${dir}/ : plusieurs « module: » (${[...labels].join(' / ')}) - le deck retient « ${label} ».`
+    );
+  }
+
+  let body = '<!-- _class: lead -->\n';
+  body += '<!-- _paginate: false -->\n\n';
+  if (DEFAULT_BAND) {
+    const staged = stageImage(DEFAULT_BAND, OUT_DIR);
+    if (staged) body += `<!-- _backgroundImage: url('${staged}') -->\n`;
+  }
+  body += '\n';
+  body += `# ${label ?? dir}\n`;
+
+  const md = marpHeader(label ?? dir) + body + bodies.map((b) => `\n---\n\n${b}`).join('');
+
+  const mdPath = join(OUT_DIR, `${dir}.md`);
+  writeFileSync(mdPath, md);
+
+  const outPath = join(OUT_DIR, `${dir}.${ext}`);
+  console.log(`→ ${dir}  (${ext}, module)`);
+  render(mdPath, outPath);
+  moduleDecks.push(outPath);
+
+  // Seul le PDF part dans public/ : c'est ce que propose le bouton du
+  // site, et lui seul (voir PUBLIC_SLIDES, plus haut). Le HTML, lui,
+  // n'existe que pour le paquet livré, où bundle-dist ira le chercher.
+  if (ext === 'pdf') {
+    mkdirSync(PUBLIC_SLIDES, { recursive: true });
+    copyFileSync(outPath, join(PUBLIC_SLIDES, `${dir}.pdf`));
+  }
+}
+
 // Le manifeste décrit les decks, pas le format : il est réécrit à
 // l'identique par chaque passe (pdf, html…), ce qui le garde juste.
 writeFileSync(join(OUT_DIR, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 
+const bilan = [
+  DO_LESSONS ? `${generated.length} deck(s) de leçon` : null,
+  DO_MODULES ? `${moduleDecks.length} de module` : null,
+].filter(Boolean).join(' et ');
+
 console.log(
-  `\n✓ ${generated.length} deck(s) généré(s) dans slides/${
+  `\n✓ ${bilan} en ${ext} dans slides/${
     lockedCount ? ` (${lockedCount} leçon(s) verrouillée(s), sans deck)` : ''
   }`
 );

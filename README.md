@@ -67,6 +67,7 @@ src/
 ├── assets/                   → images sources, optimisées par Astro
 └── styles/                   → ITCSS + BEMIT (voir le guide)
 public/fonts/                 → polices auto-hébergées (générées)
+public/slides/modules/        → PDF résumé de chaque module (généré, servi par le site)
 socle.config.json             → LE FICHIER À RÉGLER : identité, couleurs, polices, leçons verrouillées
 fonts.lock.json               → trace des polices téléchargées (généré)
 scripts/config.mjs            → lecture de socle.config.json (scripts + pages Astro)
@@ -93,11 +94,13 @@ LICENSE                       → MIT, voir « Licence » en fin de document
 | `npm run build` | le site statique, dans `dist/` |
 | `npm run preview` | prévisualise le build |
 | `npm run brand` | applique la charte de `socle.config.json` (couleurs + polices) |
-| `npm run slides` | les présentations en PDF, une par leçon |
+| `npm run slides` | les présentations en PDF : une par leçon, une par module |
 | `npm run slides:html` | les mêmes, en HTML autonome |
 | `npm run slides:preview` | aperçu live du thème des slides → <http://localhost:8080> |
 | `npm run bundle` | le livrable complet : le site **et** les présentations |
 | `npm run reset` | efface le cours de démonstration |
+
+Pour ne régénérer qu'une partie des présentations — les leçons seules, les modules seuls, un format précis — il existe `slides:lecons`, `slides:modules`, `slides:pptx` et leurs variantes `:html`. La grille complète est dans le [guide](docs/GUIDE.md#ne-régénérer-quune-partie).
 
 `brand` tourne tout seul avant `dev` et `build` : une couleur changée dans `socle.config.json` est prise en compte sans rien lancer d'autre.
 
