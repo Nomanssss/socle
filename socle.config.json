@@ -1,0 +1,30 @@
+{
+  "_lisez-moi": "Le seul fichier à modifier pour régler le projet : l'identité du site, trois couleurs, deux polices Google Fonts, et les leçons verrouillées. Après un changement de couleur ou de police : npm run brand. Après un changement de « site » ou de « locked » : npm run build.",
+
+  "_site": "Le nom du cours, son accroche (affichés sur l'accueil) et les mentions légales. Un champ « legal » laissé vide n'est pas affiché sur /mentions-legales/, et le build le signale : une page de mentions incomplète se remarque mieux au build qu'en ligne.",
+  "site": {
+    "title": "Socle",
+    "tagline": "Un template de cours en ligne en markdown, statique et personnalisable.",
+    "legal": {
+      "editor": "",
+      "address": "",
+      "email": "",
+      "publisher": "",
+      "host": ""
+    }
+  },
+
+  "colors": {
+    "primary": "#4647AE",
+    "text": "#112E81",
+    "page": "#ffffff"
+  },
+
+  "fonts": {
+    "heading": "Stack Sans Headline",
+    "body": "Google Sans"
+  },
+
+  "_locked": "Leçons verrouillées : leur page n'est pas générée (URL en 404, contenu absent de dist/), leurs slides ne sont pas produites, mais elles restent visibles au sommaire, grisées. Pour déverrouiller : retirez la ligne, puis npm run build.",
+  "locked": ["module-4/lecon-4"]
+}

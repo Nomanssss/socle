@@ -1,0 +1,123 @@
+---
+title: "Écrire une leçon"
+module: "Module 2 - Écrire le contenu"
+moduleOrder: 2
+order: 1
+description: "Créer le fichier, remplir son en-tête, et comprendre d'où viennent les URL et le classement."
+slidePoints:
+  - "Une leçon = un fichier .mdx dans src/content/lecons/<module>/"
+  - "L'URL est déduite du chemin du fichier : rien à déclarer"
+  - "Trois champs obligatoires : title, module, order"
+  - "Le dossier fait l'URL, le champ « module » fait le regroupement"
+---
+
+import Quiz from '@components/Quiz.astro';
+
+Créer une leçon revient à créer **un fichier**. Le reste en découle.
+
+Cette leçon-ci est écrite presque sans composant : c'est aussi une démonstration. Du Markdown pur reste parfaitement lisible, car la mise en forme du texte est déjà prise en charge.
+
+## Le fichier
+
+Placez un fichier `.mdx` dans un dossier de module :
+
+```
+src/content/lecons/module-2/ma-nouvelle-lecon.mdx
+```
+
+Son adresse en ligne est déduite du chemin, sans rien déclarer nulle part :
+
+```
+src/content/lecons/module-2/ma-nouvelle-lecon.mdx
+        ↓
+/lecons/module-2/ma-nouvelle-lecon/
+```
+
+Choisissez donc des noms de fichiers courts, en minuscules, sans accent ni espace : ils deviennent des URL visibles.
+
+## L'en-tête
+
+Tout fichier de leçon commence par un **en-tête** délimité par deux lignes de trois tirets. On l'appelle le *frontmatter*. Il ne s'affiche pas dans la page : il renseigne le template.
+
+```yaml
+---
+title: "Écrire une leçon"
+module: "Module 2 - Écrire le contenu"
+moduleOrder: 2
+order: 1
+description: "Une phrase de résumé."
+---
+```
+
+Trois champs sont obligatoires, les autres sont facultatifs :
+
+| Champ | Requis | À quoi il sert |
+| --- | --- | --- |
+| `title` | oui | Le titre affiché partout : page, accueil, navigation latérale |
+| `module` | oui | Le nom du module. C'est **lui** qui regroupe les leçons |
+| `order` | oui | La place de la leçon dans son module : 1, 2, 3… |
+| `moduleOrder` | non | La place du module sur l'accueil. Absent, les modules sont classés par ordre alphabétique |
+| `description` | non | Le résumé affiché sous le titre sur la page d'accueil |
+| `cover` | non | Une image de bandeau en tête de leçon |
+| `coverAlt` | non | La description de cette image, pour l'accessibilité |
+| `slidePoints` | non | Un deck de slides de secours — voir le module 3 |
+
+### Le piège du regroupement
+
+Le nom du **dossier** sert à construire l'URL. Le champ **`module`** sert à regrouper les leçons à l'écran. Ce sont deux choses différentes.
+
+Conséquence : deux leçons rangées dans le même dossier mais dont le champ `module` diffère apparaîtront dans **deux modules séparés** sur l'accueil. Répétez donc exactement le même libellé de `module` dans toutes les leçons d'un même dossier — au caractère près, tiret inclus.
+
+### Le champ mal orthographié ne prévient pas
+
+Un champ inconnu est **ignoré silencieusement**. Aucune erreur, aucun avertissement : simplement un effet qui n'arrive jamais. Si vous écrivez `duree: 8` ou `Order: 2`, le build réussit et vous chercherez longtemps.
+
+Le garde-fou existe malgré tout : `npm run build` échoue si un champ **obligatoire** manque ou si un champ a le mauvais type. Il ne dira rien, en revanche, d'un champ facultatif mal orthographié. En cas de doute sur un nom, la liste qui fait foi est `src/content.config.ts`.
+
+## Le contenu
+
+Après l'en-tête, écrivez en **Markdown** ordinaire :
+
+```markdown
+Un paragraphe, avec du **gras** et du `code en ligne`.
+
+## Un sous-titre
+
+- une liste
+- à puces
+
+> Une citation mise en valeur.
+```
+
+Titres, listes, citations, blocs de code, tableaux et filets sont déjà mis en forme par le template. Pour aller au-delà du texte, les deux leçons suivantes présentent les composants disponibles.
+
+## Récapitulatif
+
+1. Créer le fichier `.mdx` dans le bon dossier de module.
+2. Remplir l'en-tête : au minimum `title`, `module` et `order`.
+3. Écrire le contenu en Markdown.
+4. Vérifier dans le navigateur, `npm run dev` tournant en arrière-plan.
+5. Lancer `npm run build` avant de publier : un en-tête invalide y fait échouer le build.
+
+## Vérifier que c'est clair
+
+<Quiz questions={[
+  {
+    question: "Vous placez un fichier dans src/content/lecons/module-4/bilan.mdx. Quelle sera son URL ?",
+    options: ["/module-4/bilan/", "/lecons/module-4/bilan/", "Celle indiquée dans le champ url de l'en-tête"],
+    answer: 1,
+    explanation: "L'URL reprend le chemin du fichier sous le dossier des leçons, préfixé par /lecons/. Il n'existe aucun champ url à déclarer.",
+  },
+  {
+    question: "Deux leçons du même dossier ont un champ « module » écrit différemment. Que se passe-t-il ?",
+    options: ["Le build échoue", "Elles apparaissent dans deux modules séparés sur l'accueil", "La seconde est ignorée"],
+    answer: 1,
+    explanation: "C'est le champ « module » qui regroupe, pas le dossier. Un libellé différent crée un second groupe, sans le moindre avertissement.",
+  },
+  {
+    question: "Vous écrivez « Order: 2 » au lieu de « order: 2 ». Que fait le build ?",
+    options: ["Il échoue en signalant le champ inconnu", "Il réussit, mais « order » manque et le build échoue pour cette raison", "Il réussit et ignore le champ en silence"],
+    answer: 1,
+    explanation: "Le champ inconnu « Order » est ignoré en silence — mais « order » est obligatoire, et son absence fait bien échouer le build. Un champ FACULTATIF mal orthographié, lui, ne dirait rien du tout.",
+  },
+]} />

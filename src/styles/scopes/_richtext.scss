@@ -1,0 +1,131 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Richtext
+ * Type: Scope
+ * Description:
+ *   Zone de contenu rédigé dont on ne maîtrise pas le balisage : le corps
+ *   markdown/MDX des leçons. On y stylise donc des BALISES NUES, ce qui est
+ *   interdit partout ailleurs - d'où le préfixe `.s-` qui délimite la zone.
+ *
+ *   Une leçon en markdown pur est correctement mise en forme sans aucun
+ *   composant : titres, listes, citations, code, tableaux, images et filets
+ *   sont traités ici.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../settings/typography";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.s-richtext {
+  font-size: typography.size("base");
+  color: colors.get("text");
+
+  // Rythme vertical : un espace entre chaque bloc de premier niveau.
+  > * + * {
+    margin-top: spacing.get("md");
+  }
+
+  h2:not([class]) {
+    margin-top: spacing.get("xl");
+    padding-bottom: spacing.get("2xs");
+  }
+
+  h3:not([class]) {
+    margin-top: spacing.get("lg");
+  }
+
+  // Rapproche un titre du paragraphe qui le suit.
+  h2 + *,
+  h3 + * {
+    margin-top: spacing.get("xs");
+  }
+
+  ul:not([class]),
+  ol:not([class]) {
+    padding-left: spacing.get("lg");
+  }
+
+  ul:not([class]) {
+    list-style: disc;
+  }
+
+  ol:not([class]) {
+    list-style: decimal;
+  }
+
+  li:not([class]) + li:not([class]) {
+    margin-top: spacing.get("2xs");
+  }
+
+  blockquote {
+    padding: spacing.get("sm") spacing.get("md");
+    color: colors.get("text");
+    background: colors.get("primary-soft");
+    border-left: 4px solid colors.get("primary");
+    border-radius: 0 spacing.radius("sm") spacing.radius("sm") 0;
+
+    > * + * {
+      margin-top: spacing.get("sm");
+    }
+  }
+
+  code {
+    padding: 0.15em 0.35em;
+    font-family: typography.family("mono");
+    font-size: 0.9em;
+    background: colors.get("surface-muted");
+    border-radius: 0.3em;
+  }
+
+  pre {
+    padding: spacing.get("md");
+    overflow-x: auto;
+    background: colors.get("surface-muted");
+    border-radius: spacing.radius();
+
+    code {
+      padding: 0;
+      background: none;
+    }
+  }
+
+  img {
+    border-radius: spacing.radius();
+  }
+
+  a:not([class]) {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+
+    &:hover {
+      color: colors.get("primary-hover");
+    }
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    padding: spacing.get("sm");
+    text-align: left;
+    border: 1px solid colors.get("border");
+  }
+
+  th {
+    background: colors.get("surface-muted");
+  }
+}

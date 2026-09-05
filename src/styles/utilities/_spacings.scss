@@ -1,0 +1,66 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Spacings
+ * Type: Utilities
+ * Description:
+ *   Pose une marge ou un retrait ponctuel, quand créer un modificateur de
+ *   composant serait disproportionné. À n'utiliser qu'en dernier recours :
+ *   le rythme se gère normalement avec .o-stack / .o-cluster.
+ *
+ *   La boucle ci-dessous génère par exemple :
+ *     .u-margin-top-lg {}
+ *     .u-padding-horizontal-sm {}
+ *     .u-margin-none {}
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass:map";
+@use "../settings/spacing";
+
+/*******************************************************************************
+ * Variables
+*******************************************************************************/
+
+/* stylelint-disable scss/map-keys-quotes */
+$directions: (
+  null: null,
+  "-top": "-top",
+  "-right": "-right",
+  "-bottom": "-bottom",
+  "-left": "-left",
+  "-horizontal": "-left" "-right",
+  "-vertical": "-top" "-bottom",
+);
+
+$properties: ("margin", "padding");
+/* stylelint-enable scss/map-keys-quotes */
+
+/*******************************************************************************
+ * Base
+*******************************************************************************/
+
+@each $property in $properties {
+  @each $direction-namespace, $direction-rules in $directions {
+    // Espacements de l'échelle
+    @each $size-namespace, $size in spacing.$spacings {
+      .u-#{$property}#{$direction-namespace}-#{$size-namespace} {
+        @each $direction in $direction-rules {
+          #{$property}#{$direction}: spacing.get($size-namespace) !important;
+        }
+      }
+    }
+
+    // Remise à zéro
+    .u-#{$property}#{$direction-namespace}-none {
+      @each $direction in $direction-rules {
+        #{$property}#{$direction}: 0 !important;
+      }
+    }
+  }
+}

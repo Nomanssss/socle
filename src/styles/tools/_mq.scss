@@ -1,0 +1,22 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Mq
+ * Type: Tools
+ * Description:
+ *   Point de configuration unique de sass-mq : on `@forward` le module en
+ *   lui passant les points de rupture du projet (settings/_global.scss).
+ *   Chaque fichier fait ensuite `@use "../tools/mq" as mq;` puis
+ *   `@include mq.mq($from: medium) { … }`.
+**/
+
+/*******************************************************************************
+ * Configuration
+*******************************************************************************/
+
+@use "../settings/global";
+@forward "sass-mq" with (
+  $breakpoints: global.$breakpoints
+);

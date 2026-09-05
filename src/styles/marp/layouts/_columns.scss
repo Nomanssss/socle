@@ -1,0 +1,187 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Columns (Marp layouts)
+ * Type: Theme
+ * Description:
+ *   Colonnes de contenu, en trois variantes :
+ *     <!-- _class: columns-2 -->
+ *     <!-- _class: columns-3 -->
+ *     <!-- _class: columns-4 -->
+ *
+ *   Le contenu coule dans des colonnes CSS. La convention : **un `###` par
+ *   colonne**. Chaque `###` force le passage à la colonne suivante, donc deux
+ *   blocs donnent deux colonnes, quatre en donnent quatre, quelle que soit la
+ *   longueur des textes.
+ *
+ *     <!-- _class: columns-2 -->
+ *
+ *     ## Deux façons de faire
+ *
+ *     ### Avec un composant
+ *     Un quiz, une frise, des cartes à retourner.
+ *
+ *     ### En markdown pur
+ *     Titres, listes, citations, code : déjà mis en forme.
+ *
+ *   Écrivez autant de `###` que la variante a de colonnes : un quatrième dans
+ *   une `columns-3` déborderait du cadre.
+ *
+ *   La variante à quatre colonnes est faite pour des blocs COURTS - un titre
+ *   et une ligne ou deux. Une colonne y fait 250 px : un paragraphe s'y
+ *   découpe en tranches de quatre mots.
+ *
+ *   Sans `###`, le texte se répartit tout seul dans les colonnes.
+ *
+ *   UNE IMAGE PAR COLONNE, entre le titre et le texte :
+ *
+ *     ### HTML
+ *     ![](balises.png)
+ *     La structure : titres, paragraphes, liens.
+ *
+ *   Elle s'inscrit dans une tuile carrée (`object-fit: contain`), ce qui
+ *   aligne les colonnes quelles que soient les proportions des images.
+ *
+ *   L'image doit venir APRÈS le `###`, pas avant : c'est le `###` qui ouvre
+ *   la colonne, une image placée au-dessus resterait donc dans la colonne
+ *   précédente.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass:map";
+@use "sass-rem" as rem;
+@use "../../settings/colors";
+@use "../../settings/spacing";
+@use "../../settings/typography";
+@use "../../tools/logo";
+
+/*******************************************************************************
+ * Layout
+*******************************************************************************/
+
+/*******************************************************************************
+ * Variables
+*******************************************************************************/
+
+/**
+ * 👉 TOUS LES RÉGLAGES DES COLONNES SONT ICI. Une ligne par variante :
+ *
+ *   columns  nombre de colonnes
+ *   font     taille du corps de texte - à resserrer quand les colonnes
+ *            rétrécissent, sinon la mesure devient illisible
+ *   gap      gouttière entre les colonnes
+ *   tile     côté de la tuile carrée des images
+ *   mark     taille du filigrane (le symbole derrière une tuile sur deux)
+ *
+ * Ajouter une variante `columns-5` : une ligne de plus dans ce tableau, rien
+ * d'autre - les blocs CSS sont produits par la boucle en fin de fichier.
+**/
+$variants: (
+  2: (columns: 2, font: 25px, gap: 56px, tile: 260px, mark: 200px),
+  3: (columns: 3, font: 22px, gap: 56px, tile: 200px, mark: 170px),
+  4: (columns: 4, font: 19px, gap: 40px, tile: 170px, mark: 100px),
+) !default;
+
+/**
+ * Tout ce que les variantes partagent. Elles ne diffèrent que par les valeurs
+ * du tableau ci-dessus : le reste est écrit une fois, et n'apparaît donc
+ * qu'une fois dans le CSS produit.
+**/
+section.columns-2,
+section.columns-3,
+section.columns-4 {
+  display: block;
+
+  // Le titre de la slide traverse toutes les colonnes.
+  h2 {
+    column-span: all;
+    margin-bottom: spacing.get("lg");
+    font-size: rem.convert(36px);
+  }
+
+  > p:has(> img),
+  > h3 {
+    break-before: column;
+  }
+
+  > :nth-child(2),
+  > p:has(> img) + h3,
+  > h3 + p:has(> img) {
+    break-before: avoid;
+  }
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: spacing.get("xs");
+    font-size: 1.15em;
+    break-after: avoid;
+  }
+
+  p:has(> img) {
+    position: relative;
+    isolation: isolate;
+    width: var(--tile);
+    margin: 0 auto spacing.get("lg");
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    border-radius: spacing.radius();
+  }
+
+  p:has(> img):nth-child(odd of p:has(> img))::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -4% -25% auto auto;
+    width: var(--mark);
+    height: var(--mark);
+    background-image: logo.logo(colors.$primary);
+    background-repeat: no-repeat;
+    background-size: contain;
+    opacity: 0.1;
+    transform: rotate(38deg);
+  }
+
+  p,
+  li {
+    // Un bloc ne doit pas se couper au milieu d'une colonne.
+    break-inside: avoid;
+  }
+
+  ul,
+  ol {
+    padding-left: spacing.get("md");
+  }
+}
+
+/*******************************************************************************
+ * Variantes
+*******************************************************************************/
+
+/**
+ * Un bloc par ligne du tableau. Chaque variante ne porte que ce qui la
+ * distingue : le reste vit dans la liste de sélecteurs partagée ci-dessus, et
+ * n'est donc écrit qu'une fois dans le CSS produit.
+ *
+ * Les tailles sont converties en `rem` ici, pour que le tableau reste lisible
+ * en pixels.
+**/
+@each $name, $variant in $variants {
+  section.columns-#{$name} {
+    --tile: #{rem.convert(map.get($variant, tile))};
+    --mark: #{rem.convert(map.get($variant, mark))};
+
+    column-count: map.get($variant, columns);
+    column-gap: rem.convert(map.get($variant, gap));
+    font-size: rem.convert(map.get($variant, font));
+  }
+}

@@ -1,0 +1,107 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Button
+ * Type: Component
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../settings/typography";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: spacing.get("xs");
+  padding: spacing.get("sm") spacing.get("lg");
+  font: inherit;
+  font-weight: typography.$semibold;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  color: colors.get("text");
+  background: transparent;
+  border: rem.convert(1px) solid colors.get("border");
+  border-radius: spacing.radius();
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+
+  &:hover {
+    background-color: colors.get("surface-muted");
+  }
+
+  &:not(:disabled):active {
+    transform: translateY(rem.convert(1px));
+    transition-duration: 0s;
+  }
+
+  &[disabled],
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/*******************************************************************************
+ * Variants
+*******************************************************************************/
+
+/**
+ * Primary
+*******************************************************************************/
+
+.c-button--primary {
+  color: colors.get("on-primary");
+  background: colors.get("primary");
+  border-color: colors.get("primary");
+
+  &:hover {
+    background-color: colors.get("primary-hover");
+    border-color: colors.get("primary-hover");
+  }
+}
+
+/**
+ * Ghost - bouton secondaire discret
+*******************************************************************************/
+
+.c-button--ghost {
+  &:hover {
+    background-color: colors.get("surface-muted");
+  }
+}
+
+/**
+ * Outline
+*******************************************************************************/
+
+.c-button--outline {
+  color: colors.get("primary");
+  border: rem.convert(2px) solid colors.get("primary");
+
+  &:hover,
+  &.is-done {
+    color: colors.get("on-primary");
+    background-color: colors.get("primary");
+  }
+}
+
+/**
+ * Compact
+*******************************************************************************/
+
+.c-button--compact {
+  padding-inline: spacing.get("md");
+}

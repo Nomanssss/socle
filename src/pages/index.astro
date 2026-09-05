@@ -1,0 +1,157 @@
+---
+import '../styles/theme.scss';
+import { getCollection } from 'astro:content';
+import Footer from '../components/Footer.astro';
+import { isLocked, unknownLocked, site, SOCLE_VERSION } from '../../scripts/config.mjs';
+
+// =============================================================
+// Page d'accueil - liste les modules et leurs leçons.
+//
+// Les leçons verrouillées (« locked » dans socle.config.json) restent
+// LISTÉES ici, grisées et sans lien : le sommaire annonce ce qui
+// arrive. Leur page, elle, n'existe pas - c'est getStaticPaths qui
+// s'en charge, dans pages/lecons/[...id].astro.
+// =============================================================
+const all = await getCollection('lecons');
+
+// Un identifiant mal orthographié dans « locked » ne verrouille rien
+// et ne dirait rien : on préfère un avertissement au build plutôt
+// qu'une leçon qu'on croit protégée alors qu'elle est en ligne.
+const strays = unknownLocked(all.map((lesson) => lesson.id));
+if (strays.length > 0) {
+  console.warn(
+    `\n⚠ socle.config.json → « locked » : aucune leçon ne correspond à ${strays
+      .map((id) => `« ${id} »`)
+      .join(', ')}. Ces entrées ne verrouillent rien.\n`
+  );
+}
+
+const byModule = new Map<string, typeof all>();
+for (const lesson of all) {
+  const arr = byModule.get(lesson.data.module) ?? [];
+  arr.push(lesson);
+  byModule.set(lesson.data.module, arr);
+}
+for (const arr of byModule.values()) {
+  arr.sort((a, b) => a.data.order - b.data.order);
+}
+const modules = [...byModule.entries()].sort((a, b) => {
+  const oa = a[1][0].data.moduleOrder ?? Number.POSITIVE_INFINITY;
+  const ob = b[1][0].data.moduleOrder ?? Number.POSITIVE_INFINITY;
+  return oa !== ob ? oa - ob : a[0].localeCompare(b[0]);
+});
+
+// Première leçon OUVERTE (cible du bouton « Commencer » du hero) : viser
+// une leçon verrouillée enverrait le visiteur sur un 404.
+const firstLesson = modules.flatMap(([, lessons]) => lessons).find((lesson) => !isLocked(lesson.id));
+
+// Titre et accroche : réglés dans socle.config.json, section « site ».
+const { title: siteTitle, tagline: siteTagline } = site();
+---
+
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={siteTagline} />
+    <meta name="generator" content={`Socle ${SOCLE_VERSION}`} />
+    <title>{siteTitle}</title>
+  </head>
+  <body>
+    <header class="c-header">
+      <div class="c-header__content o-wrapper o-wrapper--large">
+        <div class="c-header__main">
+          <h1 class="c-header__title">{siteTitle}</h1>
+          <p class="c-header__tagline">{siteTagline}</p>
+          {
+            firstLesson && (
+              <a
+                href={`/lecons/${firstLesson.id}/`}
+                class="c-button c-button--primary c-header__cta"
+              >
+                Commencer le cours →
+              </a>
+            )
+          }
+        </div>
+      </div>
+    </header>
+
+    <!-- Contenu principal : largeur de lecture (o-wrapper) et rythme
+         vertical entre les modules (o-stack) -->
+    <div class="c-home o-wrapper o-wrapper--large">
+      <main class="o-stack o-stack--2xl">
+        {
+          modules.map(([moduleName, lessons]) => {
+            return (
+              <section class="c-home__module">
+                <div class="c-home__module-head o-cluster o-cluster--between o-cluster--baseline">
+                  <h2 class="c-home__module-title">{moduleName}</h2>
+                  <span class="c-home__module-meta">
+                    {lessons.length} leçon{lessons.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <ul class="o-stack">
+                  {lessons.map((lesson) =>
+                    isLocked(lesson.id) ? (
+                      <li>
+                        {/* Un <div> et non un <a> : rien à suivre, donc rien à
+                            annoncer comme lien à un lecteur d'écran. */}
+                        <div class="c-home__lesson c-home__lesson--locked">
+                          <div class="c-home__lesson-head o-cluster o-cluster--between o-cluster--middle">
+                            <h3 class="c-home__lesson-title">
+                              <span class="c-home__lock" aria-hidden="true">
+                                🔒
+                              </span>
+                              {lesson.data.title}
+                            </h3>
+                            <span class="c-home__lesson-tag c-home__lesson-tag--locked">
+                              Bientôt disponible
+                            </span>
+                          </div>
+                          {lesson.data.description && (
+                            <p class="c-home__lesson-desc">{lesson.data.description}</p>
+                          )}
+                        </div>
+                      </li>
+                    ) : (
+                      <li>
+                        <a
+                          href={`/lecons/${lesson.id}/`}
+                          data-lesson-link={lesson.id}
+                          class="c-home__lesson"
+                        >
+                          <div class="c-home__lesson-head o-cluster o-cluster--between o-cluster--middle">
+                            <h3 class="c-home__lesson-title">{lesson.data.title}</h3>
+                            <span class="c-home__lesson-tag" data-lesson-tag hidden>
+                              Terminé
+                            </span>
+                          </div>
+                          {lesson.data.description && (
+                            <p class="c-home__lesson-desc">{lesson.data.description}</p>
+                          )}
+                        </a>
+                      </li>
+                    )
+                  )}
+                </ul>
+              </section>
+            );
+          })
+        }
+      </main>
+    </div>
+
+    <Footer />
+
+    <script>
+      import { isCompleted } from '../scripts/progress';
+      document.querySelectorAll<HTMLElement>('[data-lesson-link]').forEach((link) => {
+        const done = isCompleted(link.dataset.lessonLink!);
+        link.classList.toggle('is-completed', done);
+        const tag = link.querySelector<HTMLElement>('[data-lesson-tag]');
+        if (tag) tag.hidden = !done;
+      });
+    </script>
+  </body>
+</html>

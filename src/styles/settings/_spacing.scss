@@ -1,0 +1,70 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Spacing
+ * Type: Settings
+ * Description:
+ *   Échelle d'espacement (2xs → 2xl) et rayons d'arrondi. Ajustez ces
+ *   valeurs pour resserrer ou aérer tout le site d'un coup : elles pilotent
+ *   les objets de mise en page, les composants et les classes utilitaires.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass:map";
+@use "sass-rem" as rem;
+
+/*******************************************************************************
+ * Échelle
+*******************************************************************************/
+
+$spacings: (
+  "2xs": rem.convert(4px),
+  "xs": rem.convert(8px),
+  "sm": rem.convert(12px),
+  "md": rem.convert(20px),
+  "lg": rem.convert(32px),
+  "xl": rem.convert(48px),
+  "2xl": rem.convert(80px),
+) !default;
+
+/*******************************************************************************
+ * Rayons
+*******************************************************************************/
+
+$radius-sm: rem.convert(8px) !default;
+$radius: rem.convert(12px) !default;
+$radius-lg: rem.convert(20px) !default;
+
+/*******************************************************************************
+ * Helpers
+*******************************************************************************/
+
+/// Retourne la variable CSS d'un espacement.
+/// Exemple : spacing.get("md") => var(--space-md, 1.25rem)
+@function get($name) {
+  @if not map.has-key($spacings, $name) {
+    @error "Espacement inconnu : « #{$name} ».";
+  }
+
+  @return var(--space-#{$name}, map.get($spacings, $name));
+}
+
+/// Retourne la variable CSS d'un rayon d'arrondi.
+/// Exemple : spacing.radius() => var(--radius, 0.75rem)
+///           spacing.radius("lg") => var(--radius-lg, 1.25rem)
+@function radius($name: null) {
+  @if $name == null {
+    @return var(--radius, $radius);
+  } @else if $name == "sm" {
+    @return var(--radius-sm, $radius-sm);
+  } @else if $name == "lg" {
+    @return var(--radius-lg, $radius-lg);
+  }
+
+  @error "Rayon inconnu : « #{$name} » (attendu : sm, lg ou aucun).";
+}

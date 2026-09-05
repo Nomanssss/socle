@@ -1,0 +1,39 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Typography
+ * Type: Elements
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "../settings/colors";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+/**
+ * Pas de règle `a:hover` ici : sa spécificité (0,1,1) l'emporterait sur
+ * toute classe de composant (0,1,0), et soulignerait au survol les cartes,
+ * la navigation, le pager et les boutons-liens. Le soulignement appartient
+ * au texte rédigé, il est donc traité dans `scopes/_richtext.scss`.
+**/
+a {
+  color: colors.get("primary");
+  text-decoration: none;
+}
+
+p,
+li {
+  text-wrap: pretty;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid colors.get("border");
+}

@@ -1,0 +1,144 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Home
+ * Type: Component
+ * Description:
+ *   Page d'accueil : liste des modules et de leurs leçons. La mise en page
+ *   (largeur, rythme vertical, en-têtes sur une ligne) est déléguée aux
+ *   objets `.o-wrapper`, `.o-stack` et `.o-cluster` ; il ne reste ici que
+ *   l'habillage.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/effects";
+@use "../settings/spacing";
+@use "../settings/typography";
+@use "../tools/fonts";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-home {
+  padding-block: spacing.get("xl");
+}
+
+/*******************************************************************************
+ * Modules
+*******************************************************************************/
+
+.c-home__module {}
+
+  .c-home__module-head {
+    margin-bottom: spacing.get("md");
+    padding-bottom: spacing.get("sm");
+    border-bottom: rem.convert(1px) solid colors.get("border");
+  }
+
+    .c-home__module-title {}
+
+    .c-home__module-meta {
+      flex-shrink: 0;
+      font-size: typography.size("sm");
+      color: colors.get("text-muted");
+    }
+
+/*******************************************************************************
+ * Leçon
+*******************************************************************************/
+
+    .c-home__lesson {
+      display: block;
+      padding: spacing.get("md");
+      color: inherit;
+      text-decoration: none;
+      background: colors.get("surface");
+      border: rem.convert(1px) solid colors.get("border");
+      border-radius: spacing.radius();
+      transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+
+      // Le survol est refusé aux cartes verrouillées. Le `:not()` porte la
+      // condition ICI plutôt que de remettre chaque propriété à zéro dans
+      // le modificateur : une propriété ajoutée plus tard à ce survol sera
+      // exclue d'office, sans qu'on ait à y repenser.
+      //
+      // À ne pas confondre avec « ce n'est pas un lien, donc pas de
+      // survol » : `:hover` s'applique à n'importe quel élément, `<div>`
+      // compris. Sans ce filtre, la carte verrouillée se soulevait.
+      &:not(.c-home__lesson--locked) {
+        &:hover {
+          transform: translateY(rem.convert(-2px));
+          background: colors.get("surface-muted");
+          border-color: colors.get("primary");
+        }
+
+        &:hover .c-home__lesson-title {
+          color: colors.get("primary");
+        }
+
+        // Au clic, la carte repose : elle redescend à sa place, sans délai.
+        &:active {
+          transform: translateY(0);
+          transition-duration: 0s;
+        }
+      }
+    }
+
+    .c-home__lesson--locked {
+      color: colors.get("text-muted");
+      background: colors.get("surface-muted");
+      border-style: dashed;
+
+      .c-home__lesson-title,
+      .c-home__lesson-desc {
+        color: colors.get("text-muted");
+      }
+    }
+
+      // Le cadenas précède le titre sans le décaler : il vit dans le flux
+      // du titre, à qui l'on ne touche pas.
+      .c-home__lock {
+        margin-right: spacing.get("2xs");
+      }
+
+      .c-home__lesson-head {}
+
+      .c-home__lesson-tag {
+        @include fonts.eyebrow;
+        flex-shrink: 0;
+        padding: rem.convert(8px) spacing.get("sm");
+        color: colors.get("success");
+        background: colors.get("surface");
+        border: rem.convert(1px) solid colors.get("success");
+        border-radius: spacing.radius("lg");
+      }
+
+        // Même pastille, mais en gris : « bientôt disponible » n'est pas
+        // une réussite, elle ne doit pas emprunter le vert de « terminé ».
+        .c-home__lesson-tag--locked {
+          color: colors.get("text-muted");
+          border-color: colors.get("border");
+        }
+
+      .c-home__lesson-desc {
+        @include fonts.small-text;
+        margin-top: spacing.get("xs");
+      }
+
+/*******************************************************************************
+ * States
+*******************************************************************************/
+
+// Leçon terminée : carte teintée et bordure verte.
+.c-home__lesson.is-completed {
+  border-color: colors.get("success");
+  background: colors.get("success-soft");
+}

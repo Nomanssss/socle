@@ -1,0 +1,105 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Typography
+ * Type: Settings
+ * Description:
+ *   Polices, graisses et échelle de tailles. Les tailles sont écrites en
+ *   pixels puis converties en `rem` : lisibles à l'écriture, accessibles
+ *   au rendu. Émises en `--font-*`, `--text-*` et `--leading-*`.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass:map";
+@use "sass-rem" as rem;
+@use "./brand";
+
+/*******************************************************************************
+ * Familles
+*******************************************************************************/
+
+// Les deux premières viennent de socle.config.json et sont auto-hébergées
+// (déclarations @font-face dans generic/_fonts.scss). Les replis couvrent le
+// temps de chargement et les caractères hors latin.
+//
+// La monospace n'est pas paramétrable : on utilise la pile du système, la
+// plus lisible pour du code et la seule qui ne coûte aucun téléchargement.
+$heading: brand.$font-heading, "Trebuchet MS", system-ui, sans-serif !default;
+$body: brand.$font-body, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !default;
+$mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace !default;
+
+$families: (
+  "heading": $heading,
+  "body": $body,
+  "mono": $mono,
+);
+
+/*******************************************************************************
+ * Graisses
+*******************************************************************************/
+
+$regular: 400;
+$semibold: 600;
+$bold: 700;
+
+/*******************************************************************************
+ * Échelle de tailles
+*******************************************************************************/
+
+$sizes: (
+  "xs": rem.convert(13px),
+  "sm": rem.convert(14px),
+  "base": rem.convert(16px),
+  "lg": rem.convert(20px),
+  "xl": rem.convert(28px),
+  "2xl": rem.convert(38px),
+  "3xl": rem.convert(48px),
+) !default;
+
+/*******************************************************************************
+ * Interlignes
+*******************************************************************************/
+
+$leadings: (
+  "tight": 1.2,
+  "normal": 1.7,
+) !default;
+
+/*******************************************************************************
+ * Helpers
+*******************************************************************************/
+
+/// Retourne la variable CSS d'une taille de texte.
+/// Exemple : typography.size("lg") => var(--text-lg, 1.25rem)
+@function size($name) {
+  @if not map.has-key($sizes, $name) {
+    @error "Taille de texte inconnue : « #{$name} ».";
+  }
+
+  @return var(--text-#{$name}, map.get($sizes, $name));
+}
+
+/// Retourne la variable CSS d'une famille de police.
+/// Exemple : typography.family("mono") => var(--font-mono, …)
+@function family($name) {
+  @if not map.has-key($families, $name) {
+    @error "Famille de police inconnue : « #{$name} ».";
+  }
+
+  @return var(--font-#{$name}, #{map.get($families, $name)});
+}
+
+/// Retourne la variable CSS d'un interligne.
+/// Exemple : typography.leading("tight") => var(--leading-tight, 1.2)
+@function leading($name) {
+  @if not map.has-key($leadings, $name) {
+    @error "Interligne inconnu : « #{$name} ».";
+  }
+
+  @return var(--leading-#{$name}, map.get($leadings, $name));
+}

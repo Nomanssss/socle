@@ -1,0 +1,72 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Cluster
+ * Type: Object
+ * Description:
+ *   Aligne ses enfants horizontalement, avec passage à la ligne et un
+ *   espace homogène. Sert pour les barres d'actions, les en-têtes
+ *   « titre + méta », les listes d'étiquettes…
+ *
+ *   Exemple :
+ *     <div class="o-cluster o-cluster--between o-cluster--middle"> … </div>
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "../settings/spacing";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.o-cluster {
+  --space: #{spacing.get("md")};
+
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--space);
+}
+
+/*******************************************************************************
+ * Modifiers
+*******************************************************************************/
+
+// Répartition horizontale
+.o-cluster--between {
+  justify-content: space-between;
+}
+
+.o-cluster--center {
+  justify-content: center;
+}
+
+.o-cluster--end {
+  justify-content: flex-end;
+}
+
+// Alignement vertical
+.o-cluster--middle {
+  align-items: center;
+}
+
+.o-cluster--baseline {
+  align-items: baseline;
+}
+
+// Interdit le passage à la ligne
+.o-cluster--nowrap {
+  flex-wrap: nowrap;
+}
+
+// Espacements : .o-cluster--2xs → .o-cluster--2xl
+@each $namespace, $space in spacing.$spacings {
+  .o-cluster--#{$namespace} {
+    --space: #{spacing.get($namespace)};
+  }
+}

@@ -1,0 +1,68 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Grid
+ * Type: Object
+ * Description:
+ *   Grille fluide : autant de colonnes que la largeur disponible le permet,
+ *   chacune ne descendant jamais sous `--min`. Aucun point de rupture à
+ *   déclarer dans le cas général.
+ *
+ *   Exemples :
+ *     <ul class="o-grid"> … </ul>
+ *     <div class="o-grid o-grid--halves"> … </div>
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/spacing";
+@use "../tools/mq" as mq;
+
+/*******************************************************************************
+ * Variables
+*******************************************************************************/
+
+$grid-min: 300px !default;
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.o-grid {
+  --min: #{rem.convert($grid-min)};
+  --max: 1fr;
+  --gap: #{spacing.get("md")};
+
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--min), 100%), var(--max)));
+}
+
+  .o-grid__item--full {
+    grid-column: 1 / -1;
+  }
+
+/*******************************************************************************
+ * Modifiers
+*******************************************************************************/
+
+// Deux colonnes égales, empilées sur mobile
+.o-grid--halves {
+  grid-template-columns: 1fr;
+
+  @include mq.mq($from: small) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+// Espacements : .o-grid--2xs → .o-grid--2xl
+@each $namespace, $space in spacing.$spacings {
+  .o-grid--#{$namespace} {
+    --gap: #{spacing.get($namespace)};
+  }
+}

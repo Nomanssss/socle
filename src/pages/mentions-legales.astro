@@ -1,0 +1,126 @@
+---
+import '../styles/theme.scss';
+import Footer from '../components/Footer.astro';
+import { site, legalEntries, missingLegal, SOCLE_VERSION } from '../../scripts/config.mjs';
+
+// =============================================================
+// Page « Mentions légales », liée depuis le pied de page.
+//
+// Les informations qui changent d'un projet à l'autre (éditeur,
+// adresse, hébergeur…) viennent de socle.config.json ; seul le
+// texte de cadre est écrit ici. Un champ laissé vide n'affiche
+// pas de ligne à moitié remplie : il disparaît de la page et le
+// build le signale - même parti pris que pour « locked », une
+// omission silencieuse vaut moins qu'un avertissement.
+// =============================================================
+const { title: siteTitle } = site();
+const editor = legalEntries('editor');
+const host = legalEntries('host');
+const missing = missingLegal();
+
+if (missing.length > 0) {
+  console.warn(
+    `\n⚠ socle.config.json → « site.legal » : ${missing
+      .map((label) => `« ${label} »`)
+      .join(', ')} ${missing.length > 1 ? 'sont vides' : 'est vide'}. ` +
+      `Ces lignes n'apparaîtront pas dans les mentions légales.\n`
+  );
+}
+---
+
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={`Mentions légales du site ${siteTitle}.`} />
+    <meta name="generator" content={`Socle ${SOCLE_VERSION}`} />
+    <title>Mentions légales - {siteTitle}</title>
+  </head>
+  <body>
+    <main class="c-page o-wrapper o-wrapper--medium">
+      <a href="/" class="c-page__back">← Accueil</a>
+
+      <header class="c-page__header">
+        <h1 class="c-page__title">Mentions légales</h1>
+      </header>
+
+      <div class="s-richtext">
+        <h2>Éditeur</h2>
+        {
+          editor.length > 0 ? (
+            <dl class="c-page__facts">
+              {editor.map(({ label, value }) => (
+                <>
+                  <dt class="c-page__fact-label">{label}</dt>
+                  <dd class="c-page__fact-value">{value}</dd>
+                </>
+              ))}
+            </dl>
+          ) : (
+            <p class="c-page__todo">
+              À compléter dans <code>socle.config.json</code>, section <code>site.legal</code> :
+              éditeur, adresse, contact et directeur de la publication.
+            </p>
+          )
+        }
+
+        <h2>Hébergement</h2>
+        {
+          host.length > 0 ? (
+            <dl class="c-page__facts">
+              {host.map(({ label, value }) => (
+                <>
+                  <dt class="c-page__fact-label">{label}</dt>
+                  <dd class="c-page__fact-value">{value}</dd>
+                </>
+              ))}
+            </dl>
+          ) : (
+            <p class="c-page__todo">
+              À compléter dans <code>socle.config.json</code> : <code>site.legal.host</code>,
+              le nom et l'adresse de l'hébergeur du site.
+            </p>
+          )
+        }
+
+        <h2>Conception et réalisation</h2>
+        <p>
+          Ce site est propulsé par <strong>Socle {SOCLE_VERSION}</strong>, un template de cours en ligne
+          statique : les pages sont générées avec Astro, les leçons rédigées en markdown,
+          et le tout est publié sous forme de fichiers - ni base de données, ni serveur
+          applicatif. Socle est conçu et développé par{' '}
+          <a
+            href="https://www.linkedin.com/in/alexandre-allain-4a2592151"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Alexandre Allain<span class="u-hidden-visually"> (nouvelle fenêtre)</span>
+          </a>.
+        </p>
+
+        <h2>Propriété intellectuelle</h2>
+        <p>
+          Les contenus de ce cours - textes, images, présentations et supports
+          téléchargeables - sont protégés par le droit d'auteur. Toute reproduction ou
+          diffusion, même partielle, hors du cadre d'un usage privé, requiert
+          l'autorisation préalable de l'éditeur.
+        </p>
+
+        <h2>Données personnelles</h2>
+        <p>
+          Ce site est entièrement statique : il ne comporte ni compte, ni formulaire, ni
+          base de données. Aucune donnée personnelle n'est collectée, et aucun cookie de
+          mesure d'audience ou de publicité n'est déposé.
+        </p>
+        <p>
+          Votre progression dans les leçons est conservée par votre seul navigateur, dans
+          son stockage local (<code>localStorage</code>), et ne quitte jamais votre
+          appareil. Vider les données du site suffit à l'effacer ; changer de navigateur
+          ou d'appareil la fait repartir de zéro.
+        </p>
+      </div>
+    </main>
+
+    <Footer />
+  </body>
+</html>

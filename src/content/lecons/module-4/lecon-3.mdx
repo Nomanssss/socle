@@ -1,0 +1,95 @@
+---
+title: "Livrer le cours"
+module: "Module 4 - Régler et livrer"
+moduleOrder: 4
+order: 3
+description: "Une commande assemble un dossier transmissible : le site et les présentations. Avec une limite à connaître."
+slidePoints:
+  - "npm run bundle assemble dans dist/ le site ET les présentations"
+  - "Le site a besoin d'un serveur HTTP : il ne s'ouvre pas par double-clic"
+  - "Les decks HTML et les PDF, eux, s'ouvrent hors ligne"
+  - "LISEZ-MOI.txt est livré dans le paquet pour le destinataire"
+---
+
+import Quiz from '@components/Quiz.astro';
+
+Une commande rassemble tout ce qu'il faut pour transmettre le cours.
+
+```bash
+npm run bundle
+```
+
+## Ce que vous obtenez
+
+```
+dist/
+  index.html, lecons/…        le site
+  _astro/, fonts/             ses assets
+  slides/
+    index.html                sommaire des présentations
+    module-1-lecon-1.html     deck projetable
+    module-1-lecon-1.pdf      même deck, imprimable
+    assets/                   images des decks
+  LISEZ-MOI.txt               mode d'emploi pour le destinataire
+```
+
+L'ordre des opérations compte : `npm run build` **vide** `dist/` à chaque passage, donc les présentations y sont ajoutées après. C'est tout ce que fait la commande de bundle.
+
+## La limite à connaître avant d'envoyer le dossier
+
+C'est le point qui surprend, et il vaut mieux le savoir avant que le destinataire ne s'en plaigne.
+
+| | Ouverture par double-clic | Servi en HTTP |
+| --- | --- | --- |
+| Le site | ✗ | ✓ |
+| Les decks HTML | ✓ | ✓ |
+| Les PDF | ✓ | ✓ |
+
+**Le site a besoin d'un serveur.** Il charge ses scripts sous forme de modules, que les navigateurs refusent de charger depuis un simple fichier local. Ouvrir `dist/index.html` par double-clic donnerait une page bien mise en forme mais **sans progression, sans quiz et sans glisser-déposer** — le pire des cas, puisque ça a l'air de marcher.
+
+Deux façons de le servir :
+
+- **en ligne** : déposez le dossier chez n'importe quel hébergeur de site statique ;
+- **en local**, sans rien installer :
+
+```bash
+cd dist
+python3 -m http.server 8000
+```
+
+Puis `http://localhost:8000`.
+
+**Les présentations, elles, s'ouvrent hors ligne.** Les polices sont embarquées dans chaque fichier HTML. Seules les images vivent dans `slides/assets/` — gardez donc le dossier `slides` entier si vous le déplacez. Un PDF, lui, se transmet tout seul.
+
+## Le mode d'emploi voyage avec le paquet
+
+Le fichier `LISEZ-MOI.txt` répète tout cela **dans** `dist/`, avec la ligne de commande à copier. C'est délibéré : le destinataire n'aura pas ce cours sous les yeux au moment d'ouvrir le dossier.
+
+## Où publier
+
+N'importe quel hébergeur de fichiers statiques convient : Netlify, Vercel, GitHub Pages, ou un simple dossier servi par Apache ou nginx. Il n'y a ni serveur applicatif à installer, ni base de données à configurer, ni variable d'environnement à renseigner — c'est le bénéfice du choix statique expliqué au module 1.
+
+Pensez simplement à `npm run build` avant de publier : c'est aussi lui qui valide les en-têtes de vos leçons.
+
+## Vérifier que c'est clair
+
+<Quiz questions={[
+  {
+    question: "Vous envoyez dist/ à un collègue qui double-clique sur index.html. Que voit-il ?",
+    options: ["Le cours complet", "Rien du tout, une page blanche", "Une page mise en forme, mais sans quiz ni progression"],
+    answer: 2,
+    explanation: "C'est le piège : la page s'affiche et semble fonctionner, mais les scripts ne sont pas chargés. Il lui faut un serveur HTTP.",
+  },
+  {
+    question: "Pourquoi les présentations sont-elles ajoutées à dist/ APRÈS le build du site ?",
+    options: ["Parce que le build vide entièrement dist/", "Parce que c'est plus rapide", "Pour que les slides écrasent le site"],
+    answer: 0,
+    explanation: "astro build repart d'un dossier vide. Générer les slides avant les ferait effacer.",
+  },
+  {
+    question: "Vous ne voulez transmettre qu'une seule présentation, par courriel. Quel format ?",
+    options: ["Le HTML", "Le PDF"],
+    answer: 1,
+    explanation: "Le PDF est autonome. Le HTML a besoin du dossier slides/assets/ à côté de lui pour ses images.",
+  },
+]} />

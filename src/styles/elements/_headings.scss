@@ -1,0 +1,55 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Headings
+ * Type: Elements
+ * Description:
+ *   Styles par défaut des titres h1 → h6. Ils s'appliquent aux titres nus,
+ *   notamment ceux écrits en markdown dans les leçons. Toute variation plus
+ *   affirmée passe par un composant ou une classe utilitaire (.u-h2…).
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "../tools/fonts";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  text-wrap: balance;
+}
+
+h1 {
+  @include fonts.h1;
+}
+
+h2 {
+  @include fonts.h2;
+}
+
+h3 {
+  @include fonts.h3;
+}
+
+h4 {
+  @include fonts.h4;
+}
+
+h5 {
+  @include fonts.h5;
+}
+
+h6 {
+  @include fonts.h6;
+}

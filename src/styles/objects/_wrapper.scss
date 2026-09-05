@@ -1,0 +1,67 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Wrapper
+ * Type: Object
+ * Description:
+ *   Centre un contenu et le contraint en largeur, avec une gouttière
+ *   latérale. C'EST LE SEUL ENDROIT où l'on écrit une largeur max de
+ *   contenu : les composants n'ont pas à le refaire.
+ *
+ *   La largeur max annoncée par le modificateur est celle du CONTENU
+ *   (la gouttière s'ajoute par-dessus).
+ *
+ *   Exemple :
+ *     <div class="o-wrapper o-wrapper--large"> … </div>
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/spacing";
+
+/*******************************************************************************
+ * Variables
+*******************************************************************************/
+
+$wrapper-size: 1120px !default;
+
+$wrapper-sizes: (
+  "small": 620px,
+  "medium": 768px,
+  "large": 896px,
+) !default;
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.o-wrapper {
+  --size: #{rem.convert($wrapper-size)};
+  --gutter: #{spacing.get("lg")};
+
+  width: 100%;
+  max-width: calc(var(--size) + var(--gutter) * 2);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/*******************************************************************************
+ * Modifiers
+*******************************************************************************/
+
+// Largeurs
+@each $namespace, $size in $wrapper-sizes {
+  .o-wrapper--#{$namespace} {
+    --size: #{rem.convert($size)};
+  }
+}
+
+// Sans gouttière latérale
+.o-wrapper--flush {
+  --gutter: 0px;
+}

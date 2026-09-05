@@ -1,0 +1,39 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Brand
+ * Type: Settings
+ * Description:
+ *   ⚠ FICHIER GÉNÉRÉ - ne l'éditez pas à la main : vos changements seront
+ *   écrasés. Tout se règle dans « socle.config.json » à la racine du projet,
+ *   puis « npm run brand ».
+ *
+ *   Ce fichier ne contient que la matière première : trois couleurs et
+ *   deux familles de police. C'est `settings/_colors.scss` qui en déduit
+ *   les rôles (survols, fonds teintés, filets, texte atténué).
+**/
+
+/*******************************************************************************
+ * Couleurs
+*******************************************************************************/
+
+// Couleur principale : liens, boutons, titres de slides
+$color-primary: #4647AE;
+
+// Le texte, et les aplats les plus foncés
+$color-text: #112E81;
+
+// Le fond de page
+$color-page: #ffffff;
+
+/*******************************************************************************
+ * Polices
+*******************************************************************************/
+
+// Les titres
+$font-heading: "Stack Sans Headline";
+
+// Le corps de texte
+$font-body: "Google Sans";

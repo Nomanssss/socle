@@ -1,0 +1,54 @@
+---
+import { site } from '../../scripts/config.mjs';
+
+// =============================================================
+// Footer - pied de page commun à l'accueil, aux leçons et aux
+// pages annexes.
+//
+// Trois choses, et pas une de plus : la marque (qui ramène à
+// l'accueil), le lien vers les mentions légales, et la note sur
+// la progression stockée dans le navigateur - une information de
+// confidentialité, qui a sa place sur toutes les pages et non sur
+// la seule page d'accueil.
+//
+// Le logo n'est pas une image du HTML : c'est un fond posé par
+// `components/_footer.scss` via `tools/logo`, donc dans la couleur
+// de la charte du moment. D'où le texte du lien, masqué
+// visuellement mais lu par les lecteurs d'écran.
+// =============================================================
+const { title } = site();
+const year = new Date().getFullYear();
+
+// Sur la page des mentions elles-mêmes, le lien est signalé comme
+// courant - le même `aria-current` que la barre latérale d'une leçon.
+const LEGAL_PATH = '/mentions-legales/';
+const isLegalPage = Astro.url.pathname.replace(/\/*$/, '/') === LEGAL_PATH;
+---
+
+<footer class="c-footer">
+  <div class="c-footer__content o-wrapper o-wrapper--large">
+    <div class="c-footer__top o-cluster o-cluster--between o-cluster--middle">
+      <a href="/" class="c-footer__brand">
+        <span class="u-hidden-visually">{title} - retour à l'accueil</span>
+      </a>
+
+      <nav class="c-footer__nav o-cluster o-cluster--middle" aria-label="Liens de bas de page">
+        <a
+          href={LEGAL_PATH}
+          aria-current={isLegalPage ? 'page' : undefined}
+          class="c-footer__link"
+        >
+          Mentions légales
+        </a>
+      </nav>
+    </div>
+
+    <div class="c-footer__bottom o-cluster o-cluster--between">
+      <p class="c-footer__note">
+        Votre progression est enregistrée localement dans ce navigateur.
+        Aucun compte requis.
+      </p>
+      <p class="c-footer__copyright">© {year} {title}</p>
+    </div>
+  </div>
+</footer>

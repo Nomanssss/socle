@@ -1,0 +1,98 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Quiz
+ * Type: Component
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/effects";
+@use "../settings/spacing";
+@use "../settings/typography";
+@use "../tools/fonts";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-quiz {
+  margin-block: spacing.get("lg");
+  padding: spacing.get("lg");
+  background: colors.get("surface");
+  border: rem.convert(1px) solid colors.get("border");
+  border-radius: spacing.radius();
+  box-shadow: effects.shadow("sm");
+}
+
+  .c-quiz__title {
+    @include fonts.h2;
+    margin-bottom: spacing.get("lg");
+  }
+
+  .c-quiz__question {
+    margin-bottom: spacing.get("md");
+    padding: 0;
+    border: 0;
+  }
+
+    .c-quiz__legend {
+      margin-bottom: spacing.get("sm");
+      font-weight: typography.$semibold;
+    }
+
+      .c-quiz__option {
+        display: flex;
+        align-items: center;
+        gap: spacing.get("sm");
+        padding: spacing.get("sm") spacing.get("md");
+        background: colors.get("surface-muted");
+        border: rem.convert(1px) solid colors.get("border");
+        border-radius: spacing.radius("sm");
+        cursor: pointer;
+        transition: background-color 150ms ease, border-color 150ms ease;
+
+        &:hover {
+          background-color: colors.get("primary-soft");
+        }
+      }
+
+      .c-quiz__input {
+        accent-color: colors.get("primary");
+      }
+
+    .c-quiz__feedback {
+      @include fonts.small-text;
+      margin-top: spacing.get("sm");
+      color: colors.get("text-muted");
+    }
+
+  .c-quiz__actions {}
+
+  .c-quiz__result {
+    font-weight: typography.$semibold;
+  }
+
+/*******************************************************************************
+ * States
+*******************************************************************************/
+
+.c-quiz__option--correct {
+  border-color: colors.get("success");
+  background-color: color-mix(in srgb, colors.get("success") 10%, transparent);
+}
+
+.c-quiz__option--wrong {
+  border-color: colors.get("error");
+  background-color: color-mix(in srgb, colors.get("error") 10%, transparent);
+}
+
+.c-quiz__result--perfect {
+  color: colors.get("success");
+}

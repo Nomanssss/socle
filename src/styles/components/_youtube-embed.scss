@@ -1,0 +1,48 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Youtube embed
+ * Type: Component
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../settings/typography";
+@use "../tools/fonts";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-youtube {
+  margin-block: spacing.get("lg");
+}
+
+  .c-youtube__frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: spacing.radius();
+    background: #000;
+  }
+
+    .c-youtube__iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+  .c-youtube__caption {
+    @include fonts.small-text;
+    margin-top: spacing.get("sm");
+    color: colors.get("text-muted");
+  }

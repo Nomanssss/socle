@@ -1,0 +1,245 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Lesson
+ * Type: Component
+ * Description:
+ *   Gabarit d'une leçon : barre latérale de navigation + colonne de
+ *   contenu. La largeur de lecture vient de `.o-wrapper--medium`, le
+ *   rythme des listes de `.o-stack`, la grille du pager de `.o-grid--halves`.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/effects";
+@use "../settings/spacing";
+@use "../settings/typography";
+@use "../tools/fonts";
+@use "../tools/mq" as mq;
+
+/*******************************************************************************
+ * Shell
+*******************************************************************************/
+
+.c-lesson {
+  display: flex;
+  flex-direction: column;
+
+  @include mq.mq($from: medium) {
+    flex-direction: row;
+  }
+}
+
+/*******************************************************************************
+ * Sidebar
+*******************************************************************************/
+
+.c-lesson__sidebar {
+  flex-shrink: 0;
+  padding: spacing.get("lg");
+  background: colors.get("surface");
+  border-bottom: rem.convert(1px) solid colors.get("border");
+
+  @include mq.mq($from: medium) {
+    position: sticky;
+    top: 0;
+    width: rem.convert(288px);
+    height: 100vh;
+    overflow-y: auto;
+    border-bottom: 0;
+    border-right: rem.convert(1px) solid colors.get("border");
+  }
+}
+
+  .c-lesson__home-link {
+    display: inline-flex;
+    align-items: center;
+    gap: spacing.get("2xs");
+    font-size: typography.size("sm");
+    font-weight: typography.$semibold;
+    color: colors.get("text");
+    text-decoration: none;
+    transition: color 150ms ease;
+
+    &:hover {
+      color: colors.get("primary-hover");
+    }
+  }
+
+  .c-lesson__progress {
+    margin-block: spacing.get("md");
+    padding-block: spacing.get("md");
+    border-block: rem.convert(1px) solid colors.get("border");
+  }
+
+  .c-lesson__module {
+    margin-bottom: spacing.get("lg");
+  }
+
+    .c-lesson__module-name {
+      @include fonts.eyebrow;
+      margin-bottom: spacing.get("sm");
+      color: colors.get("text");
+    }
+
+      .c-lesson__nav-link {
+        display: flex;
+        align-items: center;
+        gap: spacing.get("xs");
+        padding: spacing.get("xs") spacing.get("sm");
+        font-size: typography.size("sm");
+        line-height: 1.375;
+        color: inherit;
+        text-decoration: none;
+        border-radius: spacing.radius("sm");
+        transition: background-color 150ms ease, color 150ms ease;
+
+        &:not(.c-lesson__nav-link--locked) {
+          &:hover {
+            background-color: colors.get("surface-muted");
+          }
+
+          &.is-completed:not([aria-current]) {
+            background-color: colors.get("success-soft");
+
+            &:hover {
+              background-color: color-mix(in srgb, #{colors.get("success")} 18%, transparent);
+            }
+          }
+        }
+
+        // Leçon courante.
+        &[aria-current="page"] {
+          font-weight: typography.$semibold;
+          color: colors.get("primary");
+          background-color: colors.get("primary-soft");
+        }
+      }
+
+        // Le titre occupe la place restante, la coche est repoussée à droite :
+        // tous les titres démarrent ainsi au même endroit, coche ou pas.
+        .c-lesson__nav-title {
+          flex: 1 1 auto;
+        }
+
+        .c-lesson__check {
+          flex-shrink: 0;
+          color: colors.get("success");
+        }
+
+        .c-lesson__nav-link--locked {
+          color: colors.get("text-muted");
+        }
+
+        .c-lesson__lock {
+          flex-shrink: 0;
+          font-size: 0.8em;
+          opacity: 0.7;
+        }
+
+/*******************************************************************************
+ * Main
+*******************************************************************************/
+
+.c-lesson__main {
+  flex: 1;
+  min-width: 0;
+}
+
+  .c-lesson__cover {
+    display: block;
+    width: 100%;
+    max-height: rem.convert(360px);
+    object-fit: cover;
+  }
+
+  .c-lesson__article {
+    padding-block: spacing.get("xl");
+
+    @include mq.mq($from: medium) {
+      --gutter: #{spacing.get("xl")};
+    }
+  }
+
+    .c-lesson__header {
+      margin-bottom: spacing.get("xl");
+      padding-bottom: spacing.get("sm");
+      border-bottom: rem.convert(1px) solid colors.get("border");
+    }
+
+      .c-lesson__eyebrow {
+        @include fonts.eyebrow;
+        color: colors.get("primary");
+      }
+
+      .c-lesson__title {
+        margin-top: spacing.get("xs");
+      }
+
+    .c-lesson__complete {
+      margin-top: spacing.get("xl");
+      padding-top: spacing.get("lg");
+      border-top: rem.convert(1px) solid colors.get("border");
+    }
+
+/*******************************************************************************
+ * Pager (précédent / suivant)
+*******************************************************************************/
+
+.c-lesson__pager {
+  margin-top: spacing.get("lg");
+}
+
+  .c-lesson__pager-link {
+    display: block;
+    padding: spacing.get("md");
+    text-decoration: none;
+    background: colors.get("surface");
+    border: rem.convert(1px) solid colors.get("border");
+    border-radius: spacing.radius();
+    box-shadow: effects.shadow("sm");
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+
+    &:hover {
+      border-color: colors.get("primary");
+      box-shadow: effects.shadow("md");
+    }
+
+    &:hover .c-lesson__pager-title {
+      color: colors.get("primary");
+    }
+  }
+
+  .c-lesson__pager-link--prev {}
+
+  .c-lesson__pager-link--next {
+    text-align: right;
+  }
+
+    .c-lesson__pager-label {
+      @include fonts.eyebrow;
+      display: block;
+      color: colors.get("text-muted");
+    }
+
+    .c-lesson__pager-title {
+      display: block;
+      margin-top: spacing.get("2xs");
+      font-weight: typography.$semibold;
+      color: colors.get("text");
+    }
+
+  // Case vide du pager : inutile tant que la grille n'a qu'une colonne.
+  .c-lesson__pager-empty {
+    display: none;
+
+    @include mq.mq($from: small) {
+      display: block;
+    }
+  }

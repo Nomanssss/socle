@@ -1,0 +1,152 @@
+---
+title: "Les mises en page de slides"
+module: "Module 3 - Les présentations"
+moduleOrder: 3
+order: 2
+description: "Dix modèles de slides, appelés par une seule directive. Cette leçon a son propre deck écrit à la main."
+---
+
+import Quiz from '@components/Quiz.astro';
+
+Cette leçon est équipée d'un fichier `lecon-2.slides.md` : elle démontre donc le **niveau 1** de la leçon précédente. Générez les présentations et ouvrez son deck — il montre à l'écran chaque modèle décrit ci-dessous.
+
+Remarquez d'ailleurs que cette leçon n'a **pas** de champ `slidePoints` dans son en-tête. Il aurait été ignoré : autant ne pas l'écrire.
+
+## La directive `_class`
+
+Une slide choisit son modèle avec un commentaire en première ligne :
+
+```markdown
+<!-- _class: section -->
+
+## Partie 2 — Le CSS
+```
+
+Sans directive, la slide prend la mise en page standard : un titre en `##` suivi du contenu. C'est le cas le plus courant, et souvent le bon.
+
+## Les modèles disponibles
+
+| `_class` | Ce que ça donne |
+| --- | --- |
+| *(aucune)* | Titre et contenu. Le cas standard |
+| `lead` | Slide de titre. **Générée automatiquement** — ne l'écrivez pas |
+| `section` | Intercalaire de chapitre : grand titre sur fond de couleur |
+| `statement` | Une citation ou une phrase forte, en pleine page |
+| `columns-2` | Deux colonnes |
+| `columns-3` | Trois colonnes |
+| `columns-4` | Quatre colonnes |
+| `image-left` | Panneau d'image à gauche, texte à droite |
+| `image-right` | L'inverse |
+| `image-split` | Image sur la moitié de la slide |
+| `image-full` | Image plein cadre, texte par-dessus |
+
+## Les colonnes
+
+Le contenu se répartit tout seul. Les sous-titres en `###` marquent le début de chaque colonne :
+
+```markdown
+<!-- _class: columns-3 -->
+
+## Les trois formats
+
+### HTML
+Se projette au navigateur.
+
+### PDF
+S'imprime et se transmet.
+
+### PPTX
+S'ouvre dans PowerPoint.
+```
+
+Le niveau compte : c'est `###` que le thème stylise et aligne. Avec `####`, les colonnes se forment quand même — mais leurs titres ne sont plus alignés entre eux, et rien ne vous signale l'erreur.
+
+## Les panneaux d'image
+
+Attention ici : **chaque famille de modèle veut sa propre syntaxe d'image.** C'est le piège le plus coûteux du module, parce que se tromper ne produit aucune erreur — juste une slide de travers.
+
+### `image-left` et `image-right` : une directive
+
+Ces deux modèles peignent l'image eux-mêmes, dans un pseudo-élément. Ils la reçoivent donc par une **directive**, à côté de `_class` :
+
+```markdown
+<!-- _class: image-left -->
+<!-- _backgroundImage: url('../../../assets/mon-schema.png') -->
+
+## Mon titre
+
+Le texte occupe l'autre moitié.
+```
+
+### `image-split` et `image-full` : le mot-clé `bg`
+
+Ces deux-là s'appuient sur le mécanisme de découpe de Marp, qui se déclenche avec le mot-clé `bg` dans le texte alternatif :
+
+```markdown
+<!-- _class: image-split -->
+
+![bg right:40%](../../../assets/mon-schema.png)
+```
+
+```markdown
+<!-- _class: image-full -->
+
+![bg brightness:0.35](../../../assets/mon-schema.png)
+```
+
+Pour `image-split`, le côté et la proportion se règlent dans le markdown (`right:40%`), pas en CSS. Pour `image-full`, `brightness:` assombrit l'image afin que le texte blanc reste lisible sur une photo claire.
+
+### Ce qui arrive si vous vous trompez
+
+Une image Markdown **ordinaire** dans un modèle `image-left` n'est pas refusée : elle est traitée comme un contenu. L'image s'affiche donc dans la colonne de texte, le panneau reste vide, et le titre est poussé hors du cadre. Aucun message ne vous prévient — d'où l'intérêt de l'aperçu décrit plus bas.
+
+Dans tous les cas, le chemin part du dossier de la leçon, comme dans le `.mdx`. Le générateur le réécrit tout seul en copiant l'image à côté du deck, et il sait le faire pour les deux syntaxes.
+
+**Sans image, le panneau retombe sur un aplat de la couleur principale.** Ce n'est pas une erreur : c'est le comportement de repli, et il reste présentable.
+
+## Le piège du texte trop long
+
+Une slide ne défile pas. Si votre contenu dépasse, il sort du cadre sans le moindre avertissement — ni erreur, ni troncature visible.
+
+La parade est éditoriale, pas technique : coupez en deux slides. Une slide vaut une idée, trois puces, huit mots par puce. C'est contraignant, et c'est le but.
+
+## Modifier un modèle
+
+Les mises en page vivent dans `src/styles/marp/layouts/`, un fichier par modèle. Pour travailler sans avancer à l'aveugle :
+
+```bash
+npm run slides:preview
+```
+
+Un aperçu s'ouvre sur `http://localhost:8080`, avec un deck `00-modeles` qui montre **tous** les modèles sur une seule série. Éditez `src/styles/marp/`, la page se recharge.
+
+C'est le bon endroit pour juger d'une modification : vous voyez d'un coup l'effet sur les onze modèles, au lieu de découvrir trois semaines plus tard qu'un intercalaire est cassé.
+
+## Vérifier que c'est clair
+
+<Quiz questions={[
+  {
+    question: "Quel modèle ne faut-il jamais écrire soi-même ?",
+    options: ["section", "lead", "statement"],
+    answer: 1,
+    explanation: "La slide « lead » est fabriquée automatiquement depuis l'en-tête de la leçon. En écrire une donnerait deux slides de titre.",
+  },
+  {
+    question: "Votre contenu dépasse de la slide. Que fait le générateur ?",
+    options: ["Il coupe le texte proprement", "Il crée une seconde slide", "Rien : le texte sort du cadre sans avertissement"],
+    answer: 2,
+    explanation: "Une slide ne défile pas et rien ne vous prévient. La solution est de couper en deux slides vous-même.",
+  },
+  {
+    question: "Vous utilisez image-left sans fournir d'image. Que voit-on ?",
+    options: ["Une erreur de build", "Un panneau vide et blanc", "Un aplat de la couleur principale"],
+    answer: 2,
+    explanation: "C'est le comportement de repli prévu, et il reste présentable.",
+  },
+  {
+    question: "Dans un modèle image-left, vous écrivez une image Markdown ordinaire au lieu de la directive _backgroundImage. Que se passe-t-il ?",
+    options: ["Le build échoue", "L'image part dans la colonne de texte et la mise en page casse, sans aucun message", "Marp corrige tout seul"],
+    answer: 1,
+    explanation: "L'image est traitée comme un contenu : le panneau reste vide et le titre sort du cadre. Rien ne vous prévient — vérifiez avec npm run slides:preview.",
+  },
+]} />

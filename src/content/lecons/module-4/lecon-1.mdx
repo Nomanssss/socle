@@ -1,0 +1,140 @@
+---
+title: "Changer l'apparence"
+module: "Module 4 - Régler et livrer"
+moduleOrder: 4
+order: 1
+description: "Trois couleurs, deux polices, un seul fichier. Le site et les slides suivent ensemble."
+slidePoints:
+  - "Un seul fichier à modifier : socle.config.json"
+  - "Trois couleurs nommées par leur rôle, deux polices Google Fonts"
+  - "Une commande, et le site comme les slides changent d'apparence"
+  - "Tous les tons intermédiaires sont calculés, pas choisis"
+---
+
+import Flashcards from '@components/Flashcards.astro';
+import Quiz from '@components/Quiz.astro';
+
+Pour mettre le template à vos couleurs, un seul fichier à ouvrir.
+
+## La règle
+
+👉 **`socle.config.json`, à la racine du projet.**
+
+```json
+{
+  "colors": {
+    "primary": "#4647AE",
+    "text":    "#112E81",
+    "page":    "#ffffff"
+  },
+  "fonts": {
+    "heading": "Stack Sans Headline",
+    "body":    "Google Sans"
+  }
+}
+```
+
+Trois couleurs, deux polices. Vous enregistrez, vous lancez `npm run dev`, et tout le projet change d'apparence : les liens, les boutons, le liseré des citations, les barres de progression, les intercalaires de vos slides.
+
+## Les couleurs portent leur rôle, pas leur teinte
+
+`primary`, `text`, `page` : ces noms disent à quoi la couleur **sert**, pas de quelle couleur il s'agit. C'est volontaire — une variable appelée `bleuMarine` qui contiendrait du vert après un changement de charte serait un piège. Les polices suivent la même logique : `heading` et `body`.
+
+| | Rôle | Ce qu'elle habille |
+| --- | --- | --- |
+| `primary` | la couleur principale | liens, boutons, titres de slides, filets |
+| `text` | le foncé | le texte, et le survol des boutons |
+| `page` | le fond | le fond de page, dont les surfaces sont éclaircies |
+
+Si vous partez d'une palette trouvée sur un site comme Coolors : la plus foncée en `text`, la plus claire en `page`, la plus saturée en `primary`.
+
+## La charte est monochrome, et c'est un choix
+
+Les filets, les traits et les fonds teintés sont tous des **dilutions** de la couleur principale vers le fond de page. Vous ne choisissez aucun ton intermédiaire : ils sont calculés.
+
+| Ton dérivé | Calcul | Sert à |
+| --- | --- | --- |
+| `primary-soft` | `primary` à 12 % | bandeau d'accueil, leçon courante |
+| `surface-muted` | `primary` à 8 % | survols, fonds en creux, code en ligne |
+| `border` | `primary` à 30 % | filets des cartes et des tableaux |
+| `text-muted` | `text` à 72 % | légendes, métadonnées |
+
+Ce n'est pas une limite du template : le rôle `accent` existe pour accueillir une seconde teinte de marque le jour où il en faudra une. Il ne pointe aujourd'hui que sur `primary`.
+
+## Ce que la commande fait pour vous
+
+`npm run brand` — appelée automatiquement par `dev`, `build` et `slides` — fait trois choses.
+
+**Elle vérifie que votre palette est lisible.** C'est le piège classique du rebranding : une couleur qui rend joliment sur une maquette mais que personne ne peut lire.
+
+```
+Couleurs
+  ✓ le texte sur le fond de page : 12.13:1
+  ✓ la couleur principale sur le fond de page : 7.57:1
+```
+
+Ces nombres sont des **rapports de contraste**. La règle d'accessibilité de référence demande au moins 4,5:1 pour du texte courant. En dessous, la commande vous prévient.
+
+**Elle va chercher les polices.** Donnez le nom exact d'une famille Google Fonts : elle vérifie qu'elle existe — et suggère les noms proches si vous vous êtes trompé —, télécharge les fichiers dans `public/fonts/` et écrit les déclarations `@font-face`.
+
+Les polices sont donc **hébergées avec votre site**, pas chargées depuis Google. La page ne dépend de personne pour s'afficher, et aucune donnée de vos apprenants ne part chez un tiers.
+
+**Elle en déduit tous les tons intermédiaires**, selon le tableau ci-dessus.
+
+## Pourquoi ça marche
+
+Parce que rien, dans le reste du projet, n'écrit une valeur en dur. Les composants ne connaissent que des **noms** de variables.
+
+```
+socle.config.json ──▶ variables ──▶ tout le reste
+                      --color-primary
+                      --space-md        composants, mises en page,
+                      --text-lg         contenu des leçons, slides…
+```
+
+Un composant demande « la couleur principale », pas « ce bleu-là ». C'est ce niveau d'indirection qui rend le rebranding possible — et c'est pour cela qu'il faut résister à la tentation de corriger une couleur directement dans un composant : cela romprait la chaîne, et cette couleur cesserait de suivre la charte.
+
+Deux fichiers de `src/styles/` sont **écrits par la commande** et portent un avertissement en tête : `settings/_brand.scss` et `generic/_fonts.scss`. Les éditer à la main serait sans effet durable.
+
+## Le site et les slides partagent la charte
+
+| Point d'entrée | Habille |
+| --- | --- |
+| `src/styles/theme.scss` | Le site du cours |
+| `src/styles/marp/theme.scss` | Les présentations |
+
+Tous deux partent des **mêmes** fichiers de variables. Modifier un réglage met à jour le site et les slides en même temps — vous n'avez pas de charte à maintenir en double.
+
+Une nuance : le site se rafraîchit tout seul pendant que `npm run dev` tourne, alors que les slides doivent être **régénérées** avec `npm run slides`.
+
+## Le vocabulaire
+
+<Flashcards cards={[
+  { front: "primary", back: "La couleur principale : liens, boutons, titres de slides, filets." },
+  { front: "primary-soft", back: "primary dilué à 12 % vers le fond. Fonds teintés : bandeau d'accueil, leçon courante." },
+  { front: "Rapport de contraste", back: "L'écart de luminosité entre deux couleurs. Au moins 4,5:1 pour du texte courant." },
+  { front: "accent", back: "Le rôle prévu pour une seconde teinte de marque. Pointe aujourd'hui sur primary." },
+]} />
+
+## Vérifier que c'est clair
+
+<Quiz questions={[
+  {
+    question: "Vous voulez un filet plus foncé sur les cartes. Où intervenez-vous ?",
+    options: ["Directement dans le composant concerné", "Dans le calcul de « border », dans settings/_colors.scss", "Dans socle.config.json"],
+    answer: 1,
+    explanation: "« border » est un ton dérivé : c'est son calcul qu'on ajuste. Corriger dans le composant romprait la chaîne, et ce filet cesserait de suivre la charte.",
+  },
+  {
+    question: "Après avoir changé une couleur, les slides ne bougent pas. Pourquoi ?",
+    options: ["Les slides ont leur propre charte", "Il faut les régénérer avec npm run slides", "Il faut vider le cache du navigateur"],
+    answer: 1,
+    explanation: "Le site se rafraîchit tout seul, les présentations doivent être reconstruites. Elles partent bien des mêmes variables.",
+  },
+  {
+    question: "Pourquoi les polices sont-elles téléchargées dans public/fonts/ plutôt que chargées depuis Google ?",
+    options: ["C'est plus rapide à écrire", "Pour ne dépendre de personne et ne rien envoyer à un tiers", "Google Fonts est payant"],
+    answer: 1,
+    explanation: "Le site s'affiche sans dépendance externe, et aucune donnée de vos apprenants ne part chez un tiers.",
+  },
+]} />

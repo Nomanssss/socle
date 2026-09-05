@@ -1,0 +1,35 @@
+---
+// =============================================================
+// YouTubeEmbed - intègre une vidéo YouTube (respect vie privée)
+//
+// Utilise youtube-nocookie.com, un ratio 16:9 responsive et le
+// chargement différé (loading="lazy").
+//
+// Usage MDX :
+//   <YouTubeEmbed id="dQw4w9WgXcQ" title="Introduction" />
+// =============================================================
+interface Props {
+  /** Identifiant de la vidéo (la partie après ?v= dans l'URL YouTube). */
+  id: string;
+  /** Titre accessible de la vidéo. */
+  title?: string;
+  /** Légende optionnelle affichée sous la vidéo. */
+  caption?: string;
+}
+const { id, title = 'Vidéo YouTube', caption } = Astro.props;
+---
+
+<figure class="c-youtube">
+  <div class="c-youtube__frame">
+    <iframe
+      class="c-youtube__iframe"
+      src={`https://www.youtube-nocookie.com/embed/${id}`}
+      title={title}
+      loading="lazy"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen
+    ></iframe>
+  </div>
+  {caption && <figcaption class="c-youtube__caption">{caption}</figcaption>}
+</figure>

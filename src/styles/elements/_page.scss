@@ -1,0 +1,43 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Page
+ * Type: Elements
+ * Description: Réglages de niveau page (html, body).
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass:math";
+@use "../settings/colors";
+@use "../settings/global";
+@use "../settings/typography";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+/**
+ * 1. Taille de police de référence du projet, exprimée en `em` pour rester
+ *    proportionnelle au réglage du navigateur.
+ * 2. Défilement fluide pour les ancres.
+**/
+html {
+  font-size: math.div(global.$font-size, 16px) * 1em; /* [1] */
+  line-height: global.$line-height;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth; /* [2] */
+}
+
+body {
+  font-family: typography.family("body");
+  font-size: typography.size("base");
+  color: colors.get("text");
+  background-color: colors.get("background");
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}

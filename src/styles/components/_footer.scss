@@ -1,0 +1,108 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Footer
+ * Type: Component
+ * Description:
+ *   Pied de page du site : la marque, le lien vers les mentions légales et
+ *   la note sur la progression stockée dans le navigateur.
+ *
+ *   La largeur vient de `.o-wrapper` et l'alignement des deux rangées de
+ *   `.o-cluster`, posés dans le HTML : il ne reste ici que l'habillage.
+ *
+ *   Le logotype est un fond, pas une balise `<img>` : `tools/logo` le rend
+ *   dans la couleur demandée, ce qui permet de l'assombrir au survol comme
+ *   n'importe quel lien. Le lien qui le porte n'a donc pas de contenu
+ *   visible - son intitulé est masqué par `.u-hidden-visually`, et sa
+ *   surface cliquable vient des dimensions posées ici.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../tools/fonts";
+@use "../tools/logo";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-footer {
+  margin-top: spacing.get("2xl");
+  padding-block: spacing.get("lg");
+  color: colors.get("text-muted");
+  background: colors.get("surface");
+  border-top: rem.convert(1px) solid colors.get("border");
+}
+
+  .c-footer__content {}
+
+/*******************************************************************************
+ * Rangée haute : marque et navigation
+*******************************************************************************/
+
+    .c-footer__top {}
+
+      .c-footer__brand {
+        display: block;
+        width: rem.convert(120px);
+        aspect-ratio: logo.$logotype-ratio;
+        background-image: logo.logotype(colors.$primary);
+        background-repeat: no-repeat;
+        background-position: left center;
+        background-size: contain;
+        transition: background-image 150ms ease;
+
+        // Le survol assombrit la marque vers la couleur du texte, comme
+        // « primary-hover » le fait pour les liens. La couleur étant écrite
+        // DANS le SVG, on ne peut pas la changer autrement qu'en redemandant
+        // l'image - c'est précisément pourquoi `logo.logotype()` est une
+        // fonction et non une variable.
+        &:hover {
+          background-image: logo.logotype(colors.$text);
+        }
+      }
+
+      .c-footer__nav {
+        --space: #{spacing.get("md")};
+      }
+
+        .c-footer__link {
+          color: colors.get("text");
+          text-decoration-color: colors.get("border");
+          text-underline-offset: rem.convert(3px);
+
+          &:hover {
+            color: colors.get("primary");
+            text-decoration-color: currentColor;
+          }
+        }
+
+/*******************************************************************************
+ * Rangée basse : note et mention de copyright
+*******************************************************************************/
+
+    .c-footer__bottom {
+      --space: #{spacing.get("sm")};
+      margin-top: spacing.get("md");
+      padding-top: spacing.get("md");
+      border-top: rem.convert(1px) solid colors.get("border");
+    }
+
+      .c-footer__note {
+        @include fonts.small-text;
+        // La note reste sur une ligne tant que la place le permet, puis
+        // passe sous la mention de copyright plutôt que de la comprimer.
+        flex: 1 1 rem.convert(320px);
+      }
+
+      .c-footer__copyright {
+        @include fonts.small-text;
+        flex-shrink: 0;
+      }

@@ -1,0 +1,45 @@
+---
+// =============================================================
+// Timeline - frise verticale d'étapes
+//
+// Chaque étape peut être dépliée pour révéler sa description
+// (utilise <details>/<summary> natifs : accessible, sans JS).
+//
+// Usage MDX :
+//   <Timeline steps={[
+//     { title: "1990 - Naissance du Web", description: "..." },
+//     { title: "2014 - HTML5", description: "..." },
+//   ]} />
+// =============================================================
+interface Step {
+  title: string;
+  description?: string;
+}
+interface Props {
+  steps: Step[];
+}
+const { steps } = Astro.props;
+---
+
+<ol class="c-timeline">
+  {
+    steps.map((step) => (
+      <li class="c-timeline__item">
+        <span class="c-timeline__dot" aria-hidden="true" />
+        {step.description ? (
+          <details class="c-timeline__details">
+            <summary class="c-timeline__summary">
+              <span class="c-timeline__chevron" aria-hidden="true">
+                ▸
+              </span>
+              <span>{step.title}</span>
+            </summary>
+            <p class="c-timeline__description">{step.description}</p>
+          </details>
+        ) : (
+          <p class="c-timeline__title">{step.title}</p>
+        )}
+      </li>
+    ))
+  }
+</ol>

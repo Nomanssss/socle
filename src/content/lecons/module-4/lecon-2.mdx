@@ -1,0 +1,90 @@
+---
+title: "Verrouiller une leçon"
+module: "Module 4 - Régler et livrer"
+moduleOrder: 4
+order: 2
+description: "Publier le cours sans donner accès à tout. Une ligne à ajouter, une ligne à retirer."
+slidePoints:
+  - "Une ligne dans socle.config.json : \"locked\": [\"module-4/lecon-4\"]"
+  - "La page n'est pas générée : URL en 404, contenu absent du paquet livré"
+  - "La leçon reste visible au sommaire, grisée, pour annoncer ce qui arrive"
+  - "Déverrouiller = retirer la ligne et reconstruire"
+---
+
+import Quiz from '@components/Quiz.astro';
+
+Vous voulez mettre le cours en ligne, mais ouvrir les leçons au fur et à mesure. C'est à cela que sert le verrou.
+
+## La règle
+
+Listez les leçons à fermer dans `socle.config.json` :
+
+```json
+"locked": ["module-4/lecon-4"]
+```
+
+Puis `npm run build`. **Déverrouiller, c'est retirer la ligne et reconstruire** — rien d'autre à toucher.
+
+L'identifiant est le chemin de la leçon sans `.mdx`, tel qu'il apparaît dans l'URL. Les formes approximatives sont tolérées : `src/content/lecons/module-4/lecon-4.mdx`, `/module-4/lecon-4/` et les antislashs de Windows donnent tous le même résultat.
+
+> **Il y a un exemple en fonctionnement dans ce cours.** La dernière leçon du module est verrouillée : regardez-la sur l'accueil et dans la barre latérale — elle est grisée, avec un cadenas, et ne réagit pas au survol.
+
+## Ce que le verrou fait exactement
+
+| | Leçon ouverte | Leçon verrouillée |
+| --- | --- | --- |
+| Page générée dans `dist/` | ✓ | **✗ (404)** |
+| Contenu présent dans le paquet livré | ✓ | **✗** |
+| Slides (HTML et PDF) | ✓ | **✗** |
+| Listée au sommaire de l'accueil | ✓ | ✓ grisée, « Bientôt disponible » |
+| Listée dans la barre latérale | ✓ | ✓ grisée, avec un cadenas |
+| Comptée dans la progression du module | ✓ | ✗ |
+| Atteignable par « Précédent / Suivant » | ✓ | ✗ — le parcours l'enjambe |
+
+## C'est un vrai verrou, pas un masquage
+
+C'est le point important, et il mérite d'être compris avant de publier.
+
+La leçon est écartée **au moment de fabriquer les pages**. Aucune page n'est donc produite : il n'y a pas d'URL à deviner, et le texte de la leçon n'est nulle part dans le dossier livré. Ses présentations ne sont pas générées non plus.
+
+Sur un site statique, c'est la **seule** forme de verrou qui tienne. Tout contrôle qui se contenterait de cacher un lien, ou de demander un mot de passe en JavaScript, se contournerait en lisant la source de la page. Ici, il n'y a rien à contourner : le contenu n'a pas été publié.
+
+## Deux détails qui ont leur importance
+
+**La progression exclut les leçons verrouillées.** Un module de quatre leçons dont une est fermée compte sur trois. Sans cela, il resterait bloqué à 75 % sans que l'apprenant puisse rien y faire.
+
+**Une faute de frappe ne verrouille rien** — et sans avertissement, vous croiriez une leçon protégée alors qu'elle est en ligne. Le build vous prévient donc :
+
+```
+⚠ socle.config.json → « locked » : aucune leçon ne correspond
+  à « module-9/lecon-42 ». Ces entrées ne verrouillent rien.
+```
+
+Surveillez cette ligne : c'est votre seul filet.
+
+## En développement, il faut redémarrer
+
+Un changement de `locked` n'est **pas** détecté à chaud par `npm run dev`. Arrêtez le serveur et relancez-le, sinon vous verrez l'ancien état et conclurez à tort que le verrou ne marche pas.
+
+## Vérifier que c'est clair
+
+<Quiz questions={[
+  {
+    question: "Une leçon est verrouillée. Un curieux devine son URL et l'ouvre. Que voit-il ?",
+    options: ["La leçon, le lien était juste caché", "Une page 404", "Une demande de mot de passe"],
+    answer: 1,
+    explanation: "La page n'a pas été générée du tout. Il n'y a rien à cette adresse, et le contenu n'est nulle part dans le dossier livré.",
+  },
+  {
+    question: "Un module compte quatre leçons dont une verrouillée. Que peut afficher la barre de progression ?",
+    options: ["Au mieux 3 / 4", "3 / 3 quand tout est terminé"],
+    answer: 1,
+    explanation: "Les leçons verrouillées sont exclues du total, pour que 100 % reste atteignable.",
+  },
+  {
+    question: "Vous retirez une leçon de « locked » mais elle reste grisée en développement. Pourquoi ?",
+    options: ["Le cache du navigateur", "Le serveur de dev ne détecte pas ce changement : il faut le redémarrer", "Il faut relancer npm install"],
+    answer: 1,
+    explanation: "Un changement de « locked » n'est pas rechargé à chaud. Arrêtez et relancez npm run dev.",
+  },
+]} />

@@ -1,0 +1,40 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Figure
+ * Type: Component
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../settings/typography";
+@use "../tools/fonts";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-figure {
+  margin-block: spacing.get("lg");
+}
+
+  .c-figure__image {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: spacing.radius();
+  }
+
+  .c-figure__caption {
+    @include fonts.small-text;
+    margin-top: spacing.get("sm");
+    text-align: right;
+    color: colors.get("text-muted");
+  }

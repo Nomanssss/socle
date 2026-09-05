@@ -1,0 +1,54 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Stack
+ * Type: Object
+ * Description:
+ *   Empile ses enfants verticalement en insérant un espace UNIQUEMENT
+ *   entre eux (jamais avant le premier, ni après le dernier) : c'est le
+ *   rythme vertical du site. Réinitialise aussi les listes, pour pouvoir
+ *   l'appliquer directement sur un <ul> - la remise à zéro des listes vient
+ *   de generic/_reset.scss.
+ *
+ *   Aucun objet ne remet `margin: 0` sur lui-même : il annulerait l'espace
+ *   que lui donne un .o-stack parent (spécificité égale, déclaré après).
+ *
+ *   Exemples :
+ *     <ul class="o-stack o-stack--sm"> … </ul>
+ *     <main class="o-stack o-stack--2xl"> … </main>
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "../settings/spacing";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.o-stack {
+  --space: #{spacing.get("md")};
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+
+  > * + * {
+    margin-top: var(--space);
+  }
+}
+
+/*******************************************************************************
+ * Modifiers
+*******************************************************************************/
+
+// Espacements : .o-stack--2xs → .o-stack--2xl
+@each $namespace, $space in spacing.$spacings {
+  .o-stack--#{$namespace} {
+    --space: #{spacing.get($namespace)};
+  }
+}

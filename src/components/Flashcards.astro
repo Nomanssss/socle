@@ -1,0 +1,109 @@
+---
+// =============================================================
+// Flashcards - cartes recto/verso (vanilla JS, aucun framework)
+//
+// Cliquez (ou Entrée/Espace) sur la carte pour la retourner.
+// Boutons précédent / suivant pour naviguer.
+//
+// Usage MDX :
+//   import Flashcards from '@components/Flashcards.astro';
+//   <Flashcards cards={[
+//     { front: "HTML", back: "Langage de structure des pages web." },
+//     { front: "CSS",  back: "Langage de mise en forme." },
+//   ]} />
+// =============================================================
+interface Card {
+  front: string;
+  back: string;
+}
+interface Props {
+  cards?: Card[];
+}
+const { cards = [] } = Astro.props;
+---
+
+{
+  cards.length > 0 && (
+    <div class="c-flashcards" data-flashcards data-cards={JSON.stringify(cards)}>
+      <div class="c-flashcards__scene">
+        <button type="button" class="c-flashcards__card" data-card aria-pressed="false">
+          <div class="c-flashcards__inner">
+            <div class="c-flashcards__face c-flashcards__face--front" data-front>
+              {cards[0].front}
+            </div>
+            <div class="c-flashcards__face c-flashcards__face--back" data-back>
+              {cards[0].back}
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <div class="c-flashcards__nav o-cluster o-cluster--between o-cluster--middle">
+        <button type="button" class="c-button c-button--ghost c-button--compact" data-prev>
+          ← Précédent
+        </button>
+        <span class="c-flashcards__counter" data-counter aria-live="polite">
+          1 / {cards.length}
+        </span>
+        <button type="button" class="c-button c-button--ghost c-button--compact" data-next>
+          Suivant →
+        </button>
+      </div>
+
+      <p class="c-flashcards__hint">Cliquez sur la carte pour la retourner.</p>
+    </div>
+  )
+}
+
+<script>
+  interface Card {
+    front: string;
+    back: string;
+  }
+
+  function setup(root: HTMLElement) {
+    const cards = JSON.parse(root.dataset.cards || '[]') as Card[];
+    if (!cards.length) return;
+
+    const card = root.querySelector<HTMLButtonElement>('[data-card]')!;
+    const front = root.querySelector<HTMLElement>('[data-front]')!;
+    const back = root.querySelector<HTMLElement>('[data-back]')!;
+    const counter = root.querySelector<HTMLElement>('[data-counter]')!;
+    const prev = root.querySelector<HTMLButtonElement>('[data-prev]')!;
+    const next = root.querySelector<HTMLButtonElement>('[data-next]')!;
+
+    let index = 0;
+    let flipped = false;
+
+    const render = () => {
+      front.textContent = cards[index].front;
+      back.textContent = cards[index].back;
+      counter.textContent = `${index + 1} / ${cards.length}`;
+      card.setAttribute(
+        'aria-label',
+        `Carte ${index + 1} sur ${cards.length}. ${
+          flipped ? 'Face arrière' : 'Face avant'
+        } affichée. Activer pour retourner.`,
+      );
+    };
+
+    const setFlipped = (value: boolean) => {
+      flipped = value;
+      root.classList.toggle('is-flipped', flipped);
+      card.setAttribute('aria-pressed', String(flipped));
+    };
+
+    const go = (delta: number) => {
+      setFlipped(false);
+      index = (index + delta + cards.length) % cards.length;
+      render();
+    };
+
+    card.addEventListener('click', () => setFlipped(!flipped));
+    prev.addEventListener('click', () => go(-1));
+    next.addEventListener('click', () => go(1));
+    render();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-flashcards]').forEach(setup);
+</script>

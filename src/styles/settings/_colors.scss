@@ -1,0 +1,109 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Colors
+ * Type: Settings
+ * Description:
+ *   👉 POUR REBRANDER LE TEMPLATE, n'ouvrez pas ce fichier : les trois
+ *   couleurs de départ se règlent dans « socle.config.json » à la racine,
+ *   puis « npm run brand ». Ce fichier-ci en déduit tout le reste.
+ *
+ *   Les couleurs portent le nom de leur RÔLE (`primary`, `text`, `border`,
+ *   `surface`…), jamais celui de leur teinte : on ne veut pas d'une variable
+ *   `$navy` qui contiendrait du vert après un changement de charte. C'est la
+ *   même logique que pour les polices, nommées `heading` et `body`.
+ *
+ *   Tous les tons intermédiaires sont **calculés** à partir des trois
+ *   couleurs de marque, en les mélangeant vers le fond de page. Changez la
+ *   couleur principale, et le bandeau d'accueil, les survols, les filets et
+ *   la leçon courante de la barre latérale suivent.
+ *
+ *   La palette est volontairement **monochrome** : traits, filets et fonds
+ *   teintés sont tous des dilutions de `primary` vers `page`. Le jour où une
+ *   seconde teinte de marque s'imposera, elle se branchera sur le rôle
+ *   `accent` - qui existe pour ça, et ne pointe aujourd'hui que sur
+ *   `primary`.
+ *
+ *   Chaque entrée est émise en variable CSS `--color-<rôle>` par
+ *   `generic/_root.scss`.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass:color";
+@use "sass:map";
+@use "./brand";
+
+/*******************************************************************************
+ * Marque
+*******************************************************************************/
+
+// Les trois couleurs de socle.config.json.
+$primary: brand.$color-primary;
+$text: brand.$color-text;
+$page: brand.$color-page;
+
+/*******************************************************************************
+ * Statuts
+*******************************************************************************/
+
+// Hors marque : le vert de la réussite et le rouge de l'erreur ne changent
+// pas d'un projet à l'autre, et sont choisis pour rester lisibles sur un
+// fond clair (≥ 4.5:1 sur blanc).
+$success: #17784a !default;
+$error: #b32636 !default;
+
+/*******************************************************************************
+ * Rôles
+*******************************************************************************/
+
+$colors: (
+  // Couleur principale : liens, boutons, titres de slides
+  "primary": $primary,
+  // Survol : on assombrit vers la couleur du texte
+  "primary-hover": $text,
+  // Fond teinté (bandeau d'accueil, leçon courante)
+  "primary-soft": color.mix($primary, $page, 12%),
+  // Texte posé sur un aplat de couleur principale
+  "on-primary": #ffffff,
+  // Traits structurants : rail de la timeline, pointillés, piste de
+  // progression. Point d'accroche d'une éventuelle seconde teinte de marque.
+  "accent": $primary,
+
+  // Fond général de la page
+  "background": $page,
+  // Cartes, encarts, barre latérale - posés sur la page, donc plus clairs
+  "surface": color.mix(#ffffff, $page, 55%),
+  // Survols et fonds en creux (option de quiz, code en ligne)
+  "surface-muted": color.mix($primary, $page, 8%),
+
+  // Texte principal
+  "text": $text,
+  // Texte atténué : légendes, métadonnées
+  "text-muted": color.mix($text, $page, 72%),
+  // Filets des cartes, des tableaux, de la barre latérale
+  "border": color.mix($primary, $page, 30%),
+
+  "success": $success,
+  // Fond teinté d'un état « terminé »
+  "success-soft": color.mix($success, $page, 10%),
+  "error": $error,
+) !default;
+
+/*******************************************************************************
+ * Helpers
+*******************************************************************************/
+
+/// Retourne la variable CSS d'une couleur, avec sa valeur Sass en repli.
+/// Exemple : colors.get("primary") => var(--color-primary, #4b5694)
+@function get($name) {
+  @if not map.has-key($colors, $name) {
+    @error "Couleur inconnue : « #{$name} ». Rôles disponibles : #{map.keys($colors)}.";
+  }
+
+  @return var(--color-#{$name}, map.get($colors, $name));
+}

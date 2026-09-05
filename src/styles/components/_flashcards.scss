@@ -1,0 +1,106 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Flashcards
+ * Type: Component
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/effects";
+@use "../settings/spacing";
+@use "../settings/typography";
+@use "../tools/fonts";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-flashcards {
+  margin-block: spacing.get("lg");
+}
+
+  .c-flashcards__scene {
+    perspective: rem.convert(1200px);
+  }
+
+    .c-flashcards__card {
+      position: relative;
+      display: block;
+      width: 100%;
+      height: rem.convert(220px);
+      padding: 0;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+    }
+
+      .c-flashcards__inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transition: transform 500ms ease;
+        transform-style: preserve-3d;
+      }
+
+        .c-flashcards__face {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: spacing.get("lg");
+          text-align: center;
+          border: rem.convert(1px) solid colors.get("border");
+          border-radius: spacing.radius();
+          box-shadow: effects.shadow("md");
+          backface-visibility: hidden;
+        }
+
+        .c-flashcards__face--front {
+          font-size: typography.size("xl");
+          font-weight: typography.$semibold;
+          background: colors.get("surface");
+        }
+
+        .c-flashcards__face--back {
+          font-size: typography.size("lg");
+          color: colors.get("on-primary");
+          background: colors.get("primary");
+          border-color: colors.get("primary");
+          transform: rotateY(180deg);
+        }
+
+/*******************************************************************************
+ * State - flip
+*******************************************************************************/
+
+.c-flashcards.is-flipped .c-flashcards__inner {
+  transform: rotateY(180deg);
+}
+
+/*******************************************************************************
+ * Navigation
+*******************************************************************************/
+
+.c-flashcards__nav {
+  margin-top: spacing.get("md");
+}
+
+  .c-flashcards__counter {
+    @include fonts.small-text;
+    color: colors.get("text-muted");
+  }
+
+.c-flashcards__hint {
+  @include fonts.small-text;
+  margin-top: spacing.get("sm");
+  text-align: center;
+  color: colors.get("text-muted");
+}

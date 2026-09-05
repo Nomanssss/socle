@@ -1,0 +1,180 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Base (Marp)
+ * Type: Theme
+ * Description: Styles de fond de la slide et des éléments courants.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../settings/typography";
+
+/*******************************************************************************
+ * Slide
+*******************************************************************************/
+
+section {
+  padding: rem.convert(64px) rem.convert(80px);
+  font-family: typography.family("body");
+  font-size: rem.convert(28px);
+  line-height: typography.leading("normal");
+  color: colors.get("text");
+  background-color: colors.get("background");
+  --band: linear-gradient(#{colors.get("primary-soft")} 0 100%);
+  --band-height: 5%;
+}
+
+/**
+ * BANDE DE PIED DE SLIDE : 10 % de la hauteur, en couleur `primary-soft`.
+ *
+ * Posée en couche de FOND et non dans un pseudo-élément : `::before` est déjà
+ * pris par le filigrane de `statement` et par le panneau des mises en page à
+ * image, `::after` par la pagination de Marp. Un dégradé d'une seule couleur
+ * est le moyen d'obtenir un aplat que `background-size` sait découper.
+ *
+ * Exclue des mises en page qui occupent déjà toute la surface - slide de
+ * titre, intercalaire, image plein cadre - ainsi que de `statement`, dont la
+ * phrase centrée se suffit à elle-même, et de `image-split`, dont l'image est
+ * posée par Marp dans une couche à part.
+ *
+ * Sur `image-left` et `image-right`, elle passe SOUS le panneau d'image : la
+ * bande ne se voit donc que du côté du texte, et s'arrête net au panneau.
+ *
+ * `background-color` plus haut, et non le raccourci `background` : celui-ci
+ * remettrait `background-image` à zéro, donc effacerait la bande.
+**/
+section:not(.lead, .section, .statement, .image-full, .image-split) {
+  background-image: var(--band);
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  background-size: 100% var(--band-height);
+}
+
+/*******************************************************************************
+ * Titres
+*******************************************************************************/
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: typography.family("heading");
+  line-height: typography.leading("tight");
+  color: colors.get("text");
+}
+
+h1 {
+  font-size: rem.convert(56px);
+}
+
+h2 {
+  font-size: rem.convert(40px);
+}
+
+h3 {
+  font-size: rem.convert(30px);
+}
+
+/*******************************************************************************
+ * Texte & éléments
+*******************************************************************************/
+
+p,
+li {
+  margin-block: spacing.get("xs");
+}
+
+ul,
+ol {
+  padding-left: spacing.get("lg");
+}
+
+strong {
+  color: colors.get("text");
+  font-weight: typography.$bold;
+}
+
+a {
+  color: colors.get("primary");
+}
+
+code {
+  font-family: typography.family("mono");
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+  background: colors.get("surface-muted");
+  border-radius: spacing.radius("sm");
+}
+
+pre {
+  padding: spacing.get("md");
+  background: colors.get("surface-muted");
+  border-radius: spacing.radius();
+
+  code {
+    padding: 0;
+    background: none;
+  }
+}
+
+/*******************************************************************************
+ * Tableaux
+*******************************************************************************/
+
+/**
+ * Un filet horizontal par ligne, rien de vertical : à distance de projection,
+ * une grille complète fait du bruit et gêne la lecture. La ligne d'en-tête se
+ * distingue par un trait plus épais, en couleur principale.
+**/
+table {
+  width: 100%;
+  margin-block: spacing.get("md");
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: rem.convert(12px) rem.convert(16px);
+  text-align: left;
+}
+
+th {
+  font-weight: typography.$bold;
+  border-bottom: rem.convert(3px) solid colors.get("primary");
+}
+
+td {
+  border-bottom: rem.convert(1px) solid colors.get("border");
+}
+
+// La dernière ligne n'a pas besoin de filet : le tableau s'arrête là.
+tr:last-child td {
+  border-bottom: 0;
+}
+
+blockquote {
+  padding-left: spacing.get("md");
+  border-left: rem.convert(6px) solid colors.get("primary");
+  color: colors.get("text-muted");
+}
+
+img {
+  border-radius: spacing.radius();
+}
+
+/*******************************************************************************
+ * Pagination
+*******************************************************************************/
+
+section::after {
+  color: colors.get("text-muted");
+  font-size: rem.convert(16px);
+}

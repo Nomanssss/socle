@@ -1,0 +1,91 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Timeline
+ * Type: Component
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../settings/typography";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-timeline {
+  margin-block: spacing.get("lg");
+  margin-left: spacing.get("sm");
+  padding-left: spacing.get("lg");
+  list-style: none;
+  border-left: rem.convert(2px) solid colors.get("accent");
+}
+
+  .c-timeline__item {
+    position: relative;
+    padding-bottom: spacing.get("lg");
+
+    &:last-child {
+      padding-bottom: 0;
+    }
+  }
+
+    .c-timeline__dot {
+      position: absolute;
+      top: rem.convert(4px);
+      left: calc(-1 * (spacing.get("lg") + #{rem.convert(1px)}));
+      width: rem.convert(12px);
+      height: rem.convert(12px);
+      transform: translateX(-50%);
+      border: rem.convert(2px) solid colors.get("background");
+      border-radius: 50%;
+      background: colors.get("primary");
+    }
+
+    .c-timeline__summary {
+      display: flex;
+      align-items: center;
+      gap: spacing.get("sm");
+      font-weight: typography.$semibold;
+      list-style: none;
+      cursor: pointer;
+      transition: color 150ms ease;
+
+      &:hover {
+        color: colors.get("primary");
+      }
+
+      &::-webkit-details-marker {
+        display: none;
+      }
+    }
+
+      .c-timeline__chevron {
+        display: inline-block;
+        color: colors.get("primary");
+        transition: transform 150ms ease;
+      }
+
+    .c-timeline__description {
+      margin-top: spacing.get("sm");
+      color: colors.get("text-muted");
+    }
+
+    .c-timeline__title {
+      font-weight: typography.$semibold;
+    }
+
+/*******************************************************************************
+ * States
+*******************************************************************************/
+
+.c-timeline__details[open] .c-timeline__chevron {
+  transform: rotate(90deg);
+}

@@ -1,0 +1,122 @@
+---
+title: "Images, vidéo, audio et code"
+module: "Module 2 - Écrire le contenu"
+moduleOrder: 2
+order: 3
+description: "Les quatre composants de média, et la règle d'or : une image s'importe, elle ne se référence pas."
+slidePoints:
+  - "Figure enveloppe <Image /> d'Astro et ajoute la légende"
+  - "Une image doit être IMPORTÉE, pas écrite en chaîne de caractères"
+  - "YouTube passe par youtube-nocookie, en chargement différé"
+  - "Les embeds dépendent d'un service tiers : le cours ne s'affiche plus hors ligne"
+---
+
+import Figure from '@components/Figure.astro';
+import YouTubeEmbed from '@components/YouTubeEmbed.astro';
+import PodcastEmbed from '@components/PodcastEmbed.astro';
+import CodepenEmbed from '@components/CodepenEmbed.astro';
+import illustration from '@assets/couverture.jpg';
+
+Quatre composants pour tout ce qui n'est pas du texte. Le premier est de loin le plus utile.
+
+## Les images
+
+Passez par `Figure`, qui enveloppe le composant `Image` d'Astro et ajoute la légende.
+
+<Figure
+  src={illustration}
+  alt=""
+  caption="L'illustration livrée avec le template. Remplacez-la par la vôtre dans src/assets/."
+  width={1000}
+  height={563}
+/>
+
+Son `alt` est **vide**, et c'est volontaire : cette image est purement décorative, elle n'apporte aucune information que le texte ne donne pas. Un lecteur d'écran l'ignorera, ce qui est le bon comportement. La section sur `alt` et `caption`, plus bas, explique pourquoi.
+
+```mdx
+import Figure from '@components/Figure.astro';
+import illustration from '@assets/mon-schema.png';
+
+<Figure
+  src={illustration}
+  alt="Description utile pour qui ne voit pas l'image"
+  caption="Légende affichée sous l'image."
+  width={1000}
+  height={563}
+/>
+```
+
+### La règle d'or
+
+L'image doit être **importée**, jamais référencée par une chaîne de caractères :
+
+```jsx
+import illustration from '@assets/mon-schema.png';   // ✅ Astro l'optimise
+<Figure src="/assets/mon-schema.png" … />            // ❌ ne fonctionne pas
+```
+
+C'est l'import qui permet à Astro de redimensionner l'image, de la convertir en WebP et d'en générer plusieurs tailles. Rangez donc vos images dans `src/assets/`, pas dans `public/`.
+
+### `alt` et `caption` ne servent pas à la même chose
+
+`alt` décrit l'image pour qui ne la voit pas — lecteur d'écran, image cassée. `caption` est une légende visible par tout le monde. Ne recopiez pas l'un dans l'autre : si l'image est purement décorative, laissez `alt` vide et mettez le propos dans `caption`.
+
+## La vidéo
+
+<YouTubeEmbed
+  id="dQw4w9WgXcQ"
+  title="Vidéo d'exemple"
+  caption="Remplacez l'identifiant par le vôtre : c'est la suite de caractères après « v= » dans l'URL YouTube."
+/>
+
+```jsx
+<YouTubeEmbed id="dQw4w9WgXcQ" title="Titre de la vidéo" caption="Légende." />
+```
+
+Le composant passe par `youtube-nocookie.com` et charge la vidéo en différé : rien n'est demandé à YouTube avant que l'apprenant ne lance la lecture.
+
+## L'audio
+
+<PodcastEmbed
+  src="https://open.spotify.com/embed/episode/5vDO6jT1IkBTsV0MoO6ui0?utm_source=generator&si=457a2296010346fd"
+  title="Épisode d'exemple"
+  caption="Remplacez l'URL par celle de votre hébergeur (Spotify, Ausha, Acast…)."
+/>
+
+```jsx
+<PodcastEmbed src="https://…/embed/…" title="Titre de l'épisode" caption="Légende." />
+```
+
+Prenez l'URL **d'intégration** (`/embed/`), pas celle de la page publique : cette dernière refuse de s'afficher dans un cadre.
+
+Le composant accepte un `height` en pixels, mais ne cherchez pas la valeur parfaite : **elle n'existe pas.** Spotify rend son lecteur compact en 88 px environ pour un visiteur déconnecté, et en 152 px pour un visiteur connecté, qui voit en plus la barre de progression. La hauteur dépend donc de la session de chacun. C'est pour cela que le composant ne dessine ni bordure ni fond : le surplus reste transparent au lieu de creuser un rectangle vide sous le lecteur.
+
+## Le code exécutable
+
+Pour montrer du code que l'apprenant peut modifier et relancer.
+
+<CodepenEmbed
+  user="team"
+  penId="ExjVYVe"
+  title="Pen d'exemple"
+  defaultTab="css,result"
+  height={420}
+/>
+
+```jsx
+<CodepenEmbed user="team" penId="ExjVYVe" defaultTab="css,result" height={420} />
+```
+
+`defaultTab` choisit les onglets ouverts au chargement : `html`, `css`, `js`, `result`, séparés par des virgules.
+
+Pour du code qu'on lit sans l'exécuter, un bloc Markdown ordinaire suffit — et reste lisible hors ligne.
+
+## Ce que les embeds vous coûtent
+
+Les trois derniers composants dépendent d'un **service tiers**. Trois conséquences à peser :
+
+- le cours ne s'affiche plus complètement sans connexion ;
+- si le service ferme ou change d'URL, le contenu disparaît de vos leçons ;
+- vos apprenants entrent en contact avec ce service, ce qui a des implications de confidentialité que votre site statique n'avait pas.
+
+L'image, elle, n'a aucun de ces défauts : elle est hébergée avec votre site. À propos égal, préférez-la.

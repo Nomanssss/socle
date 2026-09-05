@@ -1,0 +1,55 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Podcast embed
+ * Type: Component
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../settings/typography";
+@use "../tools/fonts";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-podcast {
+  margin-block: spacing.get("lg");
+}
+
+/**
+ * Pas de bordure ni de fond ici, et c'est délibéré.
+ *
+ * Un lecteur de podcast arrive avec sa propre carte : Spotify peint un bloc
+ * violet arrondi, les autres hébergeurs font de même. En dessiner une seconde
+ * autour reviendrait à encadrer un cadre.
+ *
+ * Surtout, la hauteur du lecteur nous échappe : Spotify rend son format
+ * compact en ~88 px pour un visiteur déconnecté, et ~152 px pour un visiteur
+ * connecté, qui voit en plus la barre de progression. Aucune valeur fixe
+ * n'est donc juste pour tout le monde, et l'iframe est forcément trop haute
+ * pour une partie des visiteurs. Sans décor, ce surplus est transparent et
+ * ne se voit pas ; avec une bordure et un fond, il devenait un rectangle
+ * vide sous le lecteur.
+ *
+ * `display: block` évite en prime l'espace parasite sous un iframe, qui est
+ * un élément en ligne et repose donc sur la ligne de base du texte.
+**/
+  .c-podcast__iframe {
+    display: block;
+    width: 100%;
+    border: 0;
+  }
+
+  .c-podcast__caption {
+    @include fonts.small-text;
+    margin-top: spacing.get("sm");
+    color: colors.get("text-muted");
+  }

@@ -1,0 +1,39 @@
+---
+// =============================================================
+// PodcastEmbed - intègre un lecteur de podcast / audio
+//
+// Volontairement générique : les hébergeurs de podcast (Spotify,
+// Ausha, Acast, Ivoox, RSS.com…) fournissent tous une URL d'iframe.
+// Collez cette URL dans `src`.
+//
+// Usage MDX :
+//   <PodcastEmbed
+//     src="https://open.spotify.com/embed/episode/xxxx"
+//     title="Épisode 1 - L'accessibilité web"
+//   />
+// =============================================================
+interface Props {
+  /** URL du lecteur embarqué fournie par l'hébergeur du podcast. */
+  src: string;
+  /** Titre accessible du lecteur. */
+  title?: string;
+  /** Hauteur de l'iframe en pixels (152 = format compact courant). */
+  height?: number;
+  /** Légende optionnelle sous le lecteur. */
+  caption?: string;
+}
+const { src, title = 'Lecteur de podcast', height = 152, caption } = Astro.props;
+---
+
+<figure class="c-podcast">
+  <iframe
+    class="c-podcast__iframe"
+    style={`height: ${height}px;`}
+    src={src}
+    title={title}
+    loading="lazy"
+    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+    referrerpolicy="strict-origin-when-cross-origin"
+  ></iframe>
+  {caption && <figcaption class="c-podcast__caption">{caption}</figcaption>}
+</figure>

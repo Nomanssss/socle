@@ -1,0 +1,107 @@
+---
+title: "Ce que fait ce template"
+module: "Module 1 - Prendre le template en main"
+moduleOrder: 1
+order: 1
+description: "Le principe, ce qu'il n'y a délibérément pas, et les deux sorties d'un même contenu."
+cover: ../../../assets/couverture.jpg
+coverAlt: ""
+slidePoints:
+  - "Un site 100 % statique : ni serveur, ni base de données, ni compte"
+  - "Un même contenu produit deux sorties : le site du cours et un jeu de slides"
+  - "Tout part d'un seul dossier : src/content/lecons/"
+  - "Aucun menu à tenir à jour : navigation et classement sont déduits des fichiers"
+---
+
+import Timeline from '@components/Timeline.astro';
+import Quiz from '@components/Quiz.astro';
+
+Ce cours n'enseigne pas un sujet : il explique **l'outil avec lequel il est fabriqué**. Vous lisez le template en train de se décrire lui-même — chaque page que vous parcourez est un exemple de ce que vous pourrez écrire.
+
+Si vous reprenez ce projet après quelques mois, commencez ici.
+
+## Le principe
+
+C'est un générateur de site **statique**. Vous écrivez vos leçons dans des fichiers texte, une commande les transforme en pages HTML, et ces pages s'hébergent n'importe où.
+
+Ce qu'il n'y a pas, et c'est volontaire :
+
+- pas de serveur applicatif ni de base de données ;
+- pas de compte, pas de mot de passe, pas d'inscription ;
+- pas de tableau de bord enseignant.
+
+La progression de l'apprenant est enregistrée **dans son propre navigateur**. C'est ce qui permet de se passer de toute cette machinerie. Le revers : elle est perdue s'il change de navigateur ou vide son cache. Dites-le-lui — c'est d'ailleurs ce que fait la phrase en pied de page d'accueil.
+
+## Deux sorties pour un même contenu
+
+C'est l'idée la plus importante à retenir. Vos leçons alimentent **deux produits distincts** :
+
+| Sortie | Ce que c'est | Commande | Où ça arrive |
+| --- | --- | --- | --- |
+| Le site | Les pages web du cours | `npm run build` | dossier `dist/` |
+| Les slides | Une présentation par leçon | `npm run slides` | dossier `slides/` |
+
+Vous pouvez très bien n'utiliser que la première. Les présentations sont un bonus, traité au module 3.
+
+## De l'écriture à la publication
+
+<Timeline steps={[
+  { title: "1. Vous écrivez", description: "Un fichier .mdx par leçon, dans src/content/lecons/. Du Markdown, plus quelques composants si besoin." },
+  { title: "2. Astro assemble", description: "Il lit l'en-tête de chaque fichier pour déduire l'URL, le module, le classement et la navigation. Rien à déclarer à la main." },
+  { title: "3. Le thème habille", description: "Les couleurs et les polices viennent de socle.config.json. Le même jeu de variables sert au site et aux slides." },
+  { title: "4. Vous livrez", description: "npm run bundle assemble dans dist/ le site et les présentations, prêt à déposer chez un hébergeur." },
+]} />
+
+## Où vit votre travail
+
+Un seul dossier vous concerne au quotidien :
+
+```
+src/content/lecons/
+├── module-1/
+│   ├── lecon-1.mdx
+│   └── lecon-2.mdx
+└── module-2/
+    └── lecon-1.mdx
+```
+
+Un dossier par module, un fichier par leçon. C'est tout. Les pages, la navigation, la barre de progression et le classement des modules sont déduits de ces fichiers : il n'y a **aucun menu à tenir à jour à la main**.
+
+Le reste du projet, que vous toucherez rarement :
+
+| Dossier | Rôle |
+| --- | --- |
+| `src/components/` | Les briques pédagogiques réutilisables — module 2 |
+| `src/styles/` | L'apparence, pilotée par des variables — module 4 |
+| `src/layouts/` | Le gabarit commun à toutes les leçons |
+| `src/pages/` | L'accueil et la route qui fabrique les pages de leçon |
+| `scripts/` | Le générateur de slides et l'application de la charte |
+
+## Deux règles de sécurité
+
+**Ne modifiez jamais `dist/`, `slides/` et `.astro/`.** Ils sont entièrement reconstruits à chaque commande et vos changements y seraient effacés sans avertissement. La source des slides est dans `src/content/`, jamais dans `slides/`.
+
+**Faites confiance au code, pas à vos souvenirs.** En cas de doute sur un nom de composant ou de champ, la liste qui fait foi est le contenu de `src/components/` et le fichier `src/content.config.ts`.
+
+## Vérifier que c'est clair
+
+<Quiz questions={[
+  {
+    question: "Où est enregistrée la progression de l'apprenant ?",
+    options: ["Dans une base de données du serveur", "Dans son propre navigateur", "Dans un fichier du dossier dist/"],
+    answer: 1,
+    explanation: "Elle vit dans le localStorage du navigateur. C'est ce qui permet de se passer de serveur — au prix d'une progression perdue si l'apprenant change de navigateur.",
+  },
+  {
+    question: "Quel dossier contient le travail que vous écrivez au quotidien ?",
+    options: ["slides/", "dist/", "src/content/lecons/"],
+    answer: 2,
+    explanation: "dist/ et slides/ sont des sorties, reconstruites à chaque commande. Y écrire ne sert à rien : tout serait effacé.",
+  },
+  {
+    question: "Que faut-il faire pour qu'une nouvelle leçon apparaisse dans le menu de navigation ?",
+    options: ["Rien : la navigation est déduite des fichiers", "Ajouter une entrée dans un fichier de menu", "Relancer npm install"],
+    answer: 0,
+    explanation: "Navigation, classement des modules et barre de progression sont tous déduits de l'en-tête des fichiers .mdx.",
+  },
+]} />

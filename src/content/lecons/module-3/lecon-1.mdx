@@ -1,0 +1,115 @@
+---
+title: "Générer les slides"
+module: "Module 3 - Les présentations"
+moduleOrder: 3
+order: 1
+description: "Une commande transforme chaque leçon en présentation. Trois niveaux possibles, le premier trouvé gagne."
+slidePoints:
+  - "Une commande génère une présentation par leçon"
+  - "Trois niveaux, le premier trouvé gagne : fichier dédié, slidePoints, ou rien"
+  - "slidePoints est un remplaçant au rabais du deck, pas un complément"
+  - "La slide de titre est fabriquée automatiquement : ne l'écrivez jamais"
+---
+
+import Timeline from '@components/Timeline.astro';
+import Quiz from '@components/Quiz.astro';
+
+En plus du site, le template fabrique **une présentation par leçon**. C'est la seconde sortie évoquée au module 1. Vous pouvez ignorer ce module entier si vous n'en avez pas besoin : rien d'autre n'en dépend.
+
+## La commande
+
+```bash
+npm run slides
+```
+
+Elle produit un PDF par leçon dans le dossier `slides/`. Deux variantes existent :
+
+| Commande | Sortie | Chrome requis |
+| --- | --- | --- |
+| `npm run slides` | PDF | oui |
+| `npm run slides:html` | HTML projetable | non |
+| `node scripts/build-slides.mjs --format=pptx` | PowerPoint | oui |
+
+Deux comportements à connaître :
+
+- **toutes** les leçons sont retraitées à chaque exécution, pas seulement celles que vous venez de modifier ;
+- le dossier `slides/` est entièrement reconstruit. N'y écrivez jamais rien : la source est dans `src/content/`.
+
+## Trois niveaux, le premier trouvé gagne
+
+C'est le point qui prête le plus à confusion. Pour chaque leçon, le générateur cherche de quoi remplir le deck, dans cet ordre :
+
+<Timeline steps={[
+  { title: "Niveau 1 — un fichier <leçon>.slides.md", description: "Un deck écrit à la main, à côté du .mdx. Vous maîtrisez chaque slide. C'est le seul niveau qui donne un vrai support de présentation. La leçon suivante en est équipée." },
+  { title: "Niveau 2 — le champ slidePoints", description: "Une liste de puces dans l'en-tête. Le générateur en fait une unique slide « Points clés ». Dépannage honnête, pas un support." },
+  { title: "Niveau 3 — rien", description: "Une slide de titre suivie d'un renvoi vers le cours en ligne. Le deck existe, il ne dit rien." },
+]} />
+
+**Le premier trouvé gagne, et il gagne seul.** Si un fichier `.slides.md` existe, le champ `slidePoints` est purement ignoré — il n'est pas ajouté au deck. Les deux ne se cumulent jamais.
+
+C'est la source d'erreur classique : on enrichit `slidePoints` en se demandant pourquoi le deck ne change pas, alors qu'un fichier `.slides.md` prend le dessus depuis le début.
+
+## La slide de titre est automatique
+
+Ne l'écrivez jamais vous-même. Elle est fabriquée depuis l'en-tête du `.mdx` : `title`, `module` et `cover`.
+
+Elle porte un bandeau sur 30 % de la hauteur, rempli dans cet ordre :
+
+1. l'image `cover:` de la leçon, si elle en a une ;
+2. sinon l'image par défaut du projet, si vous en configurez une ;
+3. sinon un aplat de la couleur principale.
+
+L'image par défaut se règle dans `socle.config.json` :
+
+```json
+"slides": { "band": "src/assets/bandeau-slides.png" }
+```
+
+## Écrire un `.slides.md`
+
+Le fichier se place **à côté** du `.mdx`, avec le même nom de base :
+
+```
+src/content/lecons/module-3/lecon-2.mdx
+src/content/lecons/module-3/lecon-2.slides.md   ← le deck
+```
+
+Dedans, du Markdown Marp : les slides sont séparées par une ligne de trois tirets. Pas besoin d'en-tête `marp:` ni de thème — le générateur les ajoute.
+
+```markdown
+## Ma première slide
+
+- un point
+- un autre
+
+---
+
+## Ma deuxième slide
+
+Du texte.
+```
+
+N'y remettez pas la slide de titre : elle est déjà là.
+
+## Vérifier que c'est clair
+
+<Quiz questions={[
+  {
+    question: "Une leçon a un fichier .slides.md ET un champ slidePoints. Que contient le deck ?",
+    options: ["Les deux, à la suite", "Seulement le .slides.md", "Seulement slidePoints"],
+    answer: 1,
+    explanation: "Le premier niveau trouvé gagne seul. slidePoints est un remplaçant, jamais un complément — c'est l'erreur la plus fréquente.",
+  },
+  {
+    question: "Vous modifiez une seule leçon. Que régénère npm run slides ?",
+    options: ["Seulement cette leçon", "Toutes les leçons"],
+    answer: 1,
+    explanation: "Le dossier slides/ est entièrement reconstruit à chaque exécution.",
+  },
+  {
+    question: "Vous n'avez pas Chrome sur la machine. Que pouvez-vous générer ?",
+    options: ["Rien", "Le HTML seulement", "Le PDF seulement"],
+    answer: 1,
+    explanation: "L'export HTML n'a besoin de rien. Le PDF et le PowerPoint s'appuient sur Chrome ou Chromium.",
+  },
+]} />

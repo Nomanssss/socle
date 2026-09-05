@@ -1,0 +1,63 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Root
+ * Type: Generic
+ * Description:
+ *   Émet les settings sous forme de variables CSS. C'est le seul endroit du
+ *   projet qui les déclare : le site (theme.scss) et les présentations
+ *   (marp/theme.scss) consomment tous deux ce fichier, donc modifier un
+ *   settings met à jour les deux d'un coup.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "../settings/colors";
+@use "../settings/effects";
+@use "../settings/spacing";
+@use "../settings/typography";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+:root {
+  // Couleurs → --color-primary, --color-surface…
+  @each $name, $value in colors.$colors {
+    --color-#{$name}: #{$value};
+  }
+
+  // Familles → --font-heading, --font-body, --font-mono
+  @each $name, $value in typography.$families {
+    --font-#{$name}: #{$value};
+  }
+
+  // Tailles de texte → --text-base, --text-lg…
+  @each $name, $value in typography.$sizes {
+    --text-#{$name}: #{$value};
+  }
+
+  // Interlignes → --leading-tight, --leading-normal
+  @each $name, $value in typography.$leadings {
+    --leading-#{$name}: #{$value};
+  }
+
+  // Espacements → --space-xs, --space-md…
+  @each $name, $value in spacing.$spacings {
+    --space-#{$name}: #{$value};
+  }
+
+  // Rayons
+  --radius-sm: #{spacing.$radius-sm};
+  --radius: #{spacing.$radius};
+  --radius-lg: #{spacing.$radius-lg};
+
+  // Ombres
+  --shadow-sm: #{effects.$shadow-sm};
+  --shadow-md: #{effects.$shadow-md};
+  --shadow-lg: #{effects.$shadow-lg};
+}

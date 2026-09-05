@@ -1,0 +1,40 @@
+---
+// =============================================================
+// CodepenEmbed - intègre un Pen CodePen
+//
+// Usage MDX :
+//   <CodepenEmbed user="team" penId="abcDEF" title="Démo flexbox" />
+// =============================================================
+interface Props {
+  /** Nom d'utilisateur CodePen (propriétaire du Pen). */
+  user: string;
+  /** Identifiant du Pen (dans l'URL : codepen.io/<user>/pen/<penId>). */
+  penId: string;
+  /** Titre accessible de l'intégration. */
+  title?: string;
+  /** Onglet affiché par défaut : "result", "html", "css", "js" ou combinés. */
+  defaultTab?: string;
+  /** Hauteur de l'iframe en pixels. */
+  height?: number;
+}
+const {
+  user,
+  penId,
+  title = 'Démo CodePen',
+  defaultTab = 'result',
+  height = 400,
+} = Astro.props;
+
+const src = `https://codepen.io/${user}/embed/${penId}?default-tab=${defaultTab}`;
+---
+
+<figure class="c-codepen">
+  <iframe
+    class="c-codepen__iframe"
+    style={`height: ${height}px;`}
+    src={src}
+    title={title}
+    loading="lazy"
+    allowfullscreen
+  ></iframe>
+</figure>

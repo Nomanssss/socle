@@ -1,0 +1,71 @@
+---
+title: "La leçon d'exemple"
+module: "Module 4 - Régler et livrer"
+moduleOrder: 4
+order: 4
+description: "Cette leçon est verrouillée. Elle existe pour que vous puissiez essayer le déverrouillage."
+slidePoints:
+  - "Cette leçon sert d'exemple au mécanisme de verrouillage"
+  - "Elle est listée dans « locked » de socle.config.json"
+  - "La retirer de la liste puis reconstruire la rend accessible"
+---
+
+import Quiz from '@components/Quiz.astro';
+
+Si vous lisez ceci, **vous avez déverrouillé la leçon**. C'était tout l'exercice.
+
+## Ce que vous venez de faire
+
+Vous avez retiré son identifiant de `socle.config.json` :
+
+```json
+"locked": []
+```
+
+puis reconstruit avec `npm run build` — et si vous étiez en développement, redémarré `npm run dev`, qui ne détecte pas ce changement à chaud.
+
+## Pourquoi cette leçon existe
+
+Elle n'apporte aucune connaissance sur le template : elle est là pour être verrouillée. C'est un choix délibéré — mettre le verrou d'exemple sur une leçon utile aurait caché de la documentation à quiconque découvre le projet.
+
+Vous pouvez donc :
+
+- **la remettre dans `locked`** pour retrouver l'état de départ ;
+- **la supprimer** si vous reprenez le template pour votre propre cours. Ce fichier ne sert qu'à la démonstration.
+
+## Pendant qu'elle était verrouillée
+
+Repensez à ce que vous avez vu, ou allez le revérifier en la reverrouillant :
+
+- elle apparaissait sur l'accueil, en carte grisée à bordure pointillée, avec un cadenas et la mention « Bientôt disponible » ;
+- elle apparaissait dans la barre latérale, grisée, sans réagir au survol ;
+- son URL répondait **404** ;
+- son PDF et son deck HTML n'existaient pas dans `dist/slides/` ;
+- la progression du module comptait **sur trois leçons**, pas quatre.
+
+C'est ce dernier point qui est le plus facile à oublier en concevant un tel mécanisme, et le plus pénible pour l'apprenant : sans lui, le module aurait plafonné à 75 %.
+
+## Reverrouiller
+
+```json
+"locked": ["module-4/lecon-4"]
+```
+
+Puis `npm run build`. La leçon redevient une carte grisée, et son contenu quitte le dossier livré.
+
+## Vérifier que c'est clair
+
+<Quiz questions={[
+  {
+    question: "Pourquoi cette leçon de démonstration ne contient-elle aucune information utile sur le template ?",
+    options: ["Elle n'est pas terminée", "Pour qu'un verrou d'exemple ne cache jamais de documentation réelle", "Par oubli"],
+    answer: 1,
+    explanation: "Verrouiller une leçon utile aurait rendu de la documentation inaccessible à qui découvre le projet.",
+  },
+  {
+    question: "Vous reprenez ce template pour votre propre cours. Que faire de ce fichier ?",
+    options: ["Le garder tel quel", "Le supprimer : il ne sert qu'à la démonstration", "Le laisser verrouillé pour toujours"],
+    answer: 1,
+    explanation: "Supprimez-le, et retirez son identifiant de « locked » pour éviter l'avertissement de build sur une entrée qui ne correspond à rien.",
+  },
+]} />

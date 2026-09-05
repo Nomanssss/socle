@@ -1,0 +1,130 @@
+---
+title: "Les composants interactifs"
+module: "Module 2 - Écrire le contenu"
+moduleOrder: 2
+order: 2
+description: "Quiz, frise, cartes de révision et glisser-déposer : chacun démontré puis expliqué."
+slidePoints:
+  - "Quatre composants interactifs, tous en .astro : aucune directive client:* à ajouter"
+  - "On les déclare en haut du fichier, après l'en-tête, puis on les utilise dans le texte"
+  - "Quiz auto-corrigé, Timeline dépliable, Flashcards recto/verso, DragMatch par association"
+  - "Le quiz alimente la progression : c'est le seul à être relié au suivi"
+---
+
+import Quiz from '@components/Quiz.astro';
+import Timeline from '@components/Timeline.astro';
+import Flashcards from '@components/Flashcards.astro';
+import DragMatch from '@components/DragMatch.astro';
+
+Le template fournit quatre briques interactives. Cette leçon les montre **à l'œuvre** avant de donner leur mode d'emploi : le plus rapide pour vous en servir sera d'ouvrir son fichier `.mdx` et de copier l'exemple qui ressemble à votre besoin.
+
+## La règle commune
+
+Tous les composants sont des fichiers **`.astro`**. Ils s'exécutent au moment du build et ne demandent **aucune directive `client:*`**. On les déclare en haut du fichier, juste après l'en-tête :
+
+```jsx
+import Quiz from '@components/Quiz.astro';
+```
+
+Puis on les utilise dans le texte, là où on veut les voir apparaître. Une leçon peut n'en utiliser aucun.
+
+## Le quiz
+
+Un QCM auto-corrigé. C'est le composant le plus utile, et le seul relié au suivi de progression.
+
+<Quiz
+  title="📝 Exemple de quiz"
+  questions={[
+    {
+      question: "Combien de bonnes réponses une question peut-elle avoir ?",
+      options: ["Une seule", "Autant qu'on veut", "Deux au maximum"],
+      answer: 0,
+      explanation: "Le champ « answer » est un index unique. Pour offrir plusieurs bonnes réponses, posez plusieurs questions.",
+    },
+    {
+      question: "À partir de quel nombre commence la numérotation du champ « answer » ?",
+      options: ["1", "0"],
+      answer: 1,
+      explanation: "C'est un index de tableau : la première option porte le numéro 0. C'est l'erreur la plus fréquente.",
+    },
+  ]}
+/>
+
+```jsx
+<Quiz questions={[
+  {
+    question: "Votre question ?",
+    options: ["A", "B", "C"],
+    answer: 1,              // index de la bonne réponse, À PARTIR DE 0
+    explanation: "Pourquoi c'est cette réponse.",
+  },
+]} />
+```
+
+Le champ `title` est facultatif. Le champ `explanation` aussi, mais il fait la différence : c'est lui qui transforme une correction en apprentissage.
+
+> **Le piège :** `answer: 1` désigne la **deuxième** option. Si vos corrections semblent toutes décalées, c'est ça.
+
+## La frise
+
+Pour une suite d'étapes, chronologique ou non. Chaque étape se déplie au clic.
+
+<Timeline steps={[
+  { title: "Déclarer", description: "Une ligne d'import en haut du fichier .mdx." },
+  { title: "Utiliser", description: "Le composant dans le corps du texte, à l'endroit voulu." },
+  { title: "Vérifier", description: "npm run dev recharge la page à l'enregistrement." },
+]} />
+
+```jsx
+<Timeline steps={[
+  { title: "Déclarer", description: "Ce qui se passe à cette étape." },
+]} />
+```
+
+## Les cartes de révision
+
+Recto/verso, à retourner au clic. Utile pour du vocabulaire ou des définitions courtes.
+
+<Flashcards cards={[
+  { front: "Composant", back: "Un fichier .astro de src/components/, à importer dans une leçon." },
+  { front: "Props", back: "Les paramètres qu'on passe à un composant, entre accolades." },
+  { front: "client:*", back: "Une directive Astro dont ces composants n'ont PAS besoin : ils s'exécutent au build." },
+]} />
+
+```jsx
+<Flashcards cards={[
+  { front: "Le terme", back: "Sa définition." },
+]} />
+```
+
+Gardez le verso court : la carte ne défile pas.
+
+## L'association par glisser-déposer
+
+Pour relier deux colonnes. Les étiquettes de droite se déposent en face des libellés de gauche.
+
+<DragMatch pairs={[
+  { left: "Quiz", right: "QCM auto-corrigé" },
+  { left: "Timeline", right: "Frise d'étapes dépliables" },
+  { left: "Flashcards", right: "Cartes recto/verso" },
+  { left: "DragMatch", right: "Association par glisser-déposer" },
+]} />
+
+```jsx
+<DragMatch pairs={[
+  { left: "Le libellé fixe", right: "L'étiquette à déposer" },
+]} />
+```
+
+Restez sous six paires : au-delà, l'exercice devient pénible sur petit écran.
+
+## Lequel choisir
+
+| Votre intention | Le composant |
+| --- | --- |
+| Vérifier une compréhension | `Quiz` |
+| Faire mémoriser du vocabulaire | `Flashcards` |
+| Montrer un enchaînement d'étapes | `Timeline` |
+| Faire relier deux notions | `DragMatch` |
+
+Et si aucun ne convient, n'en mettez pas. Un tableau Markdown ou une liste à puces valent mieux qu'un composant plaqué : la leçon précédente n'en utilise qu'un seul, et ne s'en porte pas plus mal.

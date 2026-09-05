@@ -1,0 +1,134 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Drag match
+ * Type: Component
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/effects";
+@use "../settings/spacing";
+@use "../settings/typography";
+@use "../tools/fonts";
+@use "../tools/mq" as mq;
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-drag-match {
+  margin-block: spacing.get("lg");
+  padding: spacing.get("lg");
+  background: colors.get("surface");
+  border: rem.convert(1px) solid colors.get("border");
+  border-radius: spacing.radius();
+  box-shadow: effects.shadow("sm");
+}
+
+  .c-drag-match__grid {
+    display: grid;
+    gap: spacing.get("lg");
+
+    @include mq.mq($from: medium) {
+      grid-template-columns: 2fr 1fr;
+    }
+  }
+
+    .c-drag-match__row {}
+
+      .c-drag-match__label {
+        flex-shrink: 0;
+        width: rem.convert(128px);
+        font-weight: typography.$semibold;
+      }
+
+      .c-drag-match__slot {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        min-width: rem.convert(160px);
+        min-height: rem.convert(48px);
+        padding: spacing.get("sm");
+        border: rem.convert(1px) dashed colors.get("accent");
+        border-radius: spacing.radius();
+        transition: background-color 150ms ease, border-color 150ms ease;
+      }
+
+      .c-drag-match__slot--over {
+        border-color: colors.get("primary");
+        background-color: colors.get("primary-soft");
+      }
+
+      .c-drag-match__slot--ok {
+        border-color: colors.get("success");
+        background-color: color-mix(in srgb, colors.get("success") 10%, transparent);
+      }
+
+      .c-drag-match__slot--ko {
+        border-color: colors.get("error");
+        background-color: color-mix(in srgb, colors.get("error") 10%, transparent);
+      }
+
+        .c-drag-match__placeholder,
+        .c-drag-match__empty {
+          @include fonts.small-text;
+          color: colors.get("text-muted");
+        }
+
+  .c-drag-match__bank {
+    align-content: flex-start;
+    padding: spacing.get("md");
+    background: colors.get("surface-muted");
+    border: rem.convert(1px) solid colors.get("border");
+    border-radius: spacing.radius();
+    transition: border-color 150ms ease;
+  }
+
+  .c-drag-match__bank--over {
+    border-color: colors.get("primary");
+  }
+
+    .c-drag-match__chip {
+      padding: spacing.get("sm") spacing.get("md");
+      font: inherit;
+      font-weight: typography.$semibold;
+      background: colors.get("surface");
+      border: rem.convert(1px) solid colors.get("border");
+      border-radius: spacing.radius("sm");
+      box-shadow: effects.shadow("sm");
+      cursor: grab;
+      transition: border-color 150ms ease;
+
+      &:hover {
+        border-color: colors.get("primary");
+      }
+
+      &:active {
+        cursor: grabbing;
+      }
+
+      &.is-selected {
+        border-color: colors.get("primary");
+        box-shadow: 0 0 0 rem.convert(2px) colors.get("primary");
+      }
+    }
+
+  .c-drag-match__actions {
+    margin-top: spacing.get("lg");
+  }
+
+    .c-drag-match__result {
+      font-weight: typography.$semibold;
+    }
+
+    .c-drag-match__result--perfect {
+      color: colors.get("success");
+    }

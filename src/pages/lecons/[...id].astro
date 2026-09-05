@@ -1,0 +1,35 @@
+---
+import { getCollection, render } from 'astro:content';
+import LessonLayout from '@layouts/LessonLayout.astro';
+import { isLocked } from '../../../scripts/config.mjs';
+
+// Génère une page statique par leçon (.mdx) de la collection.
+//
+// Les leçons listées dans « locked » (socle.config.json) sont écartées
+// ICI, et c'est ce qui fait du verrou un vrai verrou : sans chemin
+// généré, il n'y a ni URL ni contenu dans dist/. Un filtrage à
+// l'affichage seul laisserait la page en ligne, devinable.
+export async function getStaticPaths() {
+  const lessons = await getCollection('lecons');
+  return lessons
+    .filter((lesson) => !isLocked(lesson.id))
+    .map((lesson) => ({
+      params: { id: lesson.id },
+      props: { lesson },
+    }));
+}
+
+const { lesson } = Astro.props;
+const { Content } = await render(lesson);
+---
+
+<LessonLayout
+  id={lesson.id}
+  title={lesson.data.title}
+  module={lesson.data.module}
+  description={lesson.data.description}
+  cover={lesson.data.cover}
+  coverAlt={lesson.data.coverAlt}
+>
+  <Content />
+</LessonLayout>

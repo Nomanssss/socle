@@ -1,0 +1,235 @@
+---
+import '../styles/theme.scss';
+import { getCollection } from 'astro:content';
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import ProgressBar from '../components/ProgressBar.astro';
+import Footer from '../components/Footer.astro';
+import { isLocked, SOCLE_VERSION } from '../../scripts/config.mjs';
+
+// =============================================================
+// LessonLayout - gabarit d'une leçon
+//
+// - Barre latérale : navigation entre toutes les leçons (groupées
+//   par module) + barre de progression du module courant.
+// - Zone principale : en-tête (module, titre, durée), le contenu
+//   MDX (slot), un bouton « Marquer comme terminé » et la
+//   navigation précédent / suivant.
+// =============================================================
+interface Props {
+  id: string;
+  title: string;
+  module: string;
+  description?: string;
+  cover?: ImageMetadata;
+  coverAlt?: string;
+}
+const { id, title, module: currentModule, description, cover, coverAlt } = Astro.props;
+
+// --- Construction de la navigation à partir de la collection ---
+const all = await getCollection('lecons');
+
+const byModule = new Map<string, typeof all>();
+for (const lesson of all) {
+  const arr = byModule.get(lesson.data.module) ?? [];
+  arr.push(lesson);
+  byModule.set(lesson.data.module, arr);
+}
+for (const arr of byModule.values()) {
+  arr.sort((a, b) => a.data.order - b.data.order);
+}
+
+// Ordre des modules : par moduleOrder si présent, sinon alphabétique.
+const modules = [...byModule.entries()].sort((a, b) => {
+  const oa = a[1][0].data.moduleOrder ?? Number.POSITIVE_INFINITY;
+  const ob = b[1][0].data.moduleOrder ?? Number.POSITIVE_INFINITY;
+  return oa !== ob ? oa - ob : a[0].localeCompare(b[0]);
+});
+
+// Liste à plat pour la navigation précédent / suivant. Les leçons
+// verrouillées en sont EXCLUES : leur page n'existe pas, un bouton
+// « Suivant » qui y mène tomberait sur un 404. Le parcours enjambe
+// donc le trou et relie les deux leçons ouvertes qui l'encadrent.
+const flat = modules.flatMap(([, lessons]) => lessons).filter((l) => !isLocked(l.id));
+const currentIndex = flat.findIndex((l) => l.id === id);
+const prev = currentIndex > 0 ? flat[currentIndex - 1] : null;
+const next = currentIndex < flat.length - 1 ? flat[currentIndex + 1] : null;
+
+// Identifiants des leçons du module courant, pour la barre de
+// progression. Verrouillées exclues, sinon le module resterait
+// bloqué sous les 100 % sans que l'apprenant puisse rien y faire.
+const currentModuleIds = (byModule.get(currentModule) ?? [])
+  .filter((l) => !isLocked(l.id))
+  .map((l) => l.id);
+---
+
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description ?? title} />
+    <meta name="generator" content={`Socle ${SOCLE_VERSION}`} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <div class="c-lesson">
+      <!-- Barre latérale -->
+      <aside class="c-lesson__sidebar">
+        <a href="/" class="c-lesson__home-link">
+          ← Accueil
+        </a>
+
+        <div class="c-lesson__progress">
+          <ProgressBar lessonIds={currentModuleIds} />
+        </div>
+
+        <nav aria-label="Navigation des leçons">
+          {
+            modules.map(([moduleName, lessons]) => (
+              <div class="c-lesson__module">
+                <p class="c-lesson__module-name">
+                  {moduleName}
+                </p>
+                <ul class="o-stack o-stack--2xs">
+                  {lessons.map((lesson) =>
+                    isLocked(lesson.id) ? (
+                      <li>
+                        <span class="c-lesson__nav-link c-lesson__nav-link--locked">
+                          <span class="c-lesson__nav-title">{lesson.data.title}</span>
+                          <span class="c-lesson__lock">
+                            <span class="u-hidden-visually">Bientôt disponible</span>
+                            <span aria-hidden="true">🔒</span>
+                          </span>
+                        </span>
+                      </li>
+                    ) : (
+                      <li>
+                        <a
+                          href={`/lecons/${lesson.id}/`}
+                          data-lesson-link={lesson.id}
+                          aria-current={lesson.id === id ? 'page' : undefined}
+                          class="c-lesson__nav-link"
+                        >
+                          <span class="c-lesson__nav-title">{lesson.data.title}</span>
+                          <span class="c-lesson__check" data-check hidden>
+                            <span class="u-hidden-visually">Terminé</span>
+                            <span aria-hidden="true">✓</span>
+                          </span>
+                        </a>
+                      </li>
+                    )
+                  )}
+                </ul>
+              </div>
+            ))
+          }
+        </nav>
+      </aside>
+
+      <!-- Contenu principal -->
+      <main class="c-lesson__main">
+        {
+          cover && (
+            <Image
+              class="c-lesson__cover"
+              src={cover}
+              alt={coverAlt ?? ''}
+              layout="full-width"
+              loading="eager"
+            />
+          )
+        }
+        <article class="c-lesson__article o-wrapper o-wrapper--medium">
+          <header class="c-lesson__header">
+            <p class="c-lesson__eyebrow">{currentModule}</p>
+            <h1 class="c-lesson__title">{title}</h1>
+          </header>
+
+          <div class="s-richtext">
+            <slot />
+          </div>
+
+          <!-- Marquer comme terminé -->
+          <div class="c-lesson__complete">
+            <button
+              type="button"
+              data-complete-btn
+              data-lesson-id={id}
+              class="c-button c-button--outline"
+            >
+              Marquer comme terminé
+            </button>
+          </div>
+
+          <!-- Navigation précédent / suivant -->
+          <nav class="c-lesson__pager o-grid o-grid--halves" aria-label="Leçon précédente / suivante">
+            {
+              prev ? (
+                <a href={`/lecons/${prev.id}/`} class="c-lesson__pager-link c-lesson__pager-link--prev">
+                  <span class="c-lesson__pager-label">
+                    ← Précédent
+                  </span>
+                  <span class="c-lesson__pager-title">
+                    {prev.data.title}
+                  </span>
+                </a>
+              ) : (
+                <span class="c-lesson__pager-empty" />
+              )
+            }
+            {
+              next ? (
+                <a href={`/lecons/${next.id}/`} class="c-lesson__pager-link c-lesson__pager-link--next">
+                  <span class="c-lesson__pager-label">
+                    Suivant →
+                  </span>
+                  <span class="c-lesson__pager-title">
+                    {next.data.title}
+                  </span>
+                </a>
+              ) : (
+                <span class="c-lesson__pager-empty" />
+              )
+            }
+          </nav>
+        </article>
+      </main>
+    </div>
+
+    <!-- Hors de <main> : un <footer> qui y est imbriqué perd son rôle de
+         repère « contentinfo » pour les lecteurs d'écran. -->
+    <Footer />
+
+    <script>
+      import { isCompleted, toggleCompleted, PROGRESS_EVENT } from '../scripts/progress';
+
+      // Bouton « Marquer comme terminé »
+      const btn = document.querySelector<HTMLButtonElement>('[data-complete-btn]');
+      if (btn) {
+        const lessonId = btn.dataset.lessonId!;
+        const render = () => {
+          const done = isCompleted(lessonId);
+          btn.textContent = done ? '✓ Terminé - annuler' : 'Marquer comme terminé';
+          btn.classList.toggle('is-done', done);
+        };
+        btn.addEventListener('click', () => {
+          toggleCompleted(lessonId);
+          render();
+        });
+        render();
+      }
+
+      // État « terminé » des leçons dans la barre latérale
+      function refreshNav() {
+        document.querySelectorAll<HTMLElement>('[data-lesson-link]').forEach((link) => {
+          const done = isCompleted(link.dataset.lessonLink!);
+          link.classList.toggle('is-completed', done);
+          const check = link.querySelector<HTMLElement>('[data-check]');
+          if (check) check.hidden = !done;
+        });
+      }
+      refreshNav();
+      window.addEventListener(PROGRESS_EVENT, refreshNav);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,105 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Page
+ * Type: Component
+ * Description:
+ *   Gabarit des pages annexes - mentions légales aujourd'hui, conditions
+ *   d'utilisation ou déclaration d'accessibilité demain : un lien de retour,
+ *   un titre, puis du texte rédigé confié au scope `.s-richtext`.
+ *
+ *   La largeur de lecture vient de `.o-wrapper--medium` posé dans le HTML,
+ *   comme pour l'article d'une leçon. À ne pas confondre avec
+ *   `elements/_page.scss`, qui habille les balises `html` et `body`.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../settings/typography";
+@use "../tools/mq" as mq;
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-page {
+  padding-block: spacing.get("xl");
+}
+
+  // Même lien de retour que la barre latérale d'une leçon : le visiteur
+  // n'a pas à réapprendre le geste d'une page à l'autre.
+  .c-page__back {
+    display: inline-flex;
+    align-items: center;
+    gap: spacing.get("2xs");
+    font-size: typography.size("sm");
+    font-weight: typography.$semibold;
+    color: colors.get("text");
+    text-decoration: none;
+    transition: color 150ms ease;
+
+    &:hover {
+      color: colors.get("primary-hover");
+    }
+  }
+
+  .c-page__header {
+    margin-block: spacing.get("md") spacing.get("xl");
+    padding-bottom: spacing.get("sm");
+    border-bottom: rem.convert(1px) solid colors.get("border");
+  }
+
+    .c-page__title {}
+
+/*******************************************************************************
+ * Fiche d'informations
+*******************************************************************************/
+
+/**
+ * Les mentions renseignées, en libellé / valeur. Deux colonnes dès que la
+ * place le permet, l'une sous l'autre sur petit écran : une adresse ou une
+ * raison sociale mise en colonne étroite se casse en trop de lignes.
+**/
+.c-page__facts {
+  display: grid;
+  gap: spacing.get("xs") spacing.get("md");
+
+  @include mq.mq($from: medium) {
+    grid-template-columns: minmax(#{rem.convert(180px)}, auto) 1fr;
+  }
+}
+
+  .c-page__fact-label {
+    font-weight: typography.$semibold;
+    color: colors.get("text-muted");
+  }
+
+  .c-page__fact-value {
+    // Une adresse ou un hébergeur peut être écrit sur plusieurs lignes dans
+    // socle.config.json : on respecte les retours à la ligne saisis.
+    white-space: pre-line;
+  }
+
+/*******************************************************************************
+ * États
+*******************************************************************************/
+
+/**
+ * Aucune mention renseignée : la page reste en ligne mais le dit, ici et au
+ * build. Le ton est celui d'un rappel au propriétaire du site, pas d'une
+ * erreur adressée au visiteur.
+**/
+.c-page__todo {
+  padding: spacing.get("md");
+  color: colors.get("text-muted");
+  background: colors.get("surface-muted");
+  border: rem.convert(1px) dashed colors.get("border");
+  border-radius: spacing.radius();
+}

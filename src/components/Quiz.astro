@@ -1,0 +1,143 @@
+---
+// =============================================================
+// Quiz - QCM auto-corrigé (JavaScript vanilla, aucune librairie)
+//
+// Usage MDX :
+//   <Quiz questions={[
+//     {
+//       question: "Que signifie HTML ?",
+//       options: ["HyperText Markup Language", "Hyperlinks Text", "Home Tool ML"],
+//       answer: 0,
+//       explanation: "HTML = HyperText Markup Language."
+//     },
+//   ]} />
+//
+// `answer` = index (0-based) de la bonne option.
+// =============================================================
+interface Question {
+  question: string;
+  options: string[];
+  answer: number;
+  explanation?: string;
+}
+interface Props {
+  questions: Question[];
+  title?: string;
+}
+const { questions, title = 'Quiz' } = Astro.props;
+
+// Identifiant unique par instance (permet plusieurs quiz sur une page).
+const uid = crypto.randomUUID().slice(0, 8);
+---
+
+<form
+  class="c-quiz"
+  data-quiz
+  data-total={questions.length}
+>
+  <h3 class="c-quiz__title o-cluster o-cluster--xs o-cluster--middle">
+    <span aria-hidden="true">📝</span>
+    {title}
+  </h3>
+
+  {
+    questions.map((q, i) => (
+      <fieldset class="c-quiz__question" data-question data-answer={q.answer}>
+        <legend class="c-quiz__legend">
+          {i + 1}. {q.question}
+        </legend>
+        <div class="o-stack o-stack--sm">
+          {q.options.map((option, j) => (
+            <label class="c-quiz__option" data-option>
+              <input type="radio" name={`${uid}-q${i}`} value={j} class="c-quiz__input" />
+              <span>{option}</span>
+            </label>
+          ))}
+        </div>
+        {q.explanation && (
+          <p class="c-quiz__feedback" data-feedback hidden>
+            {q.explanation}
+          </p>
+        )}
+      </fieldset>
+    ))
+  }
+
+  <div class="c-quiz__actions o-cluster o-cluster--middle">
+    <button
+      type="submit"
+      class="c-button c-button--primary"
+      data-submit
+    >
+      Valider
+    </button>
+    <button
+      type="button"
+      class="c-button c-button--ghost"
+      data-reset
+      hidden
+    >
+      Recommencer
+    </button>
+    <p class="c-quiz__result" data-result role="status" aria-live="polite" hidden></p>
+  </div>
+</form>
+
+<script>
+  const CORRECT = 'c-quiz__option--correct';
+  const WRONG = 'c-quiz__option--wrong';
+
+  function setupQuiz(form: HTMLFormElement) {
+    const questions = Array.from(form.querySelectorAll<HTMLElement>('[data-question]'));
+    const total = Number(form.dataset.total || questions.length);
+    const submit = form.querySelector<HTMLButtonElement>('[data-submit]');
+    const reset = form.querySelector<HTMLButtonElement>('[data-reset]');
+    const result = form.querySelector<HTMLElement>('[data-result]');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      let score = 0;
+
+      for (const fieldset of questions) {
+        const answer = Number(fieldset.dataset.answer);
+        const options = Array.from(fieldset.querySelectorAll<HTMLLabelElement>('[data-option]'));
+        const feedback = fieldset.querySelector<HTMLElement>('[data-feedback]');
+        const checked = fieldset.querySelector<HTMLInputElement>('input:checked');
+
+        options.forEach((opt) => {
+          opt.classList.remove(CORRECT, WRONG);
+        });
+
+        // La bonne réponse est toujours signalée en vert.
+        options[answer]?.classList.add(CORRECT);
+        // Une mauvaise réponse choisie est signalée en rouge.
+        if (checked && Number(checked.value) !== answer) {
+          options[Number(checked.value)]?.classList.add(WRONG);
+        }
+        if (checked && Number(checked.value) === answer) score++;
+        if (feedback) feedback.hidden = false;
+      }
+
+      if (result) {
+        result.hidden = false;
+        result.textContent = `Score : ${score} / ${total}`;
+        result.classList.toggle('c-quiz__result--perfect', score === total);
+      }
+      if (submit) submit.hidden = true;
+      if (reset) reset.hidden = false;
+    });
+
+    reset?.addEventListener('click', () => {
+      form.reset();
+      form.querySelectorAll<HTMLLabelElement>('[data-option]').forEach((opt) => {
+        opt.classList.remove(CORRECT, WRONG);
+      });
+      form.querySelectorAll<HTMLElement>('[data-feedback]').forEach((f) => (f.hidden = true));
+      if (result) result.hidden = true;
+      if (submit) submit.hidden = false;
+      if (reset) reset.hidden = true;
+    });
+  }
+
+  document.querySelectorAll<HTMLFormElement>('[data-quiz]').forEach(setupQuiz);
+</script>

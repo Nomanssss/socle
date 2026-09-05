@@ -1,0 +1,50 @@
+# =============================================================
+# Ce qui n'est PAS versionné : tout ce qu'une commande sait
+# reconstruire, et tout ce qui n'appartient qu'à une machine.
+#
+# À l'inverse, quatre familles de fichiers générés SONT versionnées
+# volontairement, pour qu'un clone compile sans accès réseau :
+#   - public/fonts/*.woff2               (npm run brand)
+#   - src/styles/settings/_brand.scss    (npm run brand)
+#   - src/styles/generic/_fonts.scss     (npm run brand)
+#   - fonts.lock.json                    (trace des polices)
+# Ne les ajoutez pas ici : sans elles, `npm install && npm run dev`
+# exige Google Fonts joignable au premier lancement.
+# =============================================================
+
+# Dépendances
+node_modules/
+
+# Sorties de build
+dist/
+# Decks Marp générés (source = src/content/**/*.slides.md et slides.demo.md)
+slides/
+# Types générés par Astro
+.astro/
+
+# Thème Marp : fontes embarquées en base64, regénérées par `npm run brand`.
+# Lourd, illisible en diff, et reconstruit à chaque predev/prebuild.
+src/styles/marp/_fonts.scss
+
+# Variables d'environnement
+.env
+.env.*
+!.env.example
+
+# Journaux
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# macOS
+.DS_Store
+
+# Éditeurs
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Claude Code : les réglages partagés (.claude/settings.json) se
+# versionnent, les préférences locales de chaque poste non.
+.claude/settings.local.json

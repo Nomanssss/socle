@@ -1,0 +1,78 @@
+---
+// =============================================================
+// ProgressBar - progression d'un module, en segments
+//
+// Un segment par leçon, rempli si la leçon est terminée. Le segment
+// correspond à la leçon de MÊME RANG : terminer la 2e sans la 1re
+// remplit bien le 2e segment. C'est plus parlant qu'un pourcentage,
+// qui n'apprend rien sur ce qu'il reste à faire.
+//
+// Lit le localStorage et se met à jour en direct quand une leçon est
+// (dé)cochée (événement PROGRESS_EVENT émis par src/scripts/progress.ts).
+//
+// Pensé pour une dizaine de leçons au plus : au-delà, les segments
+// deviennent des traits fins - lisibles, mais moins parlants.
+// =============================================================
+interface Props {
+  /** Identifiants des leçons du module (ex : ["module-1/lecon-1", ...]). */
+  lessonIds: string[];
+  /** Libellé affiché au-dessus de la jauge. */
+  label?: string;
+  class?: string;
+}
+const { lessonIds, label = 'Progression du module', class: className = '' } = Astro.props;
+const total = lessonIds.length;
+---
+
+<div class:list={['c-progress', className]} data-lesson-ids={JSON.stringify(lessonIds)}>
+  <p class="c-progress__header o-cluster o-cluster--sm o-cluster--between o-cluster--middle">
+    <span class="c-progress__label">{label}</span>
+    <span class="c-progress__value" data-progress-text>0 / {total}</span>
+  </p>
+
+  {/* Le rôle progressbar porte la valeur ; les segments ne sont que sa
+      représentation visuelle, d'où l'aria-hidden. */}
+  <span
+    class="c-progress__track"
+    role="progressbar"
+    aria-label={label}
+    aria-valuemin="0"
+    aria-valuemax={total}
+    aria-valuenow="0"
+    aria-valuetext={`0 leçon sur ${total}`}
+    data-progress-track
+  >
+    {lessonIds.map(() => <span class="c-progress__step" aria-hidden="true" />)}
+  </span>
+</div>
+
+<script>
+  import { isCompleted, PROGRESS_EVENT } from '../scripts/progress';
+
+  function refresh(root: HTMLElement) {
+    const ids = JSON.parse(root.dataset.lessonIds || '[]') as string[];
+    const total = ids.length;
+    const done = ids.filter(isCompleted).length;
+    const complete = total > 0 && done === total;
+
+    root.classList.toggle('is-complete', complete);
+
+    // Un segment par leçon, dans l'ordre du module.
+    const steps = root.querySelectorAll<HTMLElement>('[data-progress-track] > *');
+    steps.forEach((step, i) => step.classList.toggle('is-done', isCompleted(ids[i])));
+
+    const text = root.querySelector<HTMLElement>('[data-progress-text]');
+    if (text) text.textContent = complete ? 'Terminé' : `${done} / ${total}`;
+
+    const track = root.querySelector<HTMLElement>('[data-progress-track]');
+    if (track) {
+      track.setAttribute('aria-valuenow', String(done));
+      track.setAttribute('aria-valuetext', `${done} leçon${done > 1 ? 's' : ''} sur ${total}`);
+    }
+  }
+
+  document.querySelectorAll<HTMLElement>('.c-progress').forEach((el) => {
+    refresh(el);
+    window.addEventListener(PROGRESS_EVENT, () => refresh(el));
+  });
+</script>

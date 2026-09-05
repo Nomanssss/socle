@@ -1,0 +1,91 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Lead (Marp layout)
+ * Type: Theme
+ * Description: Slide de titre - <!-- _class: lead -->. Générée automatiquement.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../../settings/colors";
+@use "../../settings/spacing";
+@use "../../tools/logo";
+
+/*******************************************************************************
+ * Layout
+*******************************************************************************/
+
+/**
+ * Bandeau de 30 % de la hauteur, en haut de la slide : l'image de couverture
+ * de la leçon si elle en a une, sinon un aplat de la couleur principale.
+ *
+ * Pourquoi un `::before` et non le fond de la slide : Marp écrit l'image de
+ * couverture EN STYLE INLINE sur la `<section>`, avec les vraies propriétés
+ * `background-image`, `background-size` et `background-repeat`. Aucune règle
+ * de feuille de style ne peut donc la recadrer - la seule façon d'obtenir un
+ * vrai `cover` sur une bande était de peindre ailleurs.
+ *
+ * D'où les deux temps :
+ *   1. `background-image: none !important` empêche la slide de peindre
+ *      l'image en pleine page (le `!important` est le seul moyen de battre un
+ *      style inline) ;
+ *   2. le `::before` la reprend par la variable `--background-image`, que Marp
+ *      expose à côté, et la cadre en `cover` sur les 30 % du haut.
+ *
+ * Sans image, la variable est absente : le repli `none` laisse voir la couleur
+ * de fond du bandeau. Pas de dégradé bidouillé, pas de cas particulier.
+ *
+ * `padding-top` est en pixels et non en `%` : un padding en pourcentage se
+ * calcule sur la LARGEUR, ce qui donnerait 384 px au lieu des 216 px attendus
+ * (30 % de la hauteur d'une slide, 720 px).
+**/
+section.lead {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: rem.convert(288px);
+  color: colors.get("text");
+  background-color: colors.get("primary-soft");
+  background-image: none !important;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: -1;
+    height: 40%;
+    background-color: colors.get("primary");
+    background-image: var(--background-image, none);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+
+  &::after {
+    content: "";
+    display: block;
+    padding: 0;
+    position: absolute;
+    z-index: -1;
+    right: rem.convert(64px);
+    bottom: rem.convert(48px);
+    width: rem.convert(150px);
+    aspect-ratio: logo.$logotype-ratio;
+    background-image: logo.logotype(colors.$primary);
+    background-repeat: no-repeat;
+    background-size: contain;
+  }
+
+  h1 {
+    margin-bottom: spacing.get("sm");
+  }
+
+}

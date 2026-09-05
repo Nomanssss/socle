@@ -1,0 +1,85 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Header
+ * Type: Component
+ * Description:
+ *   Bandeau d'en-tête de la page d'accueil. La largeur et la gouttière
+ *   viennent de `.o-wrapper` posé sur `.c-header__content` : ce composant
+ *   ne gère que l'habillage.
+ *
+ *   Le symbole de la marque y est posé en filigrane, débordant du bord
+ *   droit. C'est un décor : il vit dans un pseudo-élément, donc hors du
+ *   HTML et hors de portée des lecteurs d'écran.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/effects";
+@use "../settings/spacing";
+@use "../tools/fonts";
+@use "../tools/logo";
+@use "../tools/mq" as mq;
+@use "../tools/responsive";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-header {
+  padding-block: spacing.get("2xl");
+  background: colors.get("primary-soft");
+  isolation: isolate;
+  overflow: clip;
+}
+
+  .c-header__content {
+    position: relative;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: rem.convert(-32px);
+      z-index: -1;
+      aspect-ratio: logo.$logo-ratio;
+      background-image: logo.logo(colors.$primary);
+      background-repeat: no-repeat;
+      background-size: contain;
+      opacity: 0.08;
+
+      @include mq.mq($from: large) {
+        opacity: 0.12;
+      }
+
+      transform: translateY(-50%) rotate(20deg);
+      @include responsive.fluid-size(240px, 560px, width, 375px, 1920px);
+    }
+  }
+
+    .c-header__main {
+      max-width: rem.convert(620px);
+    }
+
+      .c-header__title {}
+
+    .c-header__tagline {
+      @include fonts.large-text;
+      margin-top: spacing.get("sm");
+      color: colors.get("text-muted");
+    }
+
+    .c-header__cta {
+      margin-top: spacing.get("lg");
+      box-shadow: effects.shadow("sm");
+
+      &:hover {
+        transform: translateY(rem.convert(-2px));
+      }
+    }

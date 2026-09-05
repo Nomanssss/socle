@@ -1,0 +1,44 @@
+---
+// =============================================================
+// Figure - image optimisée avec légende optionnelle
+//
+// Enveloppe le composant <Image> d'Astro (donc optimisation +
+// lazy-loading) dans un <figure> et ajoute une <figcaption>.
+//
+// Usage MDX :
+//   import Figure from '@components/Figure.astro';
+//   import illustration from '@assets/mon-schema.png';
+//
+//   <Figure
+//     src={schema}
+//     alt="Description accessible de l'image"
+//     caption="Légende affichée sous l'image (optionnelle)"
+//   />
+//
+// `src` est une image importée (les dimensions sont déduites
+// automatiquement). `width`/`height`/`layout` restent surchargeables.
+// =============================================================
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  /** Image importée (ex : import img from '@assets/mon-image.png'). */
+  src: ImageMetadata;
+  /** Texte alternatif accessible (obligatoire). */
+  alt: string;
+  /** Légende affichée sous l'image (optionnelle). */
+  caption?: string;
+  /** Largeur d'affichage (déduite de l'image si absente). */
+  width?: number;
+  /** Hauteur d'affichage (déduite de l'image si absente). */
+  height?: number;
+  /** Stratégie de mise en page Astro. */
+  layout?: 'constrained' | 'fixed' | 'full-width' | 'none';
+}
+const { src, alt, caption, width, height, layout = 'constrained' } = Astro.props;
+---
+
+<figure class="c-figure">
+  <Image class="c-figure__image" src={src} alt={alt} width={width} height={height} layout={layout} />
+  {caption && <figcaption class="c-figure__caption">{caption}</figcaption>}
+</figure>

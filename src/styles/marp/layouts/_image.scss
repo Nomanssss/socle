@@ -1,0 +1,123 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Image (Marp layouts)
+ * Type: Theme
+ * Description:
+ *   Mises en page basées image.
+ *   - image-full  : texte sur image plein cadre
+ *       <!-- _class: image-full --> + ![bg brightness:0.45](image.png)
+ *   - image-split : image et texte côte à côte
+ *       <!-- _class: image-split --> + ![bg left:40%](image.png)
+ *   - image-left / image-right : panneau d'image sur un côté
+ *       <!-- _class: image-left --> + <!-- _backgroundImage: url('x.png') -->
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../../settings/colors";
+
+/*******************************************************************************
+ * Image plein cadre
+*******************************************************************************/
+
+section.image-full {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  color: #fff;
+
+  h1,
+  h2,
+  h3,
+  p,
+  li {
+    color: #fff;
+  }
+
+  code {
+    color: #fff;
+    background: rgb(255 255 255 / 20%);
+  }
+}
+
+/*******************************************************************************
+ * Image + texte côte à côte
+*******************************************************************************/
+
+section.image-split {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/*******************************************************************************
+ * Panneau d'image sur un côté
+*******************************************************************************/
+
+/**
+ * Une bande d'image sur toute la hauteur, à gauche ou à droite, le contenu
+ * occupant le reste. Même mécanique que le bandeau de la slide de titre :
+ *
+ *   1. Marp peint l'image de `_backgroundImage` EN STYLE INLINE sur la slide,
+ *      donc en pleine page. `background-image: none !important` l'en empêche
+ *      - le seul moyen de battre un style inline ;
+ *   2. le `::before` la reprend par la variable `--background-image`, que Marp
+ *      expose à côté, et la cadre en `cover` sur son panneau ;
+ *   3. sans image, la variable est absente : le repli `none` laisse voir la
+ *      couleur de fond du panneau.
+ *
+ * `--media` est la largeur du panneau. Elle sert deux fois : au panneau
+ * lui-même, et au `padding` qui dégage la place du texte. Un pourcentage de
+ * padding se calcule sur la LARGEUR, ce qui tombe juste ici - contrairement
+ * au cas vertical du bandeau de titre.
+**/
+section.image-left,
+section.image-right {
+  --media: 38%;
+
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-image: var(--band) !important;
+  background-position: bottom center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% var(--band-height) !important;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: -1;
+    width: var(--media);
+    background-color: colors.get("accent");
+    background-image: var(--background-image, none);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+}
+
+section.image-left {
+  padding-left: calc(var(--media) + #{rem.convert(80px)});
+
+  &::before {
+    left: 0;
+  }
+}
+
+section.image-right {
+  padding-right: calc(var(--media) + #{rem.convert(80px)});
+
+  &::before {
+    right: 0;
+  }
+}

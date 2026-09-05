@@ -1,0 +1,64 @@
+---
+title: "Les commandes"
+module: "Module 1 - Prendre le template en main"
+moduleOrder: 1
+order: 2
+description: "Six commandes, dont une seule est indispensable au quotidien."
+slidePoints:
+  - "npm run dev suffit pour écrire : rechargement à chaque enregistrement"
+  - "npm run build produit le site ET valide les en-têtes de leçon"
+  - "npm run bundle assemble le paquet livrable : site + slides"
+  - "npm run brand se lance tout seul avant dev, build et slides"
+---
+
+import DragMatch from '@components/DragMatch.astro';
+import Flashcards from '@components/Flashcards.astro';
+
+Une seule commande est indispensable au démarrage.
+
+```bash
+npm run dev
+```
+
+Elle lance un serveur local sur `http://localhost:4321` qui se recharge à chaque enregistrement de fichier. Gardez-la ouverte pendant que vous écrivez : c'est tout ce dont vous avez besoin pour produire du contenu.
+
+## La liste complète
+
+| Commande | Quand s'en servir | Ce qu'elle produit |
+| --- | --- | --- |
+| `npm run dev` | En permanence pendant l'écriture | Rien : un serveur local |
+| `npm run build` | Avant de publier | Le site dans `dist/` |
+| `npm run preview` | Pour vérifier le build | Rien : sert `dist/` |
+| `npm run slides` | Pour les présentations | Un PDF par leçon dans `slides/` |
+| `npm run slides:html` | Pour projeter au navigateur | Un HTML par leçon dans `slides/` |
+| `npm run bundle` | Pour transmettre le cours | `dist/` complet : site + slides |
+| `npm run brand` | Après un changement de charte | Les fichiers de style et les polices |
+
+## Deux choses qui surprennent la première fois
+
+**`npm run build` est aussi votre validateur.** Il échoue si l'en-tête d'une leçon est invalide — champ obligatoire manquant ou mauvais type. Lancez-le avant de publier, même si vous n'avez pas besoin du site : c'est le seul moment où le template vérifie vos fichiers.
+
+**`npm run brand` se lance tout seul.** Il est branché en amont de `dev`, `build` et `slides`. Vous n'avez donc quasiment jamais à l'appeler à la main : un simple `npm run dev` suffit après un changement de couleur.
+
+## Ce qu'il faut savoir avant de générer des slides
+
+L'export en PDF et en PowerPoint **nécessite Chrome ou Chromium installé** sur la machine. L'export HTML, non. Si `npm run slides` échoue en parlant de navigateur, c'est de cela qu'il s'agit — et `npm run slides:html` vous dépanne en attendant.
+
+## Associer chaque commande à sa sortie
+
+<DragMatch pairs={[
+  { left: "npm run dev", right: "Un serveur local qui se recharge" },
+  { left: "npm run build", right: "Le site statique dans dist/" },
+  { left: "npm run slides", right: "Un PDF par leçon" },
+  { left: "npm run bundle", right: "Le paquet livrable complet" },
+]} />
+
+## Le vocabulaire à retenir
+
+<Flashcards cards={[
+  { front: "dist/", back: "Le site construit, prêt à héberger. Entièrement reconstruit à chaque build : n'y écrivez jamais." },
+  { front: "slides/", back: "Les présentations générées, plus le thème compilé. Reconstruit lui aussi — la source est dans src/content/." },
+  { front: "socle.config.json", back: "Le seul fichier à régler : trois couleurs, deux polices, et les leçons verrouillées." },
+  { front: "frontmatter", back: "L'en-tête d'une leçon, entre deux lignes de trois tirets. Il renseigne le template sans s'afficher." },
+  { front: "MDX", back: "Du Markdown qui accepte en plus des composants. C'est le format des fichiers de leçon." },
+]} />

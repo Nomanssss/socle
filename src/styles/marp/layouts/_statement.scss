@@ -1,0 +1,57 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Statement (Marp layout)
+ * Type: Theme
+ * Description: Citation ou phrase forte, centrée.
+ *              Usage : <!-- _class: statement -->
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../../settings/colors";
+@use "../../settings/typography";
+@use "../../tools/logo";
+
+/*******************************************************************************
+ * Layout
+*******************************************************************************/
+
+section.statement {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  font-size: rem.convert(40px);
+
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    bottom: 7%;
+    right: -25%;
+    width: rem.convert(650px);
+    aspect-ratio: 1;
+    background-image: logo.logo(colors.$primary);
+    background-repeat: no-repeat;
+    background-size: contain;
+    transform: rotate(-15deg);
+    opacity: 0.1;
+  }
+
+  blockquote {
+    padding: 0;
+    border: 0;
+    font-size: rem.convert(46px);
+    line-height: typography.leading("tight");
+    color: colors.get("text");
+  }
+}

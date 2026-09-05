@@ -1,0 +1,79 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Progress bar
+ * Type: Component
+ * Description:
+ *   Jauge segmentée : un segment par leçon du module. Le nombre de segments
+ *   dit combien il reste d'étapes, ce qu'un pourcentage ne dit pas.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../settings/typography";
+@use "../tools/fonts";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-progress {}
+
+  .c-progress__header {
+    @include fonts.eyebrow;
+    margin-bottom: spacing.get("xs");
+    color: colors.get("primary");
+  }
+
+    .c-progress__label {
+      color: colors.get("text");
+    }
+
+    .c-progress__value {
+      flex-shrink: 0;
+      // Chiffres à largeur fixe : le compteur ne tremble pas en changeant.
+      font-variant-numeric: tabular-nums;
+      color: colors.get("text");
+    }
+
+  .c-progress__track {
+    display: flex;
+    gap: rem.convert(3px);
+  }
+
+    .c-progress__step {
+      flex: 1 1 0;
+      height: rem.convert(6px);
+      background-color: color-mix(in srgb, #{colors.get("accent")} 25%, transparent);
+      border-radius: rem.convert(999px);
+      transition: background-color 300ms ease;
+    }
+
+    .c-progress__step.is-done {
+      background-color: colors.get("primary");
+    }
+
+/*******************************************************************************
+ * States
+*******************************************************************************/
+
+/**
+ * Module terminé : la jauge passe au vert, comme les leçons validées de la
+ * barre latérale et les cartes de l'accueil. Le compteur cède la place au mot
+ * « Terminé » (posé par le script) : « 5 / 5 » demande un calcul, pas lui.
+**/
+.c-progress.is-complete .c-progress__step.is-done {
+  background-color: colors.get("success");
+}
+
+.c-progress.is-complete .c-progress__value {
+  font-weight: typography.$bold;
+  color: colors.get("success");
+}

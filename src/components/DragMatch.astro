@@ -1,0 +1,261 @@
+---
+// =============================================================
+// DragMatch - associer par glisser-déposer (vanilla JS, sans lib)
+//
+// L'étudiant place chaque étiquette de droite dans la case en face
+// de l'élément de gauche correspondant. « Vérifier » colore les
+// réponses en vert (juste) ou rouge (faux).
+//
+// Interactions :
+//   - Glisser-déposer natif (souris/tactile).
+//   - Clic : sélectionner une étiquette puis cliquer une case (ou le
+//     banc pour la renvoyer). Accessible au clavier (Tab + Entrée/Espace).
+//
+// Usage MDX :
+//   import DragMatch from '@components/DragMatch.astro';
+//   <DragMatch pairs={[
+//     { left: "HTML", right: "Structure" },
+//     { left: "CSS",  right: "Style" },
+//   ]} />
+// =============================================================
+interface Pair {
+  left: string;
+  right: string;
+}
+interface Props {
+  pairs?: Pair[];
+}
+const { pairs = [] } = Astro.props;
+---
+
+{
+  pairs.length > 0 && (
+    <div class="c-drag-match" data-drag-match data-pairs={JSON.stringify(pairs)}>
+      <div class="c-drag-match__grid">
+        <ul class="o-stack">
+          {pairs.map((pair, i) => (
+            <li class="c-drag-match__row o-cluster o-cluster--middle">
+              <span class="c-drag-match__label">{pair.left}</span>
+              <div
+                class="c-drag-match__slot"
+                data-slot={`l${i}`}
+                tabindex="0"
+                role="button"
+                aria-label={`Emplacement pour « ${pair.left} »`}
+              />
+            </li>
+          ))}
+        </ul>
+
+        <div
+          class="c-drag-match__bank o-cluster o-cluster--sm"
+          data-bank
+          tabindex="0"
+          role="button"
+          aria-label="Banc d'étiquettes"
+        />
+      </div>
+
+      <div class="c-drag-match__actions o-cluster o-cluster--middle">
+        <button type="button" class="c-button c-button--primary" data-verify disabled>
+          Vérifier
+        </button>
+        <button type="button" class="c-button c-button--ghost" data-reset>
+          Réinitialiser
+        </button>
+        <p class="c-drag-match__result" data-result role="status" aria-live="polite" hidden />
+      </div>
+    </div>
+  )
+}
+
+<script>
+  interface Pair {
+    left: string;
+    right: string;
+  }
+
+  function shuffle<T>(input: T[]): T[] {
+    const a = [...input];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function setup(root: HTMLElement) {
+    const pairs = JSON.parse(root.dataset.pairs || '[]') as Pair[];
+    if (!pairs.length) return;
+
+    const lefts = pairs.map((_, i) => ({ id: `l${i}`, matchId: `r${i}` }));
+    const rights = pairs.map((p, i) => ({ id: `r${i}`, label: p.right }));
+    const labelOf = Object.fromEntries(rights.map((r) => [r.id, r.label]));
+    const matchOf = (slotId: string) => lefts.find((l) => l.id === slotId)?.matchId ?? null;
+
+    const bankEl = root.querySelector<HTMLElement>('[data-bank]')!;
+    const slotEls = Array.from(root.querySelectorAll<HTMLElement>('[data-slot]'));
+    const verify = root.querySelector<HTMLButtonElement>('[data-verify]')!;
+    const reset = root.querySelector<HTMLButtonElement>('[data-reset]')!;
+    const result = root.querySelector<HTMLElement>('[data-result]')!;
+
+    let assign: Record<string, string> = {}; // slotId -> rightId
+    let order = shuffle(rights.map((r) => r.id));
+    let selected: string | null = null;
+    let checked = false;
+
+    const makeChip = (rightId: string) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'c-drag-match__chip';
+      chip.dataset.chip = rightId;
+      chip.draggable = true;
+      chip.textContent = labelOf[rightId];
+      chip.setAttribute('aria-pressed', String(selected === rightId));
+      chip.classList.toggle('is-selected', selected === rightId);
+      return chip;
+    };
+
+    const render = () => {
+      const placed = new Set(Object.values(assign));
+
+      // Banc : étiquettes non placées, dans l'ordre mélangé.
+      bankEl.innerHTML = '';
+      const remaining = order.filter((id) => !placed.has(id));
+      if (remaining.length) {
+        remaining.forEach((id) => bankEl.appendChild(makeChip(id)));
+      } else {
+        const span = document.createElement('span');
+        span.className = 'c-drag-match__empty';
+        span.textContent = 'Toutes les étiquettes sont placées.';
+        bankEl.appendChild(span);
+      }
+
+      // Emplacements : étiquette placée ou marqueur, + couleur si vérifié.
+      slotEls.forEach((slot) => {
+        const sid = slot.dataset.slot!;
+        slot.classList.remove(
+          'c-drag-match__slot--ok',
+          'c-drag-match__slot--ko',
+          'c-drag-match__slot--over',
+        );
+        slot.innerHTML = '';
+        if (assign[sid]) {
+          slot.appendChild(makeChip(assign[sid]));
+          if (checked) {
+            slot.classList.add(
+              assign[sid] === matchOf(sid) ? 'c-drag-match__slot--ok' : 'c-drag-match__slot--ko',
+            );
+          }
+        } else {
+          const span = document.createElement('span');
+          span.className = 'c-drag-match__placeholder';
+          span.textContent = 'Déposer ici';
+          slot.appendChild(span);
+        }
+      });
+
+      verify.disabled = Object.keys(assign).length !== lefts.length;
+
+      if (checked) {
+        const score = lefts.filter((l) => assign[l.id] === l.matchId).length;
+        result.hidden = false;
+        result.textContent = `${score} / ${lefts.length} associations correctes`;
+        result.classList.toggle('c-drag-match__result--perfect', score === lefts.length);
+      } else {
+        result.hidden = true;
+      }
+    };
+
+    // Place `rightId` dans `slotId` (ou le renvoie au banc si slotId est null).
+    const place = (rightId: string, slotId: string | null) => {
+      for (const key of Object.keys(assign)) {
+        if (assign[key] === rightId) delete assign[key];
+      }
+      if (slotId) assign[slotId] = rightId;
+      checked = false;
+      selected = null;
+      render();
+    };
+
+    const toggleSelect = (rightId: string) => {
+      selected = selected === rightId ? null : rightId;
+      render();
+    };
+
+    // -- Clic (sélection / placement / retour au banc) ----------------------
+    root.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const chip = target.closest<HTMLElement>('[data-chip]');
+      if (chip) {
+        toggleSelect(chip.dataset.chip!);
+        return;
+      }
+      const slot = target.closest<HTMLElement>('[data-slot]');
+      if (slot) {
+        if (selected) place(selected, slot.dataset.slot!);
+        return;
+      }
+      if (target.closest('[data-bank]') && selected) place(selected, null);
+    });
+
+    // -- Clavier sur les zones (Entrée / Espace) ----------------------------
+    root.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const target = e.target as HTMLElement;
+      if (target.matches('[data-slot]')) {
+        e.preventDefault();
+        if (selected) place(selected, target.dataset.slot!);
+      } else if (target.matches('[data-bank]')) {
+        e.preventDefault();
+        if (selected) place(selected, null);
+      }
+    });
+
+    // -- Glisser-déposer natif ----------------------------------------------
+    let dragId: string | null = null;
+    root.addEventListener('dragstart', (e) => {
+      const chip = (e.target as HTMLElement).closest<HTMLElement>('[data-chip]');
+      if (!chip) return;
+      dragId = chip.dataset.chip!;
+      e.dataTransfer?.setData('text/plain', dragId);
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+    });
+    root.addEventListener('dragover', (e) => {
+      const zone = (e.target as HTMLElement).closest<HTMLElement>('[data-slot], [data-bank]');
+      if (!zone) return;
+      e.preventDefault();
+      if (zone.hasAttribute('data-slot')) zone.classList.add('c-drag-match__slot--over');
+    });
+    root.addEventListener('dragleave', (e) => {
+      const slot = (e.target as HTMLElement).closest<HTMLElement>('[data-slot]');
+      if (slot) slot.classList.remove('c-drag-match__slot--over');
+    });
+    root.addEventListener('drop', (e) => {
+      const zone = (e.target as HTMLElement).closest<HTMLElement>('[data-slot], [data-bank]');
+      if (!zone || !dragId) return;
+      e.preventDefault();
+      const id = dragId;
+      dragId = null;
+      place(id, zone.hasAttribute('data-slot') ? zone.dataset.slot! : null);
+    });
+
+    // -- Actions -------------------------------------------------------------
+    verify.addEventListener('click', () => {
+      if (Object.keys(assign).length !== lefts.length) return;
+      checked = true;
+      render();
+    });
+    reset.addEventListener('click', () => {
+      assign = {};
+      checked = false;
+      selected = null;
+      order = shuffle(rights.map((r) => r.id));
+      render();
+    });
+
+    render();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-drag-match]').forEach(setup);
+</script>

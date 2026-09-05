@@ -1,0 +1,54 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Reset
+ * Type: Generic
+ * Description: Remise à zéro minimale, avant toute mise en forme.
+**/
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+* {
+  margin: 0;
+}
+
+/**
+ * Les médias sont des blocs, jamais plus larges que leur conteneur.
+**/
+img,
+picture,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/**
+ * Les listes ne portent plus ni puce ni retrait : c'est une décision de mise
+ * en forme, pas un défaut. Le contenu rédigé les réintroduit dans son scope.
+**/
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+/**
+ * Les champs de formulaire héritent de la typographie de la page.
+**/
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+legend {
+  padding: 0;
+}

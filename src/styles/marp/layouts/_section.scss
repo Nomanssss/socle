@@ -1,0 +1,64 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Section (Marp layout)
+ * Type: Theme
+ * Description: Intercalaire de chapitre (grand titre, fond accentué).
+ *              Usage : <!-- _class: section -->
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../../settings/colors";
+@use "../../tools/logo";
+
+/*******************************************************************************
+ * Layout
+*******************************************************************************/
+
+section.section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: colors.get("on-primary");
+  background: colors.get("primary");
+  
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    bottom: 5%;
+    right: -10%;
+    width: rem.convert(650px);
+    aspect-ratio: 1;
+    background-image: logo.logo(colors.$page);
+    background-repeat: no-repeat;
+    background-size: contain;
+    transform: rotate(-15deg);
+    opacity: 0.1;
+  }
+
+  h1,
+  h2 {
+    margin-top: 0;
+    font-size: rem.convert(64px);
+    color: colors.get("on-primary");
+    max-width: rem.convert(650px);
+  }
+
+  p, strong {
+    color: colors.get("on-primary");
+  }
+
+  &::after {
+    color: rgba(255, 255, 255, 0.7);
+  }
+}

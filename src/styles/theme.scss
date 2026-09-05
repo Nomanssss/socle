@@ -1,0 +1,90 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Theme
+ * Type: Master
+ * Description:
+ *   Point d'entrée unique des styles du site. Les fichiers sont assemblés
+ *   dans l'ordre ITCSS : chaque couche est plus spécifique que la
+ *   précédente, ce qui évite d'avoir à lutter avec la cascade.
+ *
+ *     settings   variables Sass (couleurs, tailles, breakpoints) - 0 CSS
+ *     tools      mixins et fonctions (mq, fluid-size, typo) - 0 CSS
+ *     generic    reset, box-sizing, variables CSS :root, focus
+ *     elements   balises nues (html, h1…h6, a, hr)
+ *     objects    mise en page réutilisable et sans habillage (.o-)
+ *     components morceaux d'interface identifiables (.c-)
+ *     scopes     zones de contenu rédigé non maîtrisé (.s-)
+ *     utilities  classes atomiques, en dernier recours (.u-, !important)
+ *
+ *   Deux règles à retenir :
+ *     - un composant ne définit ni largeur de page ni rythme vertical :
+ *       c'est le rôle des objets, posés dans le HTML ;
+ *     - on ne cible une balise nue que dans `elements/` et `scopes/`.
+**/
+
+/*******************************************************************************
+ * Generic
+*******************************************************************************/
+
+@use "generic/box-sizing";
+@use "generic/reset";
+@use "generic/fonts";
+@use "generic/root";
+@use "generic/focus";
+
+/*******************************************************************************
+ * Elements
+*******************************************************************************/
+
+@use "elements/page";
+@use "elements/headings";
+@use "elements/typography";
+
+/*******************************************************************************
+ * Objects
+*******************************************************************************/
+
+@use "objects/wrapper";
+@use "objects/stack";
+@use "objects/cluster";
+@use "objects/grid";
+
+/*******************************************************************************
+ * Components
+*******************************************************************************/
+
+@use "components/button";
+@use "components/header";
+@use "components/home";
+@use "components/lesson";
+@use "components/footer";
+// Alias obligatoire : `elements/page` occupe déjà le namespace « page ».
+// Deux couches, deux rôles - les balises html/body d'un côté, le gabarit
+// des pages annexes de l'autre.
+@use "components/page" as page-component;
+@use "components/figure";
+@use "components/youtube-embed";
+@use "components/podcast-embed";
+@use "components/codepen-embed";
+@use "components/progress-bar";
+@use "components/timeline";
+@use "components/quiz";
+@use "components/flashcards";
+@use "components/drag-match";
+
+/*******************************************************************************
+ * Scopes
+*******************************************************************************/
+
+@use "scopes/richtext";
+
+/*******************************************************************************
+ * Utilities
+*******************************************************************************/
+
+@use "utilities/hidden";
+@use "utilities/text";
+@use "utilities/spacings";

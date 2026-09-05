@@ -1,0 +1,149 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Logo
+ * Type: Tools
+ * Description:
+ *   Les marques du projet, sous forme de fonctions plutôt que de variables :
+ *   elles renvoient une image de fond prête à l'emploi, dans la couleur
+ *   demandée.
+ *
+ *     logo.logo($color)       le symbole seul, carré
+ *     logo.logotype($color)   le symbole + le nom, en bandeau
+ *
+ *   Pourquoi des fonctions. Un SVG embarqué en `data:` est opaque pour le
+ *   CSS : ni `currentColor` ni `var(--color-…)` ne le traversent, la couleur
+ *   doit être écrite DANS le SVG. Une variable la figerait une fois pour
+ *   toutes ; la fonction la reçoit à chaque appel - blanc sur un aplat foncé,
+ *   couleur principale sur fond clair, atténué en filigrane.
+ *
+ *   Usage :
+ *     @use "../tools/logo";
+ *     @use "../settings/colors";
+ *
+ *     &::before {
+ *       content: "";
+ *       width: 140px;
+ *       aspect-ratio: logo.$logotype-ratio;
+ *       background-image: logo.logotype(colors.$primary);
+ *       background-size: contain;
+ *       background-repeat: no-repeat;
+ *     }
+ *
+ *   Les variables de ratio évitent d'avoir à retenir les proportions : une
+ *   seule dimension suffit alors à dimensionner la marque.
+ *
+ *   La couleur attendue est une valeur Sass OPAQUE (`colors.$primary`,
+ *   `colors.$page`…), pas un `colors.get()` : ce dernier renvoie un
+ *   `var(--color-…)`, qui n'a aucun sens à l'intérieur d'un data-URI.
+ *   Conséquence : la couleur est figée à la compilation. Changer
+ *   `socle.config.json` la met quand même à jour, puisque tout est recompilé.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass:math";
+@use "sass:meta";
+@use "sass:string";
+@use "../settings/colors";
+
+/*******************************************************************************
+ * Variables
+*******************************************************************************/
+
+// Proportions des deux marques, à passer à `aspect-ratio`.
+$logo-ratio: 1;
+$logotype-ratio: math.div(235, 57);
+
+/**
+ * Tracés, tels quels. Ils ne contiennent ni `<`, ni `>`, ni `#` : rien à
+ * encoder ici, seule la couleur doit l'être.
+**/
+$_logo-path:
+  "M84.737 0C95.927 0 105 9.072 105 20.263v64.474C105 95.927 95.928 105 84.737 105H20.263C9.073 105 "
+    "0 95.928 0 84.737V20.263C0 9.073 9.072 0 20.263 0zM59.394 17.025c-4.317-4.315-11.313-4.315-15.63 "
+    "0l-26.739 26.74c-4.315 4.316-4.315 11.312 0 15.629l26.74 26.739c4.316 4.315 11.312 4.315 15.629 "
+    "0l26.739-26.74c4.315-4.316 4.315-11.312 0-15.629z";
+
+$_logotype-path:
+  "M46 0c6.075 0 11 4.925 11 11v35c0 6.075-4.925 11-11 11H11C4.925 57 0 52.075 0 46V11C0 4.925 "
+    "4.925 0 11 0zM32.242 9.242a6 6 0 0 0-8.484 0L9.242 23.758a6 6 0 0 0 0 8.484l14.516 14.516a6 6 0 "
+    "0 0 8.484 0l14.516-14.516a6 6 0 0 0 0-8.484zM209.73 36.142V28.72h18.746l-2.943 "
+    "1.728q.32-1.855-.384-3.711-.64-1.92-2.303-3.135-1.663-1.28-4.479-1.28-3.646 0-6.27 2.431-2.559 "
+    "2.367-2.367 7.166h-9.661q.32-5.822 2.879-9.725 2.56-3.968 6.59-6.014t8.829-2.047q3.648 0 6.91 "
+    "1.471t5.63 4.287 3.455 6.91q1.089 4.095.32 9.34zm8.637 15.867q-4.99 0-8.893-1.983a16.26 16.26 0 "
+    "0 1-6.206-5.567q-2.368-3.582-3.007-8.317h9.469q.512 3.327 2.495 5.502 2.048 2.175 6.142 2.175 "
+    "2.623 0 4.351-1.215t2.431-3.007h9.661q-.768 3.71-3.007 6.526-2.24 2.751-5.694 4.35-3.391 "
+    "1.536-7.742 1.536M186.358 3h9.149v47.985h-9.149zM181.711 35.95q0 4.606-2.112 8.253-2.11 "
+    "3.647-5.886 5.758-3.775 2.048-8.829 2.048-5.503 "
+    "0-9.661-2.367-4.095-2.431-6.398-6.718-2.24-4.287-2.24-9.79 0-5.565 2.24-9.852 2.303-4.287 "
+    "6.398-6.718 4.159-2.431 9.661-2.431 4.863 0 8.637 2.175 3.775 2.111 5.886 5.566 2.176 3.39 2.176 "
+    "7.358h-9.661q0-1.728-.704-3.263-.704-1.536-2.239-2.495-1.536-1.024-4.095-1.024-3.263 0-5.247 "
+    "1.408t-2.879 3.838q-.831 2.432-.831 5.439 0 2.943.831 5.374.896 2.368 2.879 3.775t5.247 "
+    "1.407q2.559 0 4.159-1.087a6.6 6.6 0 0 0 2.367-2.815 9.6 9.6 0 0 0 .768-3.84zM125.084 "
+    "52.009q-5.503 0-9.661-2.367-4.095-2.431-6.398-6.718-2.24-4.287-2.24-9.79 0-5.565 2.24-9.852 "
+    "2.303-4.287 6.398-6.718 4.158-2.431 9.661-2.431 5.566 0 9.661 2.43 4.094 2.432 6.334 6.719 2.303 "
+    "4.287 2.303 9.853 0 5.501-2.303 9.789-2.24 4.287-6.334 6.718-4.095 2.367-9.661 "
+    "2.367m0-8.19q3.135 0 5.054-1.407 1.983-1.471 2.943-3.903.96-2.43.96-5.374 "
+    "0-3.008-.96-5.439-.96-2.495-2.943-3.902-1.92-1.473-5.054-1.472-3.072 0-5.055 1.472-1.983 "
+    "1.407-2.943 3.902-.96 2.432-.96 5.439 0 2.943.96 5.374t2.943 3.903q1.983 1.407 5.055 "
+    "1.407M76.789 36.718q.256 2.111 1.471 3.646 1.216 1.536 3.136 2.368 1.983.831 4.414.831 3.263 0 "
+    "5.502-1.087 2.24-1.152 2.24-3.583 "
+    "0-1.728-1.408-2.751-1.407-1.024-3.775-1.664-2.303-.64-5.054-1.28a73 73 0 0 1-5.566-1.535 22 22 0 "
+    "0 1-5.119-2.56q-2.303-1.598-3.71-4.158-1.408-2.623-1.408-6.59 0-3.839 2.24-6.782 2.302-3.006 "
+    "6.27-4.67 4.03-1.728 9.148-1.728 4.99 0 8.894 1.984t6.142 5.438q2.303 3.454 2.303 "
+    "7.806h-9.725q-.255-3.2-2.24-4.99-1.919-1.792-5.693-1.792-3.712 0-5.695 1.343-1.983 1.344-1.983 "
+    "3.391 0 1.92 1.407 3.007 1.409 1.088 3.711 1.792 2.368.704 5.119 1.343 2.815.576 5.566 "
+    "1.472A20.5 20.5 0 0 1 98.03 28.4q2.368 1.536 3.775 4.095 1.408 2.495 1.408 6.398 0 6.206-4.67 "
+    "9.661t-13.117 3.455q-5.182 0-9.277-1.983t-6.526-5.439T67 36.717z";
+
+/*******************************************************************************
+ * Helpers
+*******************************************************************************/
+
+/// Encode une couleur pour un data-URI : le `#` d'un hexadécimal y ouvrirait
+/// sinon un fragment d'URL, et tronquerait l'image.
+@function encode-color($color) {
+  $value: meta.inspect($color);
+
+  @if string.slice($value, 1, 1) != "#" {
+    @error "logo() attend une couleur hexadécimale opaque, reçu « #{$value} ».";
+  }
+
+  @return "%23" + string.slice($value, 2);
+}
+
+/**
+ * Fabrique l'image de fond. Deux écarts volontaires par rapport aux SVG
+ * d'origine :
+ *
+ *   - `viewBox` remplace `width`/`height`. Sans viewBox, un SVG a une taille
+ *     intrinsèque et ignore `background-size` : la marque resterait à sa
+ *     taille de départ. Avec, elle se met à l'échelle qu'on lui demande ;
+ *   - attributs en apostrophes simples, pour que le data-URI puisse être
+ *     entouré de guillemets doubles sans échappement.
+**/
+@function _svg($viewbox, $path, $color) {
+  @return url(
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='#{$viewbox}'%3E" +
+    "%3Cpath fill='#{encode-color($color)}' d='#{$path}'/%3E%3C/svg%3E"
+  );
+}
+
+/*******************************************************************************
+ * Marques
+*******************************************************************************/
+
+/// Le symbole seul.
+@function logo($color: colors.$primary) {
+  @return _svg("0 0 105 105", $_logo-path, $color);
+}
+
+/// Le symbole accompagné du nom.
+@function logotype($color: colors.$primary) {
+  @return _svg("0 0 235 57", $_logotype-path, $color);
+}

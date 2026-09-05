@@ -1,0 +1,46 @@
+/* @theme socle */
+
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Socle (Marp)
+ * Type: Master
+ * Description:
+ *   Point d'entrée du thème Marp. Il réutilise les mêmes settings que le
+ *   site, émis en variables CSS par `generic/_root.scss` : changer une
+ *   couleur ou un espacement met à jour le site ET les présentations.
+ *
+ *   Les fontes sont les mêmes, mais embarquées (marp/_fonts.scss) : le thème
+ *   ne dépend ainsi d'aucun chemin, ni au rendu PDF ni dans l'aperçu.
+ *
+ *   Marp ne connaît ni les objets ni les composants du site : une slide
+ *   n'a pas de classes. On y stylise donc des balises nues, comme dans un
+ *   scope - d'où les fichiers `marp/_base.scss` et `marp/layouts/*`.
+ *
+ *   Compilé vers slides/theme.css via `npm run slides:theme`.
+**/
+
+/*******************************************************************************
+ * Generic
+*******************************************************************************/
+
+@use "../generic/root";
+@use "./fonts";
+
+/*******************************************************************************
+ * Base
+*******************************************************************************/
+
+@use "base";
+
+/*******************************************************************************
+ * Layouts
+*******************************************************************************/
+
+@use "layouts/lead";
+@use "layouts/columns";
+@use "layouts/section";
+@use "layouts/statement";
+@use "layouts/image";

@@ -1,0 +1,50 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Responsive
+ * Type: Tools
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass:math";
+@use "sass-rem" as rem;
+
+/*******************************************************************************
+ * Helpers
+*******************************************************************************/
+
+/// Interpole une valeur entre deux tailles de viewport via `clamp()`.
+/// Toutes les valeurs doivent partager la même unité (px).
+///
+/// Exemple : @include responsive.fluid-size(32px, 48px);
+///           @include responsive.fluid-size(20px, 48px, padding-block);
+/* stylelint-disable max-line-length */
+@mixin fluid-size($size-min: 16px, $size-max: 18px, $property: font-size, $vw-min: 400px, $vw-max: 1024px) {
+  $u1: math.unit($size-min);
+  $u2: math.unit($size-max);
+  $u3: math.unit($vw-min);
+  $u4: math.unit($vw-max);
+
+  @if $u1 == $u2 and $u1 == $u3 and $u1 == $u4 {
+    $size-delta: $size-max - $size-min;
+    $vw-delta: $vw-max - $vw-min;
+    $vw-const: math.div($size-delta * 100, $vw-delta) * 1vw;
+    $size-limit: math.max($size-min - math.div($vw-min * $size-delta, $vw-delta), 1px);
+    $operator: "+";
+
+    @if $size-min < 0 and $size-max < 0 {
+      $size-limit: math.min($size-max + math.div($vw-min * $size-delta, $vw-delta), -1px);
+      $operator: "-";
+    }
+
+    #{$property}: clamp(#{rem.convert($size-min)}, #{rem.convert($size-limit)} #{$operator} #{$vw-const}, #{rem.convert($size-max)});
+  } @else {
+    @error "Toutes les unités doivent être identiques.";
+  }
+}
+/* stylelint-enable max-line-length */

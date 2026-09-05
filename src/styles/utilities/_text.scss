@@ -1,0 +1,78 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Text
+ * Type: Utilities
+ * Description:
+ *   Applique un style typographique à un élément dont la balise ne
+ *   correspond pas au niveau visuel voulu (ex. un <p> qui doit ressembler
+ *   à un h3, ou un h2 de composant qui doit rester discret).
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "../tools/fonts";
+
+/*******************************************************************************
+ * Base
+*******************************************************************************/
+
+.u-h1 {
+  @include fonts.h1;
+}
+
+.u-h2 {
+  @include fonts.h2;
+}
+
+.u-h3 {
+  @include fonts.h3;
+}
+
+.u-h4 {
+  @include fonts.h4;
+}
+
+.u-h5 {
+  @include fonts.h5;
+}
+
+.u-h6 {
+  @include fonts.h6;
+}
+
+.u-large-text {
+  @include fonts.large-text;
+}
+
+.u-normal-text {
+  @include fonts.normal-text;
+}
+
+.u-small-text {
+  @include fonts.small-text;
+}
+
+.u-eyebrow {
+  @include fonts.eyebrow;
+}
+
+/*******************************************************************************
+ * Alignement
+*******************************************************************************/
+
+.u-text-left {
+  text-align: left !important;
+}
+
+.u-text-center {
+  text-align: center !important;
+}
+
+.u-text-right {
+  text-align: right !important;
+}

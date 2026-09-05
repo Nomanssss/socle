@@ -1,0 +1,119 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Fonts
+ * Type: Tools
+ * Description:
+ *   Source unique des styles typographiques. Ces mixins sont appliqués aux
+ *   balises nues (elements/_headings.scss), aux composants et aux classes
+ *   utilitaires (.u-h1, .u-eyebrow…) : un titre de composant et un titre
+ *   du markdown des leçons rendent donc exactement pareil.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/typography" as t;
+@use "./responsive";
+
+/*******************************************************************************
+ * Titres
+*******************************************************************************/
+
+@mixin h1 {
+  @include responsive.fluid-size(32px, 48px);
+  font-family: t.family("heading");
+  font-weight: t.$semibold;
+  line-height: t.leading("tight");
+}
+
+@mixin h2 {
+  @include responsive.fluid-size(24px, 28px);
+  font-family: t.family("heading");
+  font-weight: t.$semibold;
+  line-height: t.leading("tight");
+}
+
+@mixin h3 {
+  font-family: t.family("heading");
+  font-size: t.size("lg");
+  font-weight: t.$semibold;
+  line-height: t.leading("tight");
+}
+
+@mixin h4 {
+  font-family: t.family("heading");
+  font-size: t.size("base");
+  font-weight: t.$semibold;
+  line-height: t.leading("tight");
+}
+
+@mixin h5 {
+  font-family: t.family("heading");
+  font-size: t.size("sm");
+  font-weight: t.$semibold;
+  line-height: t.leading("tight");
+}
+
+@mixin h6 {
+  font-family: t.family("heading");
+  font-size: t.size("xs");
+  font-weight: t.$semibold;
+  line-height: t.leading("tight");
+}
+
+/*******************************************************************************
+ * Texte
+*******************************************************************************/
+
+@mixin large-text {
+  font-size: t.size("lg");
+  line-height: t.leading("normal");
+}
+
+@mixin normal-text {
+  font-size: t.size("base");
+  line-height: t.leading("normal");
+}
+
+@mixin small-text {
+  font-size: t.size("sm");
+  line-height: 1.4;
+}
+
+/// Surtitre : petite capitale espacée (module, « Précédent », badges…).
+@mixin eyebrow {
+  font-size: t.size("xs");
+  font-weight: t.$semibold;
+  line-height: t.leading("tight");
+}
+
+/*******************************************************************************
+ * Helpers
+*******************************************************************************/
+
+/// Déclare une fonte woff2 (le seul format nécessaire : tous les navigateurs
+/// supportés le lisent).
+///
+/// `$src` est la source complète, pas un nom de fichier : selon le
+/// consommateur c'est une URL (le site) ou une donnée en base64 (les slides,
+/// qui doivent tenir sans dépendre d'un chemin).
+///
+/// `$weight` accepte une plage pour une fonte variable, ex. `400 700`.
+@mixin font-face($family, $src, $weight: 400, $style: normal, $unicode-range: null) {
+  @font-face {
+    font-family: $family;
+    font-style: $style;
+    font-weight: $weight;
+    font-display: swap;
+    src: url($src) format("woff2");
+
+    @if $unicode-range {
+      unicode-range: $unicode-range;
+    }
+  }
+}
