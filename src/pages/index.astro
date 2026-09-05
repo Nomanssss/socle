@@ -1,8 +1,9 @@
 ---
 import '../styles/theme.scss';
 import { getCollection } from 'astro:content';
+import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
-import { isLocked, unknownLocked, site, SOCLE_VERSION } from '../../scripts/config.mjs';
+import { isLocked, unknownLocked, site } from '../../scripts/config.mjs';
 
 // =============================================================
 // Page d'accueil - liste les modules et leurs leçons.
@@ -51,11 +52,7 @@ const { title: siteTitle, tagline: siteTagline } = site();
 
 <html lang="fr">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={siteTagline} />
-    <meta name="generator" content={`Socle ${SOCLE_VERSION}`} />
-    <title>{siteTitle}</title>
+    <BaseHead title={siteTitle} description={siteTagline} />
   </head>
   <body>
     <header class="c-header">

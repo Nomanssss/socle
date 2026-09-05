@@ -129,8 +129,8 @@ export const LEGAL_FIELDS = [
 ];
 
 /**
- * L'identité du site : le titre et l'accroche de l'accueil, plus les
- * mentions légales. Tout est optionnel dans socle.config.json - un
+ * L'identité du site : le titre et l'accroche de l'accueil, l'adresse
+ * publique du cours, plus les mentions légales. Tout est optionnel dans socle.config.json - un
  * champ absent ou vide revient à une chaîne vide, et le titre retombe
  * sur « Socle » pour qu'une page ne s'affiche jamais sans nom.
  */
@@ -142,6 +142,9 @@ export function site() {
   return {
     title: clean(raw.title) || 'Socle',
     tagline: clean(raw.tagline),
+    // Sans slash final : les URL absolues se composent par-dessus, et
+    // « https://x.fr/ » + « /lecons/… » donnerait un double slash.
+    url: clean(raw.url).replace(/\/+$/, ''),
     legal: Object.fromEntries(LEGAL_FIELDS.map(({ key }) => [key, clean(legal[key])])),
   };
 }

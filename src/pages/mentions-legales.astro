@@ -1,5 +1,6 @@
 ---
 import '../styles/theme.scss';
+import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import { site, legalEntries, missingLegal, SOCLE_VERSION } from '../../scripts/config.mjs';
 
@@ -30,11 +31,10 @@ if (missing.length > 0) {
 
 <html lang="fr">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={`Mentions légales du site ${siteTitle}.`} />
-    <meta name="generator" content={`Socle ${SOCLE_VERSION}`} />
-    <title>Mentions légales - {siteTitle}</title>
+    <BaseHead
+      title={`Mentions légales - ${siteTitle}`}
+      description={`Mentions légales du site ${siteTitle}.`}
+    />
   </head>
   <body>
     <main class="c-page o-wrapper o-wrapper--medium">

@@ -68,7 +68,8 @@ src/
 └── styles/                   → ITCSS + BEMIT (voir le guide)
 public/fonts/                 → polices auto-hébergées (générées)
 public/slides/modules/        → PDF résumé de chaque module (généré, servi par le site)
-socle.config.json             → LE FICHIER À RÉGLER : identité, couleurs, polices, leçons verrouillées
+public/favicon.*, *.png       → icônes du site (le manifeste, lui, est généré)
+socle.config.json             → LE FICHIER À RÉGLER : identité, URL publique, couleurs, polices, leçons verrouillées
 fonts.lock.json               → trace des polices téléchargées (généré)
 scripts/config.mjs            → lecture de socle.config.json (scripts + pages Astro)
 scripts/apply-brand.mjs       → applique socle.config.json au projet

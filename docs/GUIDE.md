@@ -514,6 +514,7 @@ Le nom du cours, son accroche et les mentions légales se règlent eux aussi dan
 "site": {
   "title": "Socle",
   "tagline": "Un template de cours en ligne en markdown, statique et personnalisable.",
+  "url": "",
   "legal": {
     "editor": "",
     "address": "",
@@ -528,6 +529,7 @@ Le nom du cours, son accroche et les mentions légales se règlent eux aussi dan
 | --- | --- |
 | `title` | le titre du bandeau d'accueil, l'onglet du navigateur, le pied de page |
 | `tagline` | l'accroche sous le titre, et la `<meta name="description">` de l'accueil |
+| `url` | l'adresse publique du cours : liens canoniques et balises de partage (voir « Référencement et partage ») |
 | `legal.*` | la page `/mentions-legales/`, en deux rubriques : l'éditeur (`editor`, `address`, `email`, `publisher`) et l'hébergement (`host`) |
 
 Un champ `legal` **vide n'affiche pas de ligne à moitié remplie** : il disparaît de la page, et le build le signale — même parti pris que pour `locked`, une omission silencieuse vaut moins qu'un avertissement.
@@ -558,6 +560,33 @@ Le numéro vit dans `scripts/config.mjs` (`SOCLE_VERSION`), et **pas** dans `pac
 Le pied de page, lui, n'en parle pas : « Socle 1.0.0 » sous le pied de page d'un cours ne dit rien à l'apprenant qui le lit. L'information s'adresse à qui reprend le projet ou inspecte la page, pas au lecteur.
 
 > Pour publier une version de Socle : `SOCLE_VERSION` dans `scripts/config.mjs` **et** `version` dans `package.json`, dans le même commit.
+
+### Référencement et partage
+
+Toutes les balises tiennent dans **`components/BaseHead.astro`**, posé par les trois gabarits. Chaque page sort avec :
+
+| Balise | D'où elle vient |
+| --- | --- |
+| `<title>`, `<meta name="description">` | le titre et le résumé de la page |
+| `<link rel="canonical">` | `site.url` + le chemin de la page |
+| `og:title`, `og:description` | les mêmes que ci-dessus — deux sources finiraient par diverger |
+| `og:type` | `article` sur une leçon, `website` ailleurs |
+| `og:site_name`, `og:locale` | le nom du cours, et `fr_FR` |
+| `og:url` | l'URL canonique |
+| `twitter:card` | `summary` |
+
+**Tout dépend de `site.url`.** Vide, le site se construit et s'affiche normalement, mais le lien canonique et `og:url` sont **omis** — pas inventés. Une balise canonique qui désigne la mauvaise page fait plus de dégâts qu'une balise absente : elle dit aux moteurs d'ignorer la vraie. Le build vous le rappelle une fois au démarrage :
+
+```
+⚠ socle.config.json → « site.url » est vide. Les liens canoniques et les
+  balises OpenGraph d'URL ne seront pas générés.
+```
+
+Renseignez-la dès que le domaine est connu (`https://mon-cours.fr`, avec ou sans slash final, il est retiré) : elle alimente aussi `site:` dans `astro.config.mjs`, d'où Astro tire toutes ses URL absolues.
+
+**Pas d'`og:image`.** Sans visuel conçu pour, les plateformes s'en sortent mieux avec rien qu'avec une image trompeuse — la couverture d'une leçon n'est pas une vignette de partage. Si vous en voulez une, ajoutez la balise dans `BaseHead.astro` et le fichier dans `public/`.
+
+**Ce qu'il n'y a pas non plus** : ni `robots.txt`, ni `sitemap.xml`. Sur un cours d'une douzaine de pages toutes reliées entre elles, les moteurs se débrouillent. Si vous en voulez un, `npx astro add sitemap` le génère — à condition que `site.url` soit renseignée.
 
 ### Le pied de page
 
@@ -705,6 +734,26 @@ Deux points d'entrée assemblent tout, et **partagent les mêmes settings** :
 | --- | --- | --- |
 | `src/styles/theme.scss` | `index.astro`, `LessonLayout.astro` | Le site |
 | `src/styles/marp/theme.scss` | `npm run slides:theme` → `slides/theme.css` | Les présentations |
+
+---
+
+### Les icônes du site
+
+Elles vivent dans `public/`, donc servies à la racine, en dev comme au build :
+
+| Fichier | À quoi il sert |
+| --- | --- |
+| `favicon.svg` | l'icône d'onglet, partout où le SVG est compris — nette à toute taille |
+| `favicon-96x96.png` | le repli en bitmap |
+| `favicon.ico` | les navigateurs qui ne lisent que ce format |
+| `apple-touch-icon.png` | l'écran d'accueil iOS, qui ignore le manifeste |
+| `web-app-manifest-192x192.png`, `-512x512.png` | l'installation en application |
+
+Les balises correspondantes sont dans **`components/BaseHead.astro`**, un composant que les trois gabarits posent dans leur `<head>`. Elles n'y sont écrites qu'une fois : à trois exemplaires, une page finirait tôt ou tard avec une icône que les autres n'ont pas.
+
+Le **manifeste n'est pas un fichier** : `pages/site.webmanifest.js` le génère à `/site.webmanifest`. Il porte le nom du site et les couleurs de la charte, tous deux lus dans `socle.config.json` — figé dans `public/`, il annoncerait « Socle » sur l'écran d'accueil de l'apprenant qui épingle *votre* cours, et garderait un blanc pour couleur de thème même après un changement de charte.
+
+Pour mettre vos propres icônes : régénérez le jeu complet — [realfavicongenerator.net](https://realfavicongenerator.net) accepte un PNG ou un SVG carré — puis remplacez les fichiers de `public/` **en gardant les mêmes noms**. Rien à toucher dans le code. Le `site.webmanifest` fourni par le générateur, lui, est à jeter : il est produit par le projet.
 
 ---
 

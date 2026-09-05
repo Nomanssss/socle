@@ -1,0 +1,71 @@
+---
+import { site, SOCLE_VERSION } from '../../scripts/config.mjs';
+
+// =============================================================
+// BaseHead - le contenu commun du <head>
+//
+// Les trois gabarits qui portent un <head> (accueil, leçon, page
+// annexe) répétaient les mêmes cinq balises. Ajouter les six lignes
+// des favicons aurait porté la répétition à onze, en trois exemplaires
+// - et c'est ainsi qu'une page finit avec une icône que les autres
+// n'ont pas.
+//
+// Ce qui varie se passe en propriétés ; ce qui est propre à une page
+// se glisse dans le slot (le script de repli du sommaire, par exemple).
+//
+// Les icônes sont des fichiers de public/, servis à la racine. Le
+// manifeste, lui, est généré : voir pages/site.webmanifest.js.
+// =============================================================
+interface Props {
+  /** Le contenu de <title>, déjà composé par l'appelant. */
+  title: string;
+  /** Le résumé de la page. Absent, on retombe sur le titre. */
+  description?: string;
+  /** Le type OpenGraph : « article » pour une leçon, « website » ailleurs. */
+  type?: 'website' | 'article';
+}
+
+const { title, description, type = 'website' } = Astro.props;
+const { title: siteTitle } = site();
+const summary = description ?? title;
+
+// L'URL canonique, seulement si « site.url » est renseigné dans
+// socle.config.json - c'est lui qui alimente `site:` dans astro.config,
+// donc `Astro.site`. Sans adresse publique, pas de canonique inventée :
+// une balise qui désigne la mauvaise page nuit plus qu'elle ne sert. Le
+// build le signale déjà une fois, au démarrage.
+const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : null;
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content={summary} />
+<meta name="generator" content={`Socle ${SOCLE_VERSION}`} />
+
+{canonical && <link rel="canonical" href={canonical} />}
+
+{/* Partage sur les réseaux et messageries. Pas d'og:image : sans visuel
+    dédié, les plateformes s'en passent mieux que d'une image trompeuse.
+    Le titre et le résumé sont ceux de la page - deux sources qui
+    divergeraient finiraient par se contredire. */}
+<meta property="og:type" content={type} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={summary} />
+<meta property="og:site_name" content={siteTitle} />
+<meta property="og:locale" content="fr_FR" />
+{canonical && <meta property="og:url" content={canonical} />}
+<meta name="twitter:card" content="summary" />
+
+{/* Icônes. Le .svg est prioritaire là où il est compris, le .ico reste
+    pour les navigateurs qui ne lisent que lui, et l'icône Apple sert à
+    l'écran d'accueil iOS - qui ignore le manifeste. */}
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-title" content={siteTitle} />
+<link rel="manifest" href="/site.webmanifest" />
+
+<title>{title}</title>
+
+<slot />
