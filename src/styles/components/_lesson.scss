@@ -42,6 +42,19 @@
   }
 }
 
+/**
+ * Le pied de page colle à la mise en page d'une leçon.
+ *
+ * `.c-footer` se réserve une marge haute, qui aère l'accueil et les pages
+ * annexes. Ici elle laisserait un blanc sous la barre latérale, dont le
+ * fond et le filet s'arrêteraient avant le pied de page - un décrochement
+ * qu'on remarque immédiatement. La règle vise donc le seul cas où le pied
+ * de page suit directement les deux colonnes.
+**/
+.c-lesson + .c-footer {
+  margin-top: 0;
+}
+
 /*******************************************************************************
  * Sidebar
 *******************************************************************************/
@@ -49,7 +62,6 @@
 .c-lesson__sidebar {
   position: relative;
   flex-shrink: 0;
-  padding: spacing.get("lg");
   background: colors.get("surface");
   border-bottom: rem.convert(1px) solid colors.get("border");
 
@@ -75,14 +87,7 @@
   }
 
   @include mq.mq($from: medium) {
-    position: sticky;
-    top: 0;
     width: rem.convert(288px);
-    height: 100vh;
-    // Rétabli après le « clip » ci-dessus : la navigation doit défiler
-    // quand elle dépasse. Un axe découpé, l'autre défilable - la seule
-    // combinaison que « clip » autorise avec « auto ».
-    overflow-y: auto;
     border-bottom: 0;
     border-right: rem.convert(1px) solid colors.get("border");
 
@@ -108,6 +113,30 @@
     }
   }
 }
+
+  // Le collant vit ICI et non sur l'<aside>.
+  //
+  // L'aside est un item flex : étiré par défaut, il fait toute la hauteur
+  // de la leçon, et son filet rejoint donc le pied de page. Mais un
+  // élément aussi haut que son parent ne colle à rien - « sticky » n'a
+  // d'effet que sur un élément plus court que son conteneur. D'où ce
+  // conteneur intérieur : lui reste court, et suit le défilement.
+  //
+  // Il porte aussi le padding : le collant doit emmener ses marges avec
+  // lui, et la zone défilante les inclure.
+  .c-lesson__sidebar-inner {
+    padding: spacing.get("lg");
+
+    @include mq.mq($from: medium) {
+      position: sticky;
+      top: 0;
+      // Plus haute que l'écran, la navigation défile en interne plutôt que
+      // de dépasser. Une hauteur MAXIMALE, pas fixe : une navigation courte
+      // ne doit pas réserver tout l'écran.
+      max-height: 100vh;
+      overflow-y: auto;
+    }
+  }
 
   .c-lesson__burger {
     display: none;

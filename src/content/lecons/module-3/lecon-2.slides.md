@@ -46,7 +46,7 @@ Des pages web, une par leçon. La sortie principale, produite par `npm run build
 
 ### Les slides
 
-Une présentation par leçon. Un bonus, produit par `npm run slides`.
+Une présentation par leçon, un PDF par module. Produits par `npm run slides`.
 
 ---
 

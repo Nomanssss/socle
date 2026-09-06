@@ -547,7 +547,7 @@ La rubrique **« Conception et réalisation »** crédite le template lui-même 
 
 ### La version de Socle
 
-Cette même rubrique affiche « propulsé par **Socle 1.0.0** », et chaque page du site porte l'information en en-tête :
+Cette même rubrique affiche « construit avec **Socle 1.0.0** », et chaque page du site porte l'information en en-tête :
 
 ```html
 <meta name="generator" content="Socle 1.0.0">

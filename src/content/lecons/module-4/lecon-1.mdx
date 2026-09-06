@@ -107,6 +107,21 @@ Tous deux partent des **mêmes** fichiers de variables. Modifier un réglage met
 
 Une nuance : le site se rafraîchit tout seul pendant que `npm run dev` tourne, alors que les slides doivent être **régénérées** avec `npm run slides`.
 
+## Les icônes ne sont pas dans la charte
+
+Couleurs et polices se règlent dans `socle.config.json`. Les icônes, non : ce sont des fichiers, dans `public/`.
+
+| Fichier | Où on le voit |
+| --- | --- |
+| `favicon.svg` | l'onglet du navigateur |
+| `favicon.ico`, `favicon-96x96.png` | le même, pour les navigateurs qui ne lisent pas le SVG |
+| `apple-touch-icon.png` | l'écran d'accueil d'un iPhone |
+| `web-app-manifest-*.png` | le cours installé comme une application |
+
+Pour mettre les vôtres : régénérez le jeu complet — [realfavicongenerator.net](https://realfavicongenerator.net) accepte une image carrée — et remplacez les fichiers **en gardant les mêmes noms**. Rien à changer dans le code.
+
+Une exception : le générateur vous donnera aussi un `site.webmanifest`. **Jetez-le.** Le template produit le sien, avec le nom de votre cours et vos couleurs ; celui du générateur les figerait sur ceux de Socle.
+
 ## Le vocabulaire
 
 <Flashcards cards={[

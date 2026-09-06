@@ -3,9 +3,10 @@ title: "Générer les slides"
 module: "Module 3 - Les présentations"
 moduleOrder: 3
 order: 1
-description: "Une commande transforme chaque leçon en présentation. Trois niveaux possibles, le premier trouvé gagne."
+description: "Une commande transforme chaque leçon en présentation, et chaque module en PDF résumé."
 slidePoints:
-  - "Une commande génère une présentation par leçon"
+  - "Une commande génère une présentation par leçon, et un PDF par module"
+  - "Le PDF du module est proposé au téléchargement en fin de module"
   - "Trois niveaux, le premier trouvé gagne : fichier dédié, slidePoints, ou rien"
   - "slidePoints est un remplaçant au rabais du deck, pas un complément"
   - "La slide de titre est fabriquée automatiquement : ne l'écrivez jamais"
@@ -14,7 +15,7 @@ slidePoints:
 import Timeline from '@components/Timeline.astro';
 import Quiz from '@components/Quiz.astro';
 
-En plus du site, le template fabrique **une présentation par leçon**. C'est la seconde sortie évoquée au module 1. Vous pouvez ignorer ce module entier si vous n'en avez pas besoin : rien d'autre n'en dépend.
+En plus du site, le template fabrique **une présentation par leçon**, et **un PDF par module**. C'est la seconde sortie évoquée au module 1.
 
 ## La commande
 
@@ -22,18 +23,35 @@ En plus du site, le template fabrique **une présentation par leçon**. C'est la
 npm run slides
 ```
 
-Elle produit un PDF par leçon dans le dossier `slides/`. Deux variantes existent :
+Elle produit, dans le dossier `slides/`, un PDF par leçon **et** un par module.
 
 | Commande | Sortie | Chrome requis |
 | --- | --- | --- |
 | `npm run slides` | PDF | oui |
 | `npm run slides:html` | HTML projetable | non |
-| `node scripts/build-slides.mjs --format=pptx` | PowerPoint | oui |
+| `npm run slides:pptx` | PowerPoint | oui |
 
 Deux comportements à connaître :
 
-- **toutes** les leçons sont retraitées à chaque exécution, pas seulement celles que vous venez de modifier ;
+- **tout** est retraité à chaque exécution, pas seulement ce que vous venez de modifier ;
 - le dossier `slides/` est entièrement reconstruit. N'y écrivez jamais rien : la source est dans `src/content/`.
+
+En PDF, tout régénérer prend plusieurs minutes — Marp ouvre Chrome pour chaque deck. D'où quatre commandes pour viser :
+
+| | Les leçons seules | Les modules seuls |
+| --- | --- | --- |
+| PDF | `npm run slides:lecons` | `npm run slides:modules` |
+| HTML | `npm run slides:lecons:html` | `npm run slides:modules:html` |
+
+Curiosité utile : `slides:modules` lit quand même toutes vos leçons, puisque ce sont elles qui composent les decks de module. Il évite seulement de rendre le deck de chacune. Une leçon corrigée est donc bien reprise dans le PDF de son module, sans avoir à régénérer les dix autres.
+
+## Le PDF résumé d'un module
+
+Le deck d'un module enchaîne les leçons du dossier, dans l'ordre, derrière une slide de titre à son nom. Chaque leçon y est introduite par un intercalaire sur fond plein. Rien n'est réécrit : c'est la suite de ce que vous avez vu leçon après leçon, les leçons verrouillées en moins.
+
+Le site s'en sert : **la dernière leçon de chaque module** affiche un bouton « Télécharger le PDF résumé », à côté de « Marquer comme terminé ». Faites défiler jusqu'en bas de la dernière leçon de ce module, il y est.
+
+Ce bouton n'apparaît **que si le PDF existe** au moment où le site se construit. `npm run build` seul ne le fabrique pas : c'est `npm run slides`, qui réclame Chrome. Plutôt qu'un lien mort, pas de bouton.
 
 ## Trois niveaux, le premier trouvé gagne
 
@@ -102,9 +120,15 @@ N'y remettez pas la slide de titre : elle est déjà là.
   },
   {
     question: "Vous modifiez une seule leçon. Que régénère npm run slides ?",
-    options: ["Seulement cette leçon", "Toutes les leçons"],
+    options: ["Seulement cette leçon", "Toutes les leçons, et tous les modules"],
     answer: 1,
-    explanation: "Le dossier slides/ est entièrement reconstruit à chaque exécution.",
+    explanation: "Tout est reconstruit à chaque exécution. Pour viser, il y a slides:lecons et slides:modules.",
+  },
+  {
+    question: "Le bouton « Télécharger le PDF résumé » n'apparaît nulle part. Pourquoi, le plus souvent ?",
+    options: ["npm run slides n'a jamais tourné", "Le module n'a qu'une leçon", "Il faut l'activer dans socle.config.json"],
+    answer: 0,
+    explanation: "Le bouton ne s'affiche que si le PDF du module existe vraiment. npm run build seul ne le produit pas.",
   },
   {
     question: "Vous n'avez pas Chrome sur la machine. Que pouvez-vous générer ?",

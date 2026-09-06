@@ -76,6 +76,14 @@ N'importe quel hébergeur de fichiers statiques convient : Netlify, Vercel, GitH
 
 Pensez simplement à `npm run build` avant de publier : c'est aussi lui qui valide les en-têtes de vos leçons.
 
+**Une fois l'adresse connue, notez-la dans `socle.config.json`**, champ `site.url` :
+
+```json
+"url": "https://mon-cours.fr"
+```
+
+C'est elle qui permet au site de composer ses liens canoniques et les balises de partage — celles qui donnent son titre et son résumé à une page envoyée sur une messagerie. Tant qu'elle est vide, le site fonctionne, mais ces balises sont **omises plutôt qu'inventées** : une adresse fausse ferait plus de dégâts qu'une absente. Le build vous le rappelle à chaque passage.
+
 ## Vérifier que c'est clair
 
 <Quiz questions={[

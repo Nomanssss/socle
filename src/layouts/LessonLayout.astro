@@ -108,70 +108,76 @@ const currentModuleIds = (byModule.get(currentModule) ?? [])
     <div class="c-lesson">
       <!-- Barre latérale -->
       <aside class="c-lesson__sidebar">
-        <div class="c-lesson__bar o-cluster o-cluster--between o-cluster--middle">
-          <a href="/" class="c-lesson__home-link">
-            ← Accueil
-          </a>
+        {/* Ce conteneur porte le collant, pas l'<aside> : l'aside s'étire
+            sur toute la hauteur de la leçon pour que son filet rejoigne le
+            pied de page, et un élément aussi haut que son parent ne colle
+            à rien. C'est donc son contenu qui suit le défilement. */}
+        <div class="c-lesson__sidebar-inner">
+          <div class="c-lesson__bar o-cluster o-cluster--between o-cluster--middle">
+            <a href="/" class="c-lesson__home-link">
+              ← Accueil
+            </a>
 
-          {/* Visible sous « medium » et seulement si le script a tourné :
-              un bouton qui ne replierait rien ne doit pas s'afficher. */}
-          <button
-            type="button"
-            class="c-lesson__burger"
-            data-nav-toggle
-            aria-expanded="false"
-            aria-controls="lesson-nav"
-          >
-            <span class="u-hidden-visually" data-nav-toggle-label>Afficher le sommaire</span>
-            <span class="c-lesson__burger-icon" aria-hidden="true" />
-          </button>
-        </div>
+            {/* Visible sous « medium » et seulement si le script a tourné :
+                un bouton qui ne replierait rien ne doit pas s'afficher. */}
+            <button
+              type="button"
+              class="c-lesson__burger"
+              data-nav-toggle
+              aria-expanded="false"
+              aria-controls="lesson-nav"
+            >
+              <span class="u-hidden-visually" data-nav-toggle-label>Afficher le sommaire</span>
+              <span class="c-lesson__burger-icon" aria-hidden="true" />
+            </button>
+          </div>
 
-        <div class="c-lesson__progress">
-          <ProgressBar lessonIds={currentModuleIds} />
-        </div>
+          <div class="c-lesson__progress">
+            <ProgressBar lessonIds={currentModuleIds} />
+          </div>
 
-        <nav id="lesson-nav" class="c-lesson__nav" aria-label="Navigation des leçons">
-          {
-            modules.map(([moduleName, lessons]) => (
-              <div class="c-lesson__module">
-                <p class="c-lesson__module-name">
-                  {moduleName}
-                </p>
-                <ul class="o-stack o-stack--2xs">
-                  {lessons.map((lesson) =>
-                    isLocked(lesson.id) ? (
-                      <li>
-                        <span class="c-lesson__nav-link c-lesson__nav-link--locked">
-                          <span class="c-lesson__nav-title">{lesson.data.title}</span>
-                          <span class="c-lesson__lock">
-                            <span class="u-hidden-visually">Bientôt disponible</span>
-                            <span aria-hidden="true">🔒</span>
+          <nav id="lesson-nav" class="c-lesson__nav" aria-label="Navigation des leçons">
+            {
+              modules.map(([moduleName, lessons]) => (
+                <div class="c-lesson__module">
+                  <p class="c-lesson__module-name">
+                    {moduleName}
+                  </p>
+                  <ul class="o-stack o-stack--2xs">
+                    {lessons.map((lesson) =>
+                      isLocked(lesson.id) ? (
+                        <li>
+                          <span class="c-lesson__nav-link c-lesson__nav-link--locked">
+                            <span class="c-lesson__nav-title">{lesson.data.title}</span>
+                            <span class="c-lesson__lock">
+                              <span class="u-hidden-visually">Bientôt disponible</span>
+                              <span aria-hidden="true">🔒</span>
+                            </span>
                           </span>
-                        </span>
-                      </li>
-                    ) : (
-                      <li>
-                        <a
-                          href={`/lecons/${lesson.id}/`}
-                          data-lesson-link={lesson.id}
-                          aria-current={lesson.id === id ? 'page' : undefined}
-                          class="c-lesson__nav-link"
-                        >
-                          <span class="c-lesson__nav-title">{lesson.data.title}</span>
-                          <span class="c-lesson__check" data-check hidden>
-                            <span class="u-hidden-visually">Terminé</span>
-                            <span aria-hidden="true">✓</span>
-                          </span>
-                        </a>
-                      </li>
-                    )
-                  )}
-                </ul>
-              </div>
-            ))
-          }
-        </nav>
+                        </li>
+                      ) : (
+                        <li>
+                          <a
+                            href={`/lecons/${lesson.id}/`}
+                            data-lesson-link={lesson.id}
+                            aria-current={lesson.id === id ? 'page' : undefined}
+                            class="c-lesson__nav-link"
+                          >
+                            <span class="c-lesson__nav-title">{lesson.data.title}</span>
+                            <span class="c-lesson__check" data-check hidden>
+                              <span class="u-hidden-visually">Terminé</span>
+                              <span aria-hidden="true">✓</span>
+                            </span>
+                          </a>
+                        </li>
+                      )
+                    )}
+                  </ul>
+                </div>
+              ))
+            }
+          </nav>
+        </div>
       </aside>
 
       <!-- Contenu principal -->
