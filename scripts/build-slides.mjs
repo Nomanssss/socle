@@ -204,6 +204,42 @@ function marpHeader(title) {
   return head;
 }
 
+/** Le dossier de module d'une leçon, ou null si elle est à la racine. */
+function moduleDirOf(rel) {
+  return rel.includes('/') || rel.includes('\\') ? rel.split(/[/\\]/)[0] : null;
+}
+
+/**
+ * La couverture d'un module : celle de sa PREMIÈRE leçon qui en déclare
+ * une, au sens du champ « order » et non de l'ordre alphabétique des
+ * fichiers.
+ *
+ * Elle sert deux fois : de bandeau aux leçons du module qui n'ont pas la
+ * leur, et à la slide de titre du deck de module. Sans elle, un module
+ * dont une seule leçon est illustrée produisait un deck panaché - une
+ * slide de titre en image, les suivantes en aplat.
+ *
+ * Il faut une passe séparée : la leçon 2 peut avoir besoin de la
+ * couverture de la leçon 1, or la boucle principale les traite dans
+ * l'ordre des fichiers, sans savoir ce qui vient après.
+ */
+const moduleCovers = new Map();
+
+for (const rel of lessons) {
+  const dir = moduleDirOf(rel);
+  if (!dir) continue;
+
+  const file = join(LESSONS_DIR, rel);
+  const { data } = matter(readFileSync(file, 'utf8'));
+  if (!data.cover) continue;
+
+  const order = Number.isFinite(Number(data.order)) ? Number(data.order) : Infinity;
+  const known = moduleCovers.get(dir);
+  if (!known || order < known.order) {
+    moduleCovers.set(dir, { order, path: resolve(dirname(file), String(data.cover)) });
+  }
+}
+
 const generated = [];
 const manifest = [];
 
@@ -231,7 +267,10 @@ for (const rel of lessons) {
   // l'image dans la variable `--background-image`, que `layouts/_lead.scss`
   // récupère pour la cadrer lui-même. Aucun réglage de taille à passer ici :
   // le cadrage appartient à la mise en page.
-  const bandSource = data.cover ? resolve(dir, String(data.cover)) : DEFAULT_BAND;
+  const bandSource =
+    (data.cover && resolve(dir, String(data.cover))) ||
+    moduleCovers.get(moduleDirOf(rel))?.path ||
+    DEFAULT_BAND;
   if (bandSource) {
     const staged = stageImage(bandSource, OUT_DIR);
     if (staged) leadSlide += `<!-- _backgroundImage: url('${staged}') -->\n`;
@@ -344,8 +383,9 @@ for (const [dir, { label, labels, bodies }] of DO_MODULES ? byModuleDir : []) {
 
   let body = '<!-- _class: lead -->\n';
   body += '<!-- _paginate: false -->\n\n';
-  if (DEFAULT_BAND) {
-    const staged = stageImage(DEFAULT_BAND, OUT_DIR);
+  const moduleBand = moduleCovers.get(dir)?.path ?? DEFAULT_BAND;
+  if (moduleBand) {
+    const staged = stageImage(moduleBand, OUT_DIR);
     if (staged) body += `<!-- _backgroundImage: url('${staged}') -->\n`;
   }
   body += '\n';

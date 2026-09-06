@@ -74,8 +74,11 @@ Ne l'écrivez jamais vous-même. Elle est fabriquée depuis l'en-tête du `.mdx`
 Elle porte un bandeau sur 30 % de la hauteur, rempli dans cet ordre :
 
 1. l'image `cover:` de la leçon, si elle en a une ;
-2. sinon l'image par défaut du projet, si vous en configurez une ;
-3. sinon un aplat de la couleur principale.
+2. sinon **la couverture de son module** : celle de la première leçon du module qui en déclare une ;
+3. sinon l'image par défaut du projet, si vous en configurez une ;
+4. sinon un aplat de la couleur principale.
+
+Le deuxième niveau vous évite de répéter `cover:` partout. Illustrez la première leçon d'un module, et tout le module en hérite — ses autres leçons comme la slide de titre de son PDF résumé. Une leçon qui veut sa propre image la déclare, elle l'emporte.
 
 L'image par défaut se règle dans `socle.config.json` :
 

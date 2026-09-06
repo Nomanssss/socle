@@ -158,8 +158,11 @@ Ne l'écrivez jamais vous-même : elle est fabriquée depuis le frontmatter du `
 Elle porte un **bandeau sur 30 % de la hauteur**, rempli dans cet ordre :
 
 1. l'image `cover:` de la leçon, si elle en a une ;
-2. sinon l'image par défaut du projet, si vous en configurez une ;
-3. sinon un aplat de la couleur principale.
+2. sinon **la couverture de son module** — celle de la première leçon du module qui en déclare une, au sens du champ `order` ;
+3. sinon l'image par défaut du projet, si vous en configurez une ;
+4. sinon un aplat de la couleur principale.
+
+Le deuxième niveau évite un deck panaché : illustrer la première leçon d'un module suffit à donner un bandeau à toutes les autres, et à la slide de titre du **PDF de module**, qui suit la même règle. Une leçon qui veut son image à elle la déclare, et sa `cover:` gagne.
 
 L'image par défaut se règle dans `socle.config.json`, avec un chemin relatif à la racine du projet :
 
@@ -173,7 +176,7 @@ L'image par défaut se règle dans `socle.config.json`, avec un chemin relatif �
 
 La clé est facultative : sans elle, on retombe sur l'aplat. Si le fichier indiqué n'existe pas, `npm run slides` le signale et garde l'aplat plutôt que de produire un bandeau vide.
 
-Dans les trois cas l'image est recadrée en `cover` : elle remplit le bandeau et déborde, elle n'est **jamais déformée**.
+Dans tous les cas l'image est recadrée en `cover` : elle remplit le bandeau et déborde, elle n'est **jamais déformée**.
 
 Le cadrage appartient à la mise en page, pas au générateur : `layouts/_lead.scss` récupère l'image dans la variable `--background-image` que Marp expose, et la peint dans un `::before`. Il le fait parce que Marp écrit l'image **en style inline** sur la slide, avec ses propres `background-size` et `background-repeat` — aucune feuille de style ne peut la recadrer, d'où le `background-image: none !important` sur la slide et la reprise dans le bandeau. C'est le seul `!important` du projet en dehors de la couche `utilities` (où il est la règle), et c'est la seule façon de battre un style inline.
 
