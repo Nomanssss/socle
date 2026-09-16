@@ -71,7 +71,9 @@
 
     .c-header__tagline {
       @include fonts.large-text;
-      margin-top: spacing.get("sm");
+      // Le titre est en graisse 700 : plus lourd, il demande un peu plus
+      // d'air sous lui que les 12 px d'un simple retour de ligne.
+      margin-top: spacing.get("md");
       color: colors.get("text-muted");
     }
 
