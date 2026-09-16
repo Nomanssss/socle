@@ -1,5 +1,8 @@
-import { defineCollection, z } from 'astro:content';
+import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
+// Astro 7 : `z` ne s'importe plus depuis « astro:content », qui le
+// signale comme déprécié. C'est le même Zod, au même endroit.
+import { z } from 'astro/zod';
 
 // =============================================================
 // COLLECTION DE CONTENU - LEÇONS

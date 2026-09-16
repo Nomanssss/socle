@@ -23,10 +23,12 @@ interface Props {
   description?: string;
   /** Le type OpenGraph : « article » pour une leçon, « website » ailleurs. */
   type?: 'website' | 'article';
+  /** Page à tenir hors des moteurs de recherche (le 404, aujourd'hui). */
+  noindex?: boolean;
 }
 
-const { title, description, type = 'website' } = Astro.props;
-const { title: siteTitle } = site();
+const { title, description, type = 'website', noindex = false } = Astro.props;
+const { title: siteTitle, locale } = site();
 const summary = description ?? title;
 
 // L'URL canonique, seulement si « site.url » est renseigné dans
@@ -34,13 +36,18 @@ const summary = description ?? title;
 // donc `Astro.site`. Sans adresse publique, pas de canonique inventée :
 // une balise qui désigne la mauvaise page nuit plus qu'elle ne sert. Le
 // build le signale déjà une fois, au démarrage.
-const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : null;
+// Rien de canonique non plus sur une page qu'on demande à ne pas indexer :
+// les deux balises se contrediraient.
+const canonical =
+  Astro.site && !noindex ? new URL(Astro.url.pathname, Astro.site).href : null;
 ---
 
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content={summary} />
 <meta name="generator" content={`Socle ${SOCLE_VERSION}`} />
+
+{noindex && <meta name="robots" content="noindex, follow" />}
 
 {canonical && <link rel="canonical" href={canonical} />}
 
@@ -52,7 +59,7 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : nu
 <meta property="og:title" content={title} />
 <meta property="og:description" content={summary} />
 <meta property="og:site_name" content={siteTitle} />
-<meta property="og:locale" content="fr_FR" />
+{locale && <meta property="og:locale" content={locale} />}
 {canonical && <meta property="og:url" content={canonical} />}
 <meta name="twitter:card" content="summary" />
 

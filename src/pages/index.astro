@@ -2,6 +2,7 @@
 import '../styles/theme.scss';
 import { getCollection } from 'astro:content';
 import BaseHead from '../components/BaseHead.astro';
+import SkipLink from '../components/SkipLink.astro';
 import Footer from '../components/Footer.astro';
 import { isLocked, unknownLocked, site } from '../../scripts/config.mjs';
 
@@ -47,14 +48,16 @@ const modules = [...byModule.entries()].sort((a, b) => {
 const firstLesson = modules.flatMap(([, lessons]) => lessons).find((lesson) => !isLocked(lesson.id));
 
 // Titre et accroche : réglés dans socle.config.json, section « site ».
-const { title: siteTitle, tagline: siteTagline } = site();
+const { title: siteTitle, tagline: siteTagline, lang } = site();
 ---
 
-<html lang="fr">
+<html lang={lang}>
   <head>
     <BaseHead title={siteTitle} description={siteTagline} />
   </head>
   <body>
+    <SkipLink />
+
     <header class="c-header">
       <div class="c-header__content o-wrapper o-wrapper--large">
         <div class="c-header__main">
@@ -77,7 +80,7 @@ const { title: siteTitle, tagline: siteTagline } = site();
     <!-- Contenu principal : largeur de lecture (o-wrapper) et rythme
          vertical entre les modules (o-stack) -->
     <div class="c-home o-wrapper o-wrapper--large">
-      <main class="o-stack o-stack--2xl">
+      <main id="contenu" tabindex="-1" class="o-stack o-stack--2xl">
         {
           modules.map(([moduleName, lessons]) => {
             return (

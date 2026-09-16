@@ -1,6 +1,7 @@
 ---
 import '../styles/theme.scss';
 import BaseHead from '../components/BaseHead.astro';
+import SkipLink from '../components/SkipLink.astro';
 import Footer from '../components/Footer.astro';
 import { site, legalEntries, missingLegal, SOCLE_VERSION } from '../../scripts/config.mjs';
 
@@ -14,7 +15,7 @@ import { site, legalEntries, missingLegal, SOCLE_VERSION } from '../../scripts/c
 // build le signale - même parti pris que pour « locked », une
 // omission silencieuse vaut moins qu'un avertissement.
 // =============================================================
-const { title: siteTitle } = site();
+const { title: siteTitle, lang } = site();
 const editor = legalEntries('editor');
 const host = legalEntries('host');
 const missing = missingLegal();
@@ -29,7 +30,7 @@ if (missing.length > 0) {
 }
 ---
 
-<html lang="fr">
+<html lang={lang}>
   <head>
     <BaseHead
       title={`Mentions légales - ${siteTitle}`}
@@ -37,7 +38,9 @@ if (missing.length > 0) {
     />
   </head>
   <body>
-    <main class="c-page o-wrapper o-wrapper--medium">
+    <SkipLink />
+
+    <main id="contenu" tabindex="-1" class="c-page o-wrapper o-wrapper--medium">
       <a href="/" class="c-page__back">← Accueil</a>
 
       <header class="c-page__header">

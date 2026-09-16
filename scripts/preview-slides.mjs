@@ -15,7 +15,7 @@
 // =============================================================
 
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdirSync, copyFileSync, existsSync, watch, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, existsSync, watch, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stageImages } from './stage-images.mjs';

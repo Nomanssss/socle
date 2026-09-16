@@ -129,8 +129,26 @@ export const LEGAL_FIELDS = [
 ];
 
 /**
- * L'identité du site : le titre et l'accroche de l'accueil, l'adresse
- * publique du cours, plus les mentions légales. Tout est optionnel dans socle.config.json - un
+ * La langue du cours, telle qu'elle sera écrite dans `<html lang>`.
+ *
+ * On accepte une étiquette BCP 47 : « fr » ou « fr-FR ». Seule la
+ * seconde forme, qui porte un pays, donne un `og:locale` - le format
+ * qu'attendent les réseaux sociaux est « langue_PAYS », et « fr » seul
+ * n'en est pas un. Plutôt qu'inventer un pays, on s'abstient : même
+ * parti pris que pour l'URL canonique absente.
+ */
+function language(raw) {
+  const lang = String(raw ?? '').trim() || 'fr-FR';
+  const [, region] = lang.split('-');
+  return {
+    lang,
+    locale: region ? `${lang.split('-')[0]}_${region.toUpperCase()}` : null,
+  };
+}
+
+/**
+ * L'identité du site : le titre et l'accroche de l'accueil, la langue,
+ * l'adresse publique du cours, plus les mentions légales. Tout est optionnel dans socle.config.json - un
  * champ absent ou vide revient à une chaîne vide, et le titre retombe
  * sur « Socle » pour qu'une page ne s'affiche jamais sans nom.
  */
@@ -142,6 +160,7 @@ export function site() {
   return {
     title: clean(raw.title) || 'Socle',
     tagline: clean(raw.tagline),
+    ...language(raw.lang),
     // Sans slash final : les URL absolues se composent par-dessus, et
     // « https://x.fr/ » + « /lecons/… » donnerait un double slash.
     url: clean(raw.url).replace(/\/+$/, ''),
@@ -153,6 +172,12 @@ export function site() {
  * Les mentions renseignées d'une rubrique, prêtes à afficher :
  * { label, value } dans l'ordre de LEGAL_FIELDS, les champs vides
  * écartés. Sans argument, toutes rubriques confondues.
+ *
+ * Le type est annoté ici : sans lui, `npm run check` déduit le type du
+ * paramètre de sa seule valeur par défaut - « null » - et refuse
+ * legalEntries('editor').
+ *
+ * @param {string | null} [section] La rubrique voulue (« editor », « host »).
  */
 export function legalEntries(section = null) {
   const { legal } = site();

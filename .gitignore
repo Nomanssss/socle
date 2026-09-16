@@ -31,10 +31,12 @@ public/slides/
 # Lourd, illisible en diff, et reconstruit à chaque predev/prebuild.
 src/styles/marp/_fonts.scss
 
-# Variables d'environnement
+# Variables d'environnement. Socle n'en utilise aucune : tout ce qui se
+# règle vit dans socle.config.json, qui est versionné. Ces lignes sont
+# là pour le jour où un cours ajoutera une clé (mesure d'audience,
+# service tiers) - elle ne partira pas sur le dépôt par accident.
 .env
 .env.*
-!.env.example
 
 # Journaux
 npm-debug.log*

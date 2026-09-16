@@ -1,0 +1,28 @@
+---
+// =============================================================
+// SkipLink - le lien d'évitement, premier élément de chaque page
+//
+// Au clavier, chaque page commence par la même chose : le sommaire
+// complet du cours dans la barre latérale, soit une quinzaine de
+// liens à traverser avant d'atteindre la leçon - à chaque leçon.
+// Ce lien permet de les sauter d'une tabulation.
+//
+// Invisible tant qu'il n'a pas le focus (voir components/_skip-link),
+// il ne coûte rien à l'œil et fait toute la différence au clavier.
+// C'est le critère 12.7 du RGAA, et la première chose que vérifie un
+// audit d'accessibilité.
+//
+// La cible est l'élément qui porte `id="contenu"` : le <main> de la
+// page, qui porte aussi `tabindex="-1"` - sans quoi certains
+// navigateurs déplacent la vue sans déplacer le focus, et la
+// tabulation suivante repart du début du document.
+// =============================================================
+interface Props {
+  /** L'ancre visée. Le <main> de la page par défaut. */
+  href?: string;
+}
+
+const { href = '#contenu' } = Astro.props;
+---
+
+<a class="c-skip-link" href={href}>Aller au contenu</a>

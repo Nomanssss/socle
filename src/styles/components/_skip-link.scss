@@ -1,0 +1,57 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Skip link
+ * Type: Component
+ * Description:
+ *   Le lien d'évitement (« Aller au contenu »), posé en tête de chaque page.
+ *   Hors de l'écran au repos, il vient s'afficher en haut à gauche dès qu'il
+ *   reçoit le focus.
+ *
+ *   On le sort de l'écran plutôt que de le masquer : `display: none` et
+ *   `visibility: hidden` le retirent de l'ordre de tabulation, il ne
+ *   recevrait donc jamais le focus qui doit le révéler.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../settings/typography";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-skip-link {
+  position: absolute;
+  top: spacing.get("xs");
+  left: spacing.get("xs");
+  // Au-dessus de tout le reste, barre latérale collante comprise.
+  z-index: 100;
+  padding: spacing.get("sm") spacing.get("md");
+  font-size: typography.size("sm");
+  font-weight: typography.$semibold;
+  text-decoration: none;
+  color: colors.get("on-primary");
+  background: colors.get("primary");
+  border-radius: spacing.radius("sm");
+  box-shadow: 0 rem.convert(2px) rem.convert(12px) rgba(0, 0, 0, 0.2);
+  // Hors de l'écran, mais toujours dans l'ordre de tabulation.
+  transform: translateY(calc(-100% - #{rem.convert(16px)}));
+
+  &:focus {
+    transform: translateY(0);
+  }
+
+  // Le déplacement s'anime, sauf si l'apprenant a demandé moins de
+  // mouvement - auquel cas le lien apparaît, simplement.
+  @media (prefers-reduced-motion: no-preference) {
+    transition: transform 150ms ease;
+  }
+}

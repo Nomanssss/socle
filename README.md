@@ -56,12 +56,15 @@ src/
 │   │       └── lecon-1.slides.md  → son deck Marp (optionnel)
 │   └── ../content.config.ts  → schéma Zod du frontmatter des leçons
 ├── components/               → composants pédagogiques (.astro)
-│   └── Footer.astro          → pied de page commun (marque + mentions légales)
+│   ├── Footer.astro          → pied de page commun (marque + mentions légales)
+│   └── SkipLink.astro        → lien d'évitement, en tête de chaque page
 ├── layouts/
 │   └── LessonLayout.astro    → gabarit d'une leçon (sidebar + progression)
 ├── pages/
 │   ├── index.astro           → accueil : liste les modules et leurs leçons
 │   ├── mentions-legales.astro → page annexe, alimentée par socle.config.json
+│   ├── 404.astro             → adresse inconnue (servi par l'hébergeur)
+│   ├── robots.txt.js         → robots.txt, généré (annonce le plan du site)
 │   └── lecons/[...id].astro  → route dynamique des leçons
 ├── scripts/progress.ts       → suivi de progression (localStorage)
 ├── assets/                   → images sources, optimisées par Astro
@@ -69,7 +72,7 @@ src/
 public/fonts/                 → polices auto-hébergées (générées)
 public/slides/modules/        → PDF résumé de chaque module (généré, servi par le site)
 public/favicon.*, *.png       → icônes du site (le manifeste, lui, est généré)
-socle.config.json             → LE FICHIER À RÉGLER : identité, URL publique, couleurs, polices, leçons verrouillées
+socle.config.json             → LE FICHIER À RÉGLER : identité, langue, URL publique, couleurs, polices, leçons verrouillées
 fonts.lock.json               → trace des polices téléchargées (généré)
 scripts/config.mjs            → lecture de socle.config.json (scripts + pages Astro)
 scripts/apply-brand.mjs       → applique socle.config.json au projet
@@ -77,7 +80,9 @@ scripts/build-slides.mjs      → générateur des decks Marp
 scripts/bundle-dist.mjs       → assemble le paquet livrable dans dist/
 scripts/reset-content.mjs     → efface le cours de démonstration (npm run reset)
 .nvmrc                        → la version de Node attendue (nvm use)
+.github/workflows/build.yml   → intégration continue : types vérifiés, site construit
 docs/GUIDE.md                 → le guide complet
+CHANGELOG.md                  → le journal des versions du template
 LICENSE                       → MIT, voir « Licence » en fin de document
 ```
 
@@ -94,6 +99,7 @@ LICENSE                       → MIT, voir « Licence » en fin de document
 | `npm run dev` | serveur de développement → <http://localhost:4321> |
 | `npm run build` | le site statique, dans `dist/` |
 | `npm run preview` | prévisualise le build |
+| `npm run check` | vérifie les types et le frontmatter, sans construire |
 | `npm run brand` | applique la charte de `socle.config.json` (couleurs + polices) |
 | `npm run slides` | les présentations en PDF : une par leçon, une par module |
 | `npm run slides:html` | les mêmes, en HTML autonome |
@@ -105,7 +111,7 @@ Pour ne régénérer qu'une partie des présentations — les leçons seules, le
 
 `brand` tourne tout seul avant `dev` et `build` : une couleur changée dans `socle.config.json` est prise en compte sans rien lancer d'autre.
 
-> ⚠️ `npm run check` (vérification des types) n'est **pas** disponible tel quel : Astro demande d'abord à installer `@astrojs/check` et `typescript`, via une invite interactive. Pour l'avoir en permanence : `npm i -D @astrojs/check typescript`. En attendant, `npm run build` valide déjà tous les frontmatters (les erreurs Zod y font échouer le build).
+`npm run check` lit les types sans rien construire : c'est le contrôle rapide pendant l'écriture. Il ne remplace pas `npm run build`, qui valide en plus tous les frontmatters — une erreur Zod y fait échouer la construction. Les deux tournent à chaque poussée sur GitHub, via `.github/workflows/build.yml`.
 
 ---
 
@@ -140,6 +146,10 @@ Le site étant statique, l'hébergement est simple et souvent gratuit :
 3. commande de build : `npm run build` - dossier à publier : `dist/`.
 
 Le `.nvmrc` du projet est lu par Netlify, Vercel et Cloudflare Pages : ils construisent avec la bonne version de Node sans réglage. Sur GitHub Pages, précisez-la dans le workflow (`actions/setup-node` avec `node-version-file: .nvmrc`).
+
+**Renseignez `site.url`** dans `socle.config.json` avant la mise en ligne : c'est lui qui déclenche les liens canoniques, le plan du site (`sitemap.xml`) et la ligne `Sitemap:` du `robots.txt`. Sans lui le site fonctionne, mais il n'a rien à annoncer aux moteurs ni aux réseaux sociaux — le build vous le rappelle.
+
+La page d'erreur, elle, ne demande aucun réglage : `dist/404.html` est le fichier que les quatre hébergeurs servent d'eux-mêmes quand une adresse ne correspond à rien.
 
 Les slides ne sont pas incluses dans `dist/` : ce sont des fichiers autonomes à distribuer comme vous l'entendez.
 

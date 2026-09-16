@@ -28,6 +28,7 @@
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync, rmSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { site } from './config.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SLIDES_DIR = join(ROOT, 'slides');
@@ -207,6 +208,10 @@ const brand = JSON.parse(readFileSync(join(ROOT, 'socle.config.json'), 'utf8'));
 const { primary, text, page } = brand.colors;
 const { heading, body } = brand.fonts;
 
+// Le nom du cours et sa langue, eux, passent par config.mjs : même
+// lecture, mêmes valeurs de repli que sur le site.
+const { title: siteTitle, lang } = site();
+
 // Mêmes calculs que settings/_colors.scss, pour que le sommaire ne
 // dérive pas de la palette du site.
 const mix = (a, b, ratio) => {
@@ -282,11 +287,11 @@ const faces = fontFiles
   .join('\n');
 
 const indexHtml = `<!doctype html>
-<html lang="fr">
+<html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Présentations — ${escape(manifest[0]?.module ? 'Socle' : 'Socle')}</title>
+<title>Présentations — ${escape(siteTitle)}</title>
 <style>
 ${faces}
 

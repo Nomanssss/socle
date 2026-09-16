@@ -13,9 +13,10 @@ régler la charte, comprendre les styles. Pour démarrer, voir le [README](../RE
 6. [Identité du site et mentions légales](#identité-du-site-et-mentions-légales)
 7. [Personnaliser l'apparence (rebranding)](#personnaliser-lapparence-rebranding)
 8. [Architecture des styles (ITCSS + BEMIT)](#architecture-des-styles-itcss--bemit)
-9. [Progression de l'apprenant](#progression-de-lapprenant)
-10. [Faire place nette avec `npm run reset`](#faire-place-nette-avec-npm-run-reset)
-11. [Ce qui est versionné, et ce qui ne l'est pas](#ce-qui-est-versionné-et-ce-qui-ne-lest-pas)
+9. [Accessibilité](#accessibilité)
+10. [Progression de l'apprenant](#progression-de-lapprenant)
+11. [Faire place nette avec `npm run reset`](#faire-place-nette-avec-npm-run-reset)
+12. [Ce qui est versionné, et ce qui ne l'est pas](#ce-qui-est-versionné-et-ce-qui-ne-lest-pas)
 
 ---
 
@@ -517,6 +518,7 @@ Le nom du cours, son accroche et les mentions légales se règlent eux aussi dan
 "site": {
   "title": "Socle",
   "tagline": "Un template de cours en ligne en markdown, statique et personnalisable.",
+  "lang": "fr-FR",
   "url": "",
   "legal": {
     "editor": "",
@@ -532,7 +534,8 @@ Le nom du cours, son accroche et les mentions légales se règlent eux aussi dan
 | --- | --- |
 | `title` | le titre du bandeau d'accueil, l'onglet du navigateur, le pied de page |
 | `tagline` | l'accroche sous le titre, et la `<meta name="description">` de l'accueil |
-| `url` | l'adresse publique du cours : liens canoniques et balises de partage (voir « Référencement et partage ») |
+| `lang` | la langue du cours : l'attribut `lang` de chaque page, et `og:locale` |
+| `url` | l'adresse publique du cours : liens canoniques, plan du site et balises de partage (voir « Référencement et partage ») |
 | `legal.*` | la page `/mentions-legales/`, en deux rubriques : l'éditeur (`editor`, `address`, `email`, `publisher`) et l'hébergement (`host`) |
 
 Un champ `legal` **vide n'affiche pas de ligne à moitié remplie** : il disparaît de la page, et le build le signale — même parti pris que pour `locked`, une omission silencieuse vaut moins qu'un avertissement.
@@ -574,22 +577,39 @@ Toutes les balises tiennent dans **`components/BaseHead.astro`**, posé par les 
 | `<link rel="canonical">` | `site.url` + le chemin de la page |
 | `og:title`, `og:description` | les mêmes que ci-dessus — deux sources finiraient par diverger |
 | `og:type` | `article` sur une leçon, `website` ailleurs |
-| `og:site_name`, `og:locale` | le nom du cours, et `fr_FR` |
+| `og:site_name`, `og:locale` | le nom du cours, et la langue tirée de `site.lang` |
 | `og:url` | l'URL canonique |
 | `twitter:card` | `summary` |
 
 **Tout dépend de `site.url`.** Vide, le site se construit et s'affiche normalement, mais le lien canonique et `og:url` sont **omis** — pas inventés. Une balise canonique qui désigne la mauvaise page fait plus de dégâts qu'une balise absente : elle dit aux moteurs d'ignorer la vraie. Le build vous le rappelle une fois au démarrage :
 
 ```
-⚠ socle.config.json → « site.url » est vide. Les liens canoniques et les
-  balises OpenGraph d'URL ne seront pas générés.
+⚠ socle.config.json → « site.url » est vide. Les liens canoniques, le plan du
+  site (sitemap.xml) et les balises OpenGraph d'URL ne seront pas générés.
 ```
 
 Renseignez-la dès que le domaine est connu (`https://mon-cours.fr`, avec ou sans slash final, il est retiré) : elle alimente aussi `site:` dans `astro.config.mjs`, d'où Astro tire toutes ses URL absolues.
 
 **Pas d'`og:image`.** Sans visuel conçu pour, les plateformes s'en sortent mieux avec rien qu'avec une image trompeuse — la couverture d'une leçon n'est pas une vignette de partage. Si vous en voulez une, ajoutez la balise dans `BaseHead.astro` et le fichier dans `public/`.
 
-**Ce qu'il n'y a pas non plus** : ni `robots.txt`, ni `sitemap.xml`. Sur un cours d'une douzaine de pages toutes reliées entre elles, les moteurs se débrouillent. Si vous en voulez un, `npx astro add sitemap` le génère — à condition que `site.url` soit renseignée.
+**Le plan du site et le `robots.txt`** suivent la même règle que le lien canonique : ils ne sont produits que si `site.url` est renseignée.
+
+| Fichier | D'où il vient | Sans `site.url` |
+| --- | --- | --- |
+| `sitemap-index.xml`, `sitemap-0.xml` | `@astrojs/sitemap`, branché dans `astro.config.mjs` | non générés — un plan de site est une liste d'URL absolues, il n'y aurait rien à y écrire |
+| `robots.txt` | `src/pages/robots.txt.js` | généré quand même, mais sans la ligne `Sitemap:` |
+
+Les leçons verrouillées n'ont pas à être exclues du plan : leur page n'est jamais construite, elle ne peut donc pas s'y trouver. La page 404, elle, est écartée explicitement (`filter` dans `astro.config.mjs`) — elle existe dans `dist/`, mais n'est l'adresse de rien.
+
+Le `robots.txt` autorise tout, et c'est volontaire : un cours en ligne est public. N'y mettez pas de `Disallow` pour cacher quelque chose — ce fichier est lisible par tous, il publierait justement la liste de ce que vous voulez soustraire aux regards. Ce qui doit rester invisible se verrouille (voir « Verrouiller une leçon »), c'est-à-dire ne se construit pas.
+
+### La page 404
+
+`src/pages/404.astro` est construite en `dist/404.html`, le fichier que Netlify, Vercel, Cloudflare Pages et GitHub Pages servent d'eux-mêmes quand une adresse ne correspond à rien. Aucun réglage d'hébergeur : c'est le nom du fichier qui fait la convention.
+
+Elle n'est pas là que pour les fautes de frappe. Une leçon verrouillée **reste annoncée au sommaire**, sans lien : son adresse se devine, et c'est ici qu'on atterrit en la tapant. D'où son texte, qui évoque les deux cas sans accuser le visiteur, et qui rappelle que la progression enregistrée n'est pas perdue.
+
+Elle porte `<meta name="robots" content="noindex, follow">` — une page d'erreur n'a rien à faire dans un moteur de recherche, mais les liens qu'elle contient doivent ramener au cours. C'est la propriété `noindex` de `BaseHead.astro`, qui supprime aussi le lien canonique : les deux balises se contrediraient.
 
 ### Le pied de page
 
@@ -900,6 +920,39 @@ Sur une slide Marp, rappelez-vous enfin que `::after` **est** la pagination : su
 
 ---
 
+## Accessibilité
+
+Un cours en ligne s'adresse à tout le monde, et une partie de son public le suit au clavier ou au lecteur d'écran. Le template prend en charge ce qui relève de lui ; le reste tient à ce que vous écrivez.
+
+### Ce que le template fait déjà
+
+| Ce qui est en place | Où ça vit |
+| --- | --- |
+| **Le lien d'évitement** « Aller au contenu », premier élément de chaque page | `components/SkipLink.astro` |
+| **La langue de la page**, annoncée aux lecteurs d'écran qui choisissent leur prononciation | `site.lang` dans `socle.config.json` |
+| **Un indicateur de focus visible**, homogène sur tout le site | `styles/generic/_focus.scss` |
+| **La leçon courante** signalée par `aria-current="page"`, au sommaire comme au pied de page | `LessonLayout.astro`, `Footer.astro` |
+| **Chaque `<nav>` nommé** (`aria-label`), pour les distinguer les unes des autres | idem |
+| **Les informations données par une icône** doublées d'un texte masqué visuellement (`.u-hidden-visually`) : la coche « Terminé », le cadenas « Bientôt disponible » | `LessonLayout.astro`, `index.astro` |
+| **Une leçon verrouillée n'est pas un lien** mais un `<div>` : rien à suivre, donc rien à annoncer comme tel | `index.astro` |
+| **Les tableaux larges défilent** dans un conteneur qui peut recevoir le focus, donc atteignable au clavier | `scripts/rehype-scrollable-tables.mjs` |
+| **Le repli du sommaire sur mobile** annonce son état (`aria-expanded`), se referme par Échap et rend le focus au bouton | `LessonLayout.astro` |
+| **Le `<footer>` est hors du `<main>`**, sans quoi il perdrait son rôle de repère | les trois gabarits |
+
+Le lien d'évitement mérite un mot. Au clavier, chaque leçon commence par le sommaire complet du cours : une quinzaine de liens à traverser avant d'atteindre le texte, à chaque leçon. Ce lien les saute d'une tabulation. Il est invisible tant qu'il n'a pas le focus — et il est *sorti de l'écran*, jamais masqué par `display: none`, qui le retirerait de l'ordre de tabulation et l'empêcherait donc de recevoir le focus censé le révéler. Sa cible est le `<main>` de la page, qui porte `id="contenu"` et `tabindex="-1"` : sans ce dernier, certains navigateurs déplacent la vue sans déplacer le focus, et la tabulation suivante repart du haut du document.
+
+### Ce qui reste à votre charge
+
+- **Le texte alternatif des images.** `alt` est obligatoire sur `Figure.astro` ; décrivez ce que l'image apporte, et laissez-le vide (`alt=""`) si elle est purement décorative. Même chose pour `coverAlt` dans le frontmatter.
+- **L'ordre des titres** dans vos `.mdx`. Le `<h1>` est déjà posé par le gabarit : votre leçon commence donc en `##`, et ne saute pas de niveau.
+- **Le contraste, après un changement de charte.** Les couleurs dérivées sont calculées à partir des trois couleurs de marque : une principale trop claire donne un texte blanc illisible sur les boutons. Vérifiez le rapport de contraste (4,5:1 pour du texte courant) après `npm run brand`.
+- **Les médias.** Une vidéo YouTube demande des sous-titres, un podcast une transcription — ni l'un ni l'autre ne s'invente au build.
+- **Les liens explicites.** « En savoir plus » répété douze fois ne dit rien à qui parcourt la liste des liens d'une page.
+
+> Ces points couvrent l'essentiel des critères courants du RGAA pour un site de ce type. Un cours diffusé par un organisme soumis à l'obligation légale demande en plus une **déclaration d'accessibilité** : c'est une page annexe à ajouter sur le modèle de `mentions-legales.astro` (voir « Le pied de page »).
+
+---
+
 ## Progression de l'apprenant
 
 Gérée par `src/scripts/progress.ts`, entièrement côté client :
@@ -940,9 +993,9 @@ La règle habituelle - « on ne versionne pas ce qu'une commande sait reconstrui
 | `public/fonts/*.woff2` | `apply-brand` les télécharge depuis Google Fonts. Ignorés, ils rendraient le premier `npm run dev` dépendant du réseau |
 | `src/styles/settings/_brand.scss` | les couleurs et familles compilées, pour que le SCSS résolve sans étape préalable |
 | `src/styles/generic/_fonts.scss` | les `@font-face` du site |
+| `fonts.lock.json` | la trace de ce qui a été téléchargé - c'est ce qui permet à `npm run brand` de ne rien refaire quand rien n'a changé |
 
 À l'inverse, `public/slides/` — les PDF de module que `npm run slides` publie pour le site — est ignoré : c'est un produit de build comme un autre, et il pèse.
-| `fonts.lock.json` | la trace de ce qui a été téléchargé - c'est ce qui permet à `npm run brand` de ne rien refaire quand rien n'a changé |
 
 Un clone compile donc **hors ligne**. Le revers : après un changement de police, ces fichiers apparaissent dans vos diffs. C'est voulu — un changement de charte est un changement de projet, il mérite d'être visible dans l'historique.
 

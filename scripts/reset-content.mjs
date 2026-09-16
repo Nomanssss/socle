@@ -153,7 +153,8 @@ if (existsSync(CONFIG)) {
 console.log(`
 Le template est prêt pour votre cours.
 
-  1. socle.config.json  → titre, accroche, mentions légales, couleurs, polices
+  1. socle.config.json  → titre, accroche, langue, adresse publique,
+                          mentions légales, couleurs, polices
   2. npm run brand      → applique la charte (couleurs + polices)
   3. npm run dev        → http://localhost:4321
 `);

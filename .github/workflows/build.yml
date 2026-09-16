@@ -1,0 +1,47 @@
+# =============================================================
+# Intégration continue - le template doit compiler, toujours
+#
+# Socle est un dépôt-modèle : ce qu'on y casse se retrouve dans tous
+# les cours qui en partiront ensuite. Ce workflow vérifie donc, à
+# chaque poussée, les deux choses qui conditionnent un clone réussi :
+# le site se construit, et les types sont bons.
+#
+# Les slides ne sont PAS construites ici : Marp s'appuie sur Chrome
+# pour exporter en PDF, et l'exercice coûterait plusieurs minutes à
+# chaque commit pour vérifier un rendu qu'une machine ne relit pas.
+# C'est `npm run slides` en local, avant publication.
+#
+# Node vient de .nvmrc : la version attendue est écrite à un seul
+# endroit, pour l'intégration continue comme pour les développeurs.
+# =============================================================
+name: Build
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  # Bouton « Run workflow » dans l'onglet Actions.
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # `npm ci` et non `npm install` : l'installation suit
+      # package-lock.json à la lettre, sans le mettre à jour.
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérifier les types et le frontmatter
+        run: npm run check
+
+      - name: Construire le site
+        run: npm run build

@@ -1,0 +1,67 @@
+---
+import '../styles/theme.scss';
+import BaseHead from '../components/BaseHead.astro';
+import SkipLink from '../components/SkipLink.astro';
+import Footer from '../components/Footer.astro';
+import { site } from '../../scripts/config.mjs';
+
+// =============================================================
+// Page 404 - adresse inconnue.
+//
+// Astro la construit en « dist/404.html », le fichier que servent
+// d'eux-mêmes Netlify, Vercel, Cloudflare Pages et GitHub Pages
+// lorsqu'une adresse ne correspond à rien. Aucun réglage d'hébergeur
+// n'est nécessaire : c'est le nom du fichier qui fait la convention.
+//
+// Elle n'est pas là que pour les fautes de frappe. Une leçon
+// verrouillée reste ANNONCÉE au sommaire, sans lien : son adresse est
+// donc devinable, et c'est ici qu'on atterrit en la tapant. D'où le
+// texte, qui évoque les deux cas plutôt que de parler d'erreur - le
+// visiteur n'a rien fait de mal.
+//
+// `noindex` : une page d'erreur n'a rien à faire dans un moteur de
+// recherche. « follow » malgré tout, pour que les liens qu'elle porte
+// ramènent au cours.
+// =============================================================
+const { title: siteTitle, lang } = site();
+---
+
+<html lang={lang}>
+  <head>
+    <BaseHead
+      title={`Page introuvable - ${siteTitle}`}
+      description="Cette adresse ne correspond à aucune page du cours."
+      noindex
+    />
+  </head>
+  <body>
+    <SkipLink />
+
+    <main id="contenu" tabindex="-1" class="c-page o-wrapper o-wrapper--medium">
+      <header class="c-page__header">
+        <p class="c-page__eyebrow">Erreur 404</p>
+        <h1 class="c-page__title">Page introuvable</h1>
+      </header>
+
+      <div class="s-richtext">
+        <p>
+          Cette adresse ne correspond à aucune page du cours. Deux explications
+          possibles : l'adresse a été mal recopiée, ou la leçon visée n'est pas
+          encore ouverte - celles qui restent à venir sont annoncées au sommaire,
+          mais leur page n'existe pas tant qu'elles sont verrouillées.
+        </p>
+        <p>
+          Le sommaire du cours vous remettra sur la bonne voie. Votre progression,
+          elle, est intacte : elle vit dans votre navigateur, et aucune erreur
+          d'adresse ne l'efface.
+        </p>
+      </div>
+
+      <p class="c-page__actions">
+        <a href="/" class="c-button c-button--primary">Retour au sommaire</a>
+      </p>
+    </main>
+
+    <Footer />
+  </body>
+</html>

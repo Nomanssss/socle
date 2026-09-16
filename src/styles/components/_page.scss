@@ -56,7 +56,23 @@
     border-bottom: rem.convert(1px) solid colors.get("border");
   }
 
+    // Surtitre : le code de l'erreur au-dessus du titre de la page 404.
+    // Même rôle que l'intitulé de module au-dessus du titre d'une leçon.
+    .c-page__eyebrow {
+      margin-bottom: spacing.get("2xs");
+      font-size: typography.size("sm");
+      font-weight: typography.$semibold;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: colors.get("text-muted");
+    }
+
     .c-page__title {}
+
+  // Les boutons d'une page annexe, sous le texte rédigé.
+  .c-page__actions {
+    margin-top: spacing.get("xl");
+  }
 
 /*******************************************************************************
  * Fiche d'informations
