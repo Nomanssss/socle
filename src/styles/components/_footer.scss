@@ -37,7 +37,7 @@
   margin-top: spacing.get("2xl");
   padding-block: spacing.get("lg");
   color: colors.get("text-muted");
-  background: colors.get("surface");
+  background: colors.get("background");
   border-top: rem.convert(1px) solid colors.get("border");
 }
 

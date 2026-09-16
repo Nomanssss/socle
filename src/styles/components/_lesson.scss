@@ -62,7 +62,7 @@
 .c-lesson__sidebar {
   position: relative;
   flex-shrink: 0;
-  background: colors.get("surface");
+  background: colors.get("background");
   border-bottom: rem.convert(1px) solid colors.get("border");
 
   // Le filigrane déborde du bord : sans quoi il pousserait la page en

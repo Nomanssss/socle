@@ -27,14 +27,14 @@
 @mixin h1 {
   @include responsive.fluid-size(32px, 48px);
   font-family: t.family("heading");
-  font-weight: t.$semibold;
+  font-weight: t.$bold;
   line-height: t.leading("tight");
 }
 
 @mixin h2 {
   @include responsive.fluid-size(24px, 28px);
   font-family: t.family("heading");
-  font-weight: t.$semibold;
+  font-weight: t.$bold;
   line-height: t.leading("tight");
 }
 
