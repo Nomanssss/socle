@@ -126,15 +126,32 @@ section.columns-4 {
   > h2 + p:not(:has(> img)) {
     column-span: all;
     max-width: rem.convert(920px);
+    // Collé au titre : c'est ce qui en fait un chapô plutôt qu'un premier
+    // paragraphe. Marge nulle ET interligne resserré - à 1,7, le seul
+    // demi-interligne du paragraphe rouvrait l'écart qu'on vient de fermer.
+    margin-top: 0;
     margin-bottom: spacing.get("lg");
+    line-height: typography.leading("tight");
     color: colors.get("text-muted");
     text-wrap: pretty;
   }
 
-  // Le titre se resserre quand un chapô le suit : deux grandes respirations
-  // l'une sur l'autre décolleraient les colonnes du haut de la slide.
-  h2:has(+ p:not(:has(> img))) {
-    margin-bottom: spacing.get("xs");
+  // Le titre ne garde aucune respiration quand un paragraphe le suit : les
+  // deux ne forment qu'un bloc, et c'est sous le chapô que l'air se met.
+  //
+  // ⚠ La règle ne peut PAS écarter ici le cas de l'image (`:not(:has())`
+  // imbriqué dans un `:has()` est interdit par la spécification - le
+  // navigateur jette la règle entière, sans rien dire). On zéroie donc pour
+  // les deux cas, et c'est l'image qui reprend la marge à son compte,
+  // juste en dessous.
+  h2:has(+ p) {
+    margin-bottom: 0;
+  }
+
+  // L'image qui ouvre la première colonne n'est pas un chapô : elle garde
+  // la respiration que le titre vient de perdre.
+  > h2 + p:has(> img) {
+    margin-top: spacing.get("lg");
   }
 
   > p:has(> img),

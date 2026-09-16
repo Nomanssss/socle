@@ -83,13 +83,44 @@ h3 {
   font-size: rem.convert(30px);
 }
 
+/**
+ * Les marges des titres et des listes sont posées ICI, et pas laissées au
+ * navigateur, à cause des mises en page à panneau d'image : `image-left` et
+ * `image-right` sont des conteneurs flex, or les marges NE SE FUSIONNENT PAS
+ * en flex. Les 0,83 em sous un titre et le 1 em au-dessus d'une liste, qui
+ * n'en font qu'un sur une slide ordinaire, s'y additionnaient - un titre
+ * décollé de son contenu de plus de 100 px, sur les slides mêmes où la place
+ * manque le plus.
+**/
+h1,
+h2,
+h3,
+h4 {
+  margin-block: 0 spacing.get("lg");
+}
+
+ul,
+ol {
+  margin-block: 0;
+}
+
 /*******************************************************************************
  * Texte & éléments
 *******************************************************************************/
 
-p,
-li {
+p {
   margin-block: spacing.get("xs");
+}
+
+/**
+ * Les puces respirent entre elles, et se resserrent à l'intérieur : avec le
+ * même interligne partout, les lignes d'une puce longue étaient aussi
+ * espacées que deux puces voisines, et la liste se lisait comme un bloc de
+ * texte. L'écart entre deux puces doit être le plus grand des deux.
+**/
+li {
+  margin-block: spacing.get("md");
+  line-height: 1.45;
 }
 
 ul,
