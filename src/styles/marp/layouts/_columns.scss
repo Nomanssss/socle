@@ -35,6 +35,17 @@
  *
  *   Sans `###`, le texte se répartit tout seul dans les colonnes.
  *
+ *   UN CHAPÔ, facultatif : le paragraphe écrit juste sous le `##` traverse
+ *   les colonnes, comme le titre. De quoi introduire d'une phrase ce que
+ *   les colonnes détaillent.
+ *
+ *     ## Deux façons de faire
+ *
+ *     Le même contenu, deux manières de l'écrire.
+ *
+ *     ### Avec un composant
+ *     …
+ *
  *   UNE IMAGE PAR COLONNE, entre le titre et le texte :
  *
  *     ### HTML
@@ -104,12 +115,38 @@ section.columns-4 {
     font-size: rem.convert(36px);
   }
 
+  // … et le chapô avec lui : le paragraphe écrit juste sous le titre
+  // introduit d'une phrase ce que les colonnes détaillent, au lieu de
+  // devenir la première ligne de la première colonne.
+  //
+  // Une IMAGE placée juste sous le titre n'est pas un chapô : elle ouvre la
+  // première colonne, et c'est une écriture courante (le banc d'essai du
+  // thème le fait). D'où le `:not()` - sans lui, l'image traverserait la
+  // slide en pleine largeur.
+  > h2 + p:not(:has(> img)) {
+    column-span: all;
+    max-width: rem.convert(920px);
+    margin-bottom: spacing.get("lg");
+    color: colors.get("text-muted");
+    text-wrap: pretty;
+  }
+
+  // Le titre se resserre quand un chapô le suit : deux grandes respirations
+  // l'une sur l'autre décolleraient les colonnes du haut de la slide.
+  h2:has(+ p:not(:has(> img))) {
+    margin-bottom: spacing.get("xs");
+  }
+
   > p:has(> img),
   > h3 {
     break-before: column;
   }
 
+  // Ce qui ouvre la PREMIÈRE colonne ne doit pas forcer de saut : sans ces
+  // exceptions, la colonne 1 partirait vide. Le premier cas est la slide
+  // sans chapô (l'élément suit le titre), le deuxième la slide avec.
   > :nth-child(2),
+  > h2 + p:not(:has(> img)) + *,
   > p:has(> img) + h3,
   > h3 + p:has(> img) {
     break-before: avoid;

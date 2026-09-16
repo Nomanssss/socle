@@ -40,6 +40,8 @@ Sans directive `_class`, c'est ce modèle qui s'applique.
 
 ## Deux colonnes
 
+Le paragraphe écrit juste sous le titre traverse les colonnes : c'est le chapô, et il est facultatif.
+
 ### Le site
 
 Des pages web, une par leçon. La sortie principale, produite par `npm run build`.
