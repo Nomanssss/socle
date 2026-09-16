@@ -148,12 +148,6 @@ section.columns-4 {
     margin-bottom: 0;
   }
 
-  // L'image qui ouvre la première colonne n'est pas un chapô : elle garde
-  // la respiration que le titre vient de perdre.
-  > h2 + p:has(> img) {
-    margin-top: spacing.get("lg");
-  }
-
   > p:has(> img),
   > h3 {
     break-before: column;
@@ -176,11 +170,27 @@ section.columns-4 {
     break-after: avoid;
   }
 
+  // L'image qui ouvre une colonne n'est pas un chapô : elle reprend la
+  // respiration que le titre vient de perdre. TOUTES les colonnes la
+  // reprennent, pas seulement la première - sinon les colonnes ne
+  // démarrent plus à la même hauteur, et le décalage saute aux yeux.
   p:has(> img) {
     position: relative;
     isolation: isolate;
     width: var(--tile);
-    margin: 0 auto spacing.get("lg");
+    margin: spacing.get("lg") auto spacing.get("lg");
+  }
+
+  // L'image posée SOUS son ### n'ouvre aucune colonne - le titre l'a déjà
+  // fait. Elle reste collée à lui, comme le veut `break-before: avoid`.
+  > h3 + p:has(> img) {
+    margin-top: 0;
+  }
+
+  // Et quand un chapô est là, c'est LUI qui pose l'air sous le titre :
+  // les images n'ont plus rien à reprendre.
+  > h2 + p:not(:has(> img)) ~ p:has(> img) {
+    margin-top: 0;
   }
 
   img {
