@@ -1,0 +1,86 @@
+---
+import '../styles/theme.scss';
+import { getCollection } from 'astro:content';
+import BaseHead from '../components/BaseHead.astro';
+import SkipLink from '../components/SkipLink.astro';
+import Footer from '../components/Footer.astro';
+import { site, isLocked } from '../../scripts/config.mjs';
+
+// =============================================================
+// Page « Sources du cours », liée depuis le pied de page.
+//
+// Rassemble les sources déclarées dans le champ `sources` du
+// frontmatter de chaque leçon : sans cette page, il fallait les
+// recopier à la main en fin de leçon, sans lieu commun où les
+// retrouver toutes. Une leçon verrouillée n'y figure pas - même
+// parti pris que pour sa page, qui n'existe pas non plus.
+// =============================================================
+const { title: siteTitle, lang } = site();
+
+const all = await getCollection('lecons');
+const lessons = all
+  .filter((lesson) => !isLocked(lesson.id) && (lesson.data.sources?.length ?? 0) > 0)
+  .sort((a, b) => {
+    const oa = a.data.moduleOrder ?? Number.POSITIVE_INFINITY;
+    const ob = b.data.moduleOrder ?? Number.POSITIVE_INFINITY;
+    if (oa !== ob) return oa - ob;
+    if (a.data.module !== b.data.module) return a.data.module.localeCompare(b.data.module);
+    return a.data.order - b.data.order;
+  });
+---
+
+<html lang={lang}>
+  <head>
+    <BaseHead
+      title={`Sources du cours - ${siteTitle}`}
+      description={`Les sources citées au fil des leçons de ${siteTitle}.`}
+    />
+  </head>
+  <body>
+    <SkipLink />
+
+    <main id="contenu" tabindex="-1" class="c-page o-wrapper o-wrapper--medium">
+      <a href="/" class="c-page__back">← Accueil</a>
+
+      <header class="c-page__header">
+        <h1 class="c-page__title">Sources du cours</h1>
+      </header>
+
+      <div class="s-richtext">
+        {
+          lessons.length > 0 ? (
+            lessons.map((lesson) => (
+              <>
+                <h2>
+                  <a href={`/lecons/${lesson.id}/`}>{lesson.data.title}</a>
+                </h2>
+                <ul>
+                  {lesson.data.sources!.map((source) =>
+                    source.url ? (
+                      <li>
+                        <a href={source.url} target="_blank" rel="noopener noreferrer">
+                          {source.label}
+                          <span class="u-hidden-visually"> (nouvelle fenêtre)</span>
+                        </a>
+                      </li>
+                    ) : (
+                      <li>{source.label}</li>
+                    )
+                  )}
+                </ul>
+              </>
+            ))
+          ) : (
+            <p class="c-page__todo">
+              Aucune source n'est encore renseignée. Ajoutez un champ <code>sources</code> au
+              frontmatter d'une leçon - une liste de <code>{'{ label, url? }'}</code> - pour
+              qu'elle apparaisse ici.
+            </p>
+          )
+        }
+      </div>
+    </main>
+
+    <Footer />
+  </body>
+</html>

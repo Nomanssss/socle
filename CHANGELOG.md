@@ -37,8 +37,19 @@ rien casser, un *correctif* répare.
 - **Intégration continue** (GitHub Actions) : à chaque poussée, les types
   sont vérifiés et le site construit.
 - **Ce journal**.
+- **Page « Sources du cours »** (`/sources/`), liée depuis le pied de page :
+  rassemble les sources déclarées dans le nouveau champ `sources` du
+  frontmatter d'une leçon, groupées par leçon. Une leçon verrouillée n'y
+  apparaît pas.
+- **`Timeline` peut désormais se titrer** : une prop `title` nomme la frise,
+  et un champ `heading` sur une étape ouvre un intertitre pour regrouper les
+  étapes qui couvrent plusieurs périodes.
 
 ### Modifié
+
+- **`Timeline` reprend l'habillage carte** des autres composants
+  pédagogiques (fond, filet, ombre) : la ligne, les pastilles et le chevron
+  de dépliage ne juraient plus avec le reste.
 
 - `npm run check` **fonctionne sans installation supplémentaire** :
   `@astrojs/check` et `typescript` font désormais partie des dépendances de

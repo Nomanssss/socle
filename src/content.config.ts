@@ -37,6 +37,16 @@ const lecons = defineCollection({
       coverAlt: z.string().optional(),
       // Points-clés, optionnels : réutilisés plus tard pour un export Marp (slides).
       slidePoints: z.array(z.string()).optional(),
+      // Sources citées dans la leçon, optionnelles : reprises sur la page
+      // commune « Sources du cours », liée depuis le pied de page.
+      sources: z
+        .array(
+          z.object({
+            label: z.string(),
+            url: z.string().optional(),
+          })
+        )
+        .optional(),
       // Ordre du module lui-même sur la page d'accueil, optionnel (1, 2, 3…).
       // Si absent, les modules sont classés par ordre alphabétique de leur nom.
       moduleOrder: z.number().optional(),

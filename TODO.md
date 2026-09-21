@@ -17,12 +17,7 @@ Quand un point est traité, il quitte ce fichier et rejoint le
 
 *Les leçons, le frontmatter, les composants pédagogiques, les images.*
 
-- [ ] **`Timeline` : l'allure de la frise est à revoir.** Graphiquement, elle
-  ne tient pas face au reste des composants - la ligne, les pastilles, le
-  chevron de dépliage sont à reprendre.
-- [ ] **`Timeline` : impossible de titrer.** Une frise arrive nue dans la
-  page : ni titre pour la nommer, ni intertitres pour regrouper ses étapes
-  quand elles couvrent plusieurs périodes.
+- [ ] _rien pour l'instant_
 
 ## Slides
 
@@ -40,10 +35,7 @@ Quand un point est traité, il quitte ce fichier et rejoint le
 
 *Le sommaire, le verrou des leçons, la progression de l'apprenant.*
 
-- [ ] **Il manque une page « Sources du cours ».** Les références citées au
-  fil des leçons n'ont nulle part où être rassemblées : il faut aujourd'hui
-  les recopier à la main en fin de leçon, sans page commune ni lien depuis
-  le pied de page.
+- [ ] _rien pour l'instant_
 
 ## Livraison
 

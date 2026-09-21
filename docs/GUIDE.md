@@ -58,6 +58,7 @@ Validés par Zod (`src/content.config.ts`). Un champ inconnu est **silencieuseme
 | `cover` | - | Bandeau en tête de leçon. Chemin **relatif au `.mdx`**, optimisé par Astro |
 | `coverAlt` | - | Texte alternatif de la cover (vide si purement décorative) |
 | `slidePoints` | - | Deck de secours. **Ignoré si un `.slides.md` existe** - voir « Générer les slides » |
+| `sources` | - | Sources citées, une liste de `{ label, url? }`. Reprises sur la page « Sources du cours » |
 
 > Le nom du dossier ne sert qu'à construire l'URL et l'identifiant de la leçon. Le regroupement visible par module vient du champ `module`. Gardez les deux cohérents.
 
@@ -74,7 +75,7 @@ Tous les composants sont des **`.astro`** : ils s'exécutent au build et ne néc
 | `PodcastEmbed.astro` | Lecteur audio embarqué | `src`, `title?`, `height?`, `caption?` |
 | `CodepenEmbed.astro` | Pen CodePen éditable | `user`, `penId`, `title?`, `defaultTab?`, `height?` |
 | `Quiz.astro` | QCM auto-corrigé | `questions`, `title?` |
-| `Timeline.astro` | Frise d'étapes dépliables | `steps` |
+| `Timeline.astro` | Frise d'étapes dépliables | `steps`, `title?` (`heading?` par étape, pour grouper) |
 | `Flashcards.astro` | Cartes recto/verso | `cards` |
 | `DragMatch.astro` | Association par glisser-déposer | `pairs` |
 | `ProgressBar.astro` | Jauge segmentée d'un module, un segment par leçon (déjà dans le layout) | `lessonIds`, `label?`, `class?` |
@@ -613,13 +614,30 @@ Elle porte `<meta name="robots" content="noindex, follow">` — une page d'erreu
 
 ### Le pied de page
 
-`src/components/Footer.astro` est posé sur l'accueil, sur chaque leçon et sur les pages annexes. Il porte trois choses :
+`src/components/Footer.astro` est posé sur l'accueil, sur chaque leçon et sur les pages annexes. Il porte quatre choses :
 
 - **la marque**, qui ramène à l'accueil. Ce n'est pas une balise `<img>` mais un fond dessiné par `logo.logotype()` — donc toujours dans la couleur de la charte du moment, et assombrie au survol (voir « Les marques du projet ») ;
+- **le lien vers les sources du cours** ;
 - **le lien vers les mentions légales** ;
 - **la note sur la progression** stockée dans le navigateur : une information de confidentialité, qui a sa place partout et non sur la seule page d'accueil.
 
 Pour ajouter une page annexe (conditions d'utilisation, accessibilité…), dupliquez `mentions-legales.astro` : le gabarit `.c-page` (lien de retour, titre, `.s-richtext`) est fait pour ça, et le lien s'ajoute dans le `<nav>` de `Footer.astro`.
+
+### Les sources du cours
+
+Une leçon peut citer ses sources dans son frontmatter, sans avoir à les recopier à la main en fin de page :
+
+```mdx
+---
+title: "Titre de la leçon"
+sources:
+  - label: "MDN - HTMLElement"
+    url: "https://developer.mozilla.org/fr/docs/Web/API/HTMLElement"
+  - label: "Un ouvrage sans lien"
+---
+```
+
+`src/pages/sources.astro` les rassemble toutes, groupées par leçon, sur une page unique liée depuis le pied de page. Une leçon **verrouillée** n'y apparaît pas — même parti pris que pour sa propre page, qui n'existe pas non plus (voir « Verrouiller une leçon »).
 
 ---
 
