@@ -56,12 +56,14 @@ src/
 │   │       └── lecon-1.slides.md  → son deck Marp (optionnel)
 │   └── ../content.config.ts  → schéma Zod du frontmatter des leçons
 ├── components/               → composants pédagogiques (.astro)
-│   ├── Footer.astro          → pied de page commun (marque + mentions légales)
+│   ├── Footer.astro          → pied de page commun (marque + pages annexes)
 │   └── SkipLink.astro        → lien d'évitement, en tête de chaque page
 ├── layouts/
 │   └── LessonLayout.astro    → gabarit d'une leçon (sidebar + progression)
 ├── pages/
 │   ├── index.astro           → accueil : liste les modules et leurs leçons
+│   ├── a-propos.astro        → page annexe, alimentée par socle.config.json (author)
+│   ├── sources.astro         → sources citées dans les leçons, groupées par leçon
 │   ├── mentions-legales.astro → page annexe, alimentée par socle.config.json
 │   ├── 404.astro             → adresse inconnue (servi par l'hébergeur)
 │   ├── robots.txt.js         → robots.txt, généré (annonce le plan du site)
@@ -72,7 +74,7 @@ src/
 public/fonts/                 → polices auto-hébergées (générées)
 public/slides/modules/        → PDF résumé de chaque module (généré, servi par le site)
 public/favicon.*, *.png       → icônes du site (le manifeste, lui, est généré)
-socle.config.json             → LE FICHIER À RÉGLER : identité, langue, URL publique, couleurs, polices, leçons verrouillées
+socle.config.json             → LE FICHIER À RÉGLER : identité, auteur, langue, URL publique, couleurs, polices, leçons verrouillées
 fonts.lock.json               → trace des polices téléchargées (généré)
 scripts/config.mjs            → lecture de socle.config.json (scripts + pages Astro)
 scripts/apply-brand.mjs       → applique socle.config.json au projet

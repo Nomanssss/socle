@@ -18,6 +18,18 @@
     }
   },
 
+  "_author": "Présentation facultative de l'auteur du cours, affichée sur /a-propos/ : un paragraphe (bio), une photo carrée (photo, un chemin dans public/ - ex. « /photos/auteur.jpg ») et des liens optionnels (site personnel, réseaux sociaux…), chacun sous la forme { \"label\": \"…\", \"url\": \"…\" }. Rien n'est requis - contrairement aux mentions légales, un champ vide n'est pas signalé au build.",
+  "author": {
+    "bio": "Bonjour ! Je suis l'auteur de ce cours. J'aime transmettre ce que j'apprends, et Socle est l'outil que j'ai construit pour le faire sans dépendre d'une plateforme.\n\nCe paragraphe est un exemple - remplacez-le par votre propre présentation dans « author.bio ».",
+    "photo": "/photos/auteur-test.jpg",
+    "photoAlt": "",
+    "links": [
+      { "label": "Site personnel", "url": "https://exemple.fr" },
+      { "label": "Mastodon", "url": "https://exemple.fr/@vous" },
+      { "label": "LinkedIn", "url": "https://www.linkedin.com/in/exemple" }
+    ]
+  },
+
   "colors": {
     "primary": "#4647AE",
     "text": "#112E81",

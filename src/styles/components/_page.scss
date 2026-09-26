@@ -104,6 +104,36 @@
   }
 
 /*******************************************************************************
+ * Présentation de l'auteur
+*******************************************************************************/
+
+/**
+ * La photo (carrée, facultative) à côté du paragraphe de présentation.
+ * `o-cluster` gère déjà le passage à la ligne sur petit écran ; seul le
+ * paragraphe doit s'étirer pour occuper la place laissée par la photo.
+**/
+.c-page__intro {
+  > p {
+    flex: 1 1 #{rem.convert(240px)};
+    min-width: 0;
+  }
+}
+
+  .c-page__photo {
+    flex-shrink: 0;
+    width: rem.convert(160px);
+    height: rem.convert(160px);
+    object-fit: cover;
+    border-radius: spacing.radius();
+  }
+
+  // La présentation de l'auteur (« author.bio »), même parti pris que les
+  // valeurs des mentions légales : les retours à la ligne saisis comptent.
+  .c-page__bio {
+    white-space: pre-line;
+  }
+
+/*******************************************************************************
  * États
 *******************************************************************************/
 

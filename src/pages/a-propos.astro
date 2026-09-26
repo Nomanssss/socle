@@ -1,0 +1,70 @@
+---
+import '../styles/theme.scss';
+import BaseHead from '../components/BaseHead.astro';
+import SkipLink from '../components/SkipLink.astro';
+import Footer from '../components/Footer.astro';
+import { site, author } from '../../scripts/config.mjs';
+
+// =============================================================
+// Page « À propos de l'auteur », liée depuis le pied de page.
+//
+// Une présentation facultative de l'auteur du cours - un paragraphe
+// et des liens (site personnel, réseaux sociaux…) - renseignée dans
+// « author » de socle.config.json. Contrairement aux mentions
+// légales, rien n'est requis : la page reste en ligne même vide,
+// avec un rappel discret pour son propriétaire.
+// =============================================================
+const { title: siteTitle, lang } = site();
+const { bio, photo, photoAlt, links } = author();
+---
+
+<html lang={lang}>
+  <head>
+    <BaseHead
+      title={`À propos - ${siteTitle}`}
+      description={`Qui a écrit le cours ${siteTitle}.`}
+    />
+  </head>
+  <body>
+    <SkipLink />
+
+    <main id="contenu" tabindex="-1" class="c-page o-wrapper o-wrapper--medium">
+      <a href="/" class="c-page__back">← Accueil</a>
+
+      <header class="c-page__header">
+        <h1 class="c-page__title">À propos de l'auteur</h1>
+      </header>
+
+      <div class="s-richtext">
+        <div class="c-page__intro o-cluster o-cluster--lg">
+          {photo && <img class="c-page__photo" src={photo} alt={photoAlt} width="160" height="160" />}
+          {bio ? (
+            <p class="c-page__bio">{bio}</p>
+          ) : (
+            <p class="c-page__todo">
+              Aucune présentation n'est encore renseignée. Écrivez-la dans{' '}
+              <code>socle.config.json</code>, section <code>author.bio</code>.
+            </p>
+          )}
+        </div>
+
+        {
+          links.length > 0 && (
+            <ul>
+              {links.map((link) => (
+                <li>
+                  <a href={link.url} target="_blank" rel="noopener noreferrer">
+                    {link.label}
+                    <span class="u-hidden-visually"> (nouvelle fenêtre)</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </div>
+    </main>
+
+    <Footer />
+  </body>
+</html>
