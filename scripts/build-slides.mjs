@@ -7,7 +7,8 @@
 //   3. ajoute le contenu du fichier compagnon « <leçon>.slides.md »
 //      s'il existe (markdown Marp complet, slides séparées par ---),
 //      sinon un deck minimal depuis slidePoints ;
-//   4. écrit le .md assemblé dans slides/ puis le rend avec Marp.
+//   4. termine par une slide « Merci ! » avec les liens de l'auteur ;
+//   5. écrit le .md assemblé dans slides/ puis le rend avec Marp.
 //
 // Puis, pour chaque module (= un dossier de src/content/lecons/) :
 // un deck « module-1.pdf » qui enchaîne les leçons du dossier, dans
@@ -46,7 +47,7 @@ import { join, dirname, resolve, basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import matter from 'gray-matter';
 import { stageImage, stageImages } from './stage-images.mjs';
-import { isLocked, unknownLocked } from './config.mjs';
+import { isLocked, unknownLocked, author } from './config.mjs';
 
 const ROOT = process.cwd();
 const LESSONS_DIR = join(ROOT, 'src/content/lecons');
@@ -204,6 +205,28 @@ function marpHeader(title) {
   return head;
 }
 
+/**
+ * La slide de fin, commune à tous les decks : un remerciement, le logo
+ * (peint par layouts/_end.scss), puis le nom et les liens de l'auteur, lus
+ * dans « author.name » et « author.links » de socle.config.json. Sans eux,
+ * la slide garde son « Merci ! » et son logo.
+ *
+ * Les crochets d'un libellé sont échappés : « [Blog] » casserait la
+ * syntaxe du lien markdown.
+ */
+const END_SLIDE = (() => {
+  let slide = '\n---\n\n<!-- _class: end -->\n<!-- _paginate: false -->\n\n# Merci !\n';
+  const { name, links } = author();
+  if (name) slide += `\n${name}\n`;
+  if (links.length) {
+    slide += '\n';
+    for (const { label, url } of links) {
+      slide += `- [${label.replace(/[[\]]/g, '\\$&')}](<${url}>)\n`;
+    }
+  }
+  return slide;
+})();
+
 /** Le dossier de module d'une leçon, ou null si elle est à la racine. */
 function moduleDirOf(rel) {
   return rel.includes('/') || rel.includes('\\') ? rel.split(/[/\\]/)[0] : null;
@@ -303,7 +326,7 @@ for (const rel of lessons) {
   // qui les compose. Seul le rendu Marp, qui coûte, est conditionnel.
   if (DO_LESSONS) {
     const mdPath = join(OUT_DIR, `${slug}.md`);
-    writeFileSync(mdPath, marpHeader(data.title) + leadSlide + content);
+    writeFileSync(mdPath, marpHeader(data.title) + leadSlide + content + END_SLIDE);
 
     const outPath = join(OUT_DIR, `${slug}.${ext}`);
     console.log(`→ ${id}  (${ext})`);
@@ -391,7 +414,7 @@ for (const [dir, { label, labels, bodies }] of DO_MODULES ? byModuleDir : []) {
   body += '\n';
   body += `# ${label ?? dir}\n`;
 
-  const md = marpHeader(label ?? dir) + body + bodies.map((b) => `\n---\n\n${b}`).join('');
+  const md = marpHeader(label ?? dir) + body + bodies.map((b) => `\n---\n\n${b}`).join('') + END_SLIDE;
 
   const mdPath = join(OUT_DIR, `${dir}.md`);
   writeFileSync(mdPath, md);
