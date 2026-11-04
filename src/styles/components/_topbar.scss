@@ -1,0 +1,180 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Topbar
+ * Type: Component
+ * Description:
+ *   Barre du haut, commune à toutes les pages : la marque, puis la
+ *   navigation principale ou, sur une leçon, le fil d'Ariane et la jauge de
+ *   lecture. La largeur vient de `.o-wrapper`, l'alignement de `.o-cluster`,
+ *   posés dans le HTML.
+ *
+ *   Le symbole de la marque est un fond rendu par `tools/logo`, dans la
+ *   couleur de la charte : aucun fichier image à remplacer au rebranding.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/global";
+@use "../settings/spacing";
+@use "../settings/typography";
+@use "../tools/logo";
+
+/*******************************************************************************
+ * Variables
+*******************************************************************************/
+
+$reading-height: 3px;
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-topbar {
+  background: colors.get("background");
+  border-bottom: rem.convert(1px) solid colors.get("border-soft");
+}
+
+  .c-topbar__content {
+    --gutter: #{spacing.get("md")};
+  }
+
+    .c-topbar__row {
+      --space: #{spacing.get("xs")} #{spacing.get("lg")};
+      min-height: rem.convert(global.$topbar-height - $reading-height);
+      padding-block: spacing.get("xs");
+    }
+
+/*******************************************************************************
+ * Marque
+*******************************************************************************/
+
+      .c-topbar__brand {
+        display: inline-flex;
+        align-items: center;
+        gap: spacing.get("xs");
+        min-height: rem.convert(44px);
+        color: colors.get("text");
+        transition: color 150ms ease;
+
+        &:hover {
+          color: colors.get("primary");
+        }
+      }
+
+        .c-topbar__mark {
+          flex-shrink: 0;
+          width: rem.convert(28px);
+          aspect-ratio: logo.$logo-ratio;
+          background-image: logo.logo(colors.$primary);
+          background-repeat: no-repeat;
+          background-size: contain;
+        }
+
+        .c-topbar__name {
+          font-family: typography.family("heading");
+          font-size: typography.size("lg");
+          font-weight: typography.$bold;
+          line-height: 1;
+        }
+
+/*******************************************************************************
+ * Navigation principale
+*******************************************************************************/
+
+      .c-topbar__nav {}
+
+        .c-topbar__link {
+          display: inline-flex;
+          align-items: center;
+          min-height: rem.convert(44px);
+          padding-inline: spacing.get("sm");
+          font-size: typography.size("sm");
+          font-weight: typography.$semibold;
+          color: colors.get("text-muted");
+          border-radius: spacing.radius("sm");
+          transition: background-color 150ms ease, color 150ms ease;
+
+          &:hover {
+            color: colors.get("text");
+            background-color: colors.get("surface-muted");
+          }
+
+          &[aria-current="page"] {
+            color: colors.get("text");
+            background-color: colors.get("surface-muted");
+          }
+        }
+
+/*******************************************************************************
+ * Fil d'Ariane
+*******************************************************************************/
+
+      .c-topbar__crumbs {
+        min-width: 0;
+        font-size: typography.size("sm");
+        color: colors.get("text-muted");
+      }
+
+        // La barre oblique est un décor : posée en CSS, elle n'est pas lue
+        // entre chaque niveau par les lecteurs d'écran.
+        .c-topbar__crumb {
+          display: inline-flex;
+          align-items: center;
+          gap: spacing.get("xs");
+
+          &::before {
+            content: "/";
+            color: colors.get("border");
+          }
+
+          [aria-current="page"] {
+            font-weight: typography.$semibold;
+            color: colors.get("text");
+          }
+        }
+
+          .c-topbar__crumb-link {
+            color: inherit;
+
+            &:hover {
+              color: colors.get("primary");
+            }
+          }
+
+/*******************************************************************************
+ * Jauge de lecture
+*******************************************************************************/
+
+  .c-topbar__reading {
+    height: rem.convert($reading-height);
+    background: colors.get("surface-muted");
+  }
+
+    // Pleine par défaut : sans script, une jauge vide laisserait croire que la
+    // page n'a jamais été lue. Le script la ramène à sa vraie valeur.
+    .c-topbar__reading-fill {
+      display: block;
+      height: 100%;
+      background: colors.get("primary");
+      transform-origin: left center;
+    }
+
+/*******************************************************************************
+ * Modifiers
+*******************************************************************************/
+
+/**
+ * Collante, sur une leçon : la jauge de lecture n'a de sens que visible.
+**/
+.c-topbar--sticky {
+  position: sticky;
+  top: 0;
+  z-index: global.$topbar-zindex;
+}

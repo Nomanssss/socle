@@ -61,6 +61,12 @@ $wrapper-sizes: (
   }
 }
 
+// Toute la largeur disponible, gouttière comprise : une barre d'outils qui
+// doit s'aligner sur les bords de l'écran et non sur une colonne de lecture.
+.o-wrapper--full {
+  --size: 100%;
+}
+
 // Sans gouttière latérale
 .o-wrapper--flush {
   --gutter: 0px;

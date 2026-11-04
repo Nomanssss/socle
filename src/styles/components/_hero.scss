@@ -1,0 +1,114 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Hero
+ * Type: Component
+ * Description:
+ *   Bandeau d'ouverture de l'accueil : quelques chiffres sur le cours, son
+ *   titre, son accroche, le bouton de reprise - et, à côté, la carte de
+ *   progression. La largeur vient de `.o-wrapper` posé sur
+ *   `.c-hero__content`, le rythme vertical de `.o-stack`.
+ *
+ *   Les deux colonnes se partagent la ligne tant qu'elles tiennent, puis la
+ *   carte passe dessous : aucun point de rupture, c'est la largeur minimale
+ *   de chacune qui décide.
+ *
+ *   Le symbole de la marque y est posé en filigrane, débordant du bord
+ *   droit. C'est un décor : il vit dans un pseudo-élément, donc hors du
+ *   HTML et hors de portée des lecteurs d'écran.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../settings/typography";
+@use "../tools/fonts";
+@use "../tools/logo";
+@use "../tools/mq" as mq;
+@use "../tools/responsive";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-hero {
+  @include responsive.fluid-size(48px, 80px, padding-block, 375px, 1280px);
+  background: colors.get("surface-muted");
+  border-bottom: rem.convert(1px) solid colors.get("border-soft");
+  isolation: isolate;
+  overflow: clip;
+}
+
+  .c-hero__content {
+    position: relative;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: rem.convert(-120px);
+      right: rem.convert(-80px);
+      z-index: -1;
+      aspect-ratio: logo.$logo-ratio;
+      background-image: logo.logo(colors.$primary);
+      background-repeat: no-repeat;
+      background-size: contain;
+      opacity: 0.06;
+      transform: rotate(-22deg);
+      @include responsive.fluid-size(240px, 520px, width, 375px, 1920px);
+    }
+  }
+
+    .c-hero__layout {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: spacing.get("xl");
+    }
+
+      // Le texte prend toute la place qu'il peut ; la carte, le reste.
+      .c-hero__main {
+        flex: 999 1 rem.convert(480px);
+        min-width: 0;
+      }
+
+      .c-hero__aside {
+        flex: 1 1 rem.convert(320px);
+        max-width: rem.convert(400px);
+
+        // Seule sous le texte, la carte s'étire comme lui : à 400 px dans un
+        // écran de 600, elle flotterait à gauche d'un vide.
+        @include mq.mq($until: medium) {
+          max-width: none;
+        }
+      }
+
+        .c-hero__facts {}
+
+          .c-hero__fact {
+            padding: rem.convert(6px) spacing.get("sm");
+            font-size: typography.size("sm");
+            font-weight: typography.$semibold;
+            line-height: typography.leading("tight");
+            color: colors.get("text-muted");
+            background: colors.get("background");
+            border-radius: rem.convert(999px);
+          }
+
+        .c-hero__title {
+          @include responsive.fluid-size(40px, 72px, font-size, 375px, 1280px);
+          line-height: 1;
+          letter-spacing: -0.02em;
+        }
+
+        .c-hero__tagline {
+          @include fonts.large-text;
+          max-width: rem.convert(560px);
+          line-height: 1.5;
+          color: colors.get("text-muted");
+        }

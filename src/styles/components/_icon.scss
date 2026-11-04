@@ -1,0 +1,22 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Icon
+ * Type: Component
+ * Description:
+ *   Les pictogrammes de `components/Icon.astro`. Ils suivent la couleur du
+ *   texte (`currentColor`) et ne se laissent jamais écraser dans une ligne
+ *   flex trop étroite : une icône à moitié écrasée ne se lit plus.
+**/
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-icon {
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}

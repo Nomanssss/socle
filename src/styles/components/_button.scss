@@ -99,6 +99,16 @@
 }
 
 /**
+ * Large - l'action principale d'une page (« Commencer le cours »)
+*******************************************************************************/
+
+.c-button--large {
+  min-height: rem.convert(52px);
+  padding-inline: spacing.get("lg");
+  font-size: rem.convert(17px);
+}
+
+/**
  * Compact
 *******************************************************************************/
 

@@ -76,6 +76,9 @@ $colors: (
 
   // Fond général de la page
   "background": $page,
+  // Fond à peine teinté des pages-sommaires (accueil, présentations,
+  // sources) : il fait ressortir les cartes blanches posées dessus
+  "canvas": color.mix($primary, $page, 4%),
   // Cartes, encarts, barre latérale - posés sur la page, donc plus clairs
   "surface": color.mix(#ffffff, $page, 55%),
   // Survols et fonds en creux (option de quiz, code en ligne)
@@ -87,6 +90,9 @@ $colors: (
   "text-muted": color.mix($text, $page, 72%),
   // Filets des cartes, des tableaux, de la barre latérale
   "border": color.mix($primary, $page, 30%),
+  // Filets discrets : contour des cartes, séparateurs de la barre du haut.
+  // Une carte se détache déjà par son fond, le trait n'a qu'à la border
+  "border-soft": color.mix($primary, $page, 14%),
 
   "success": $success,
   // Fond teinté d'un état « terminé »

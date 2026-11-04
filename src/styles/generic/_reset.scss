@@ -52,3 +52,13 @@ select {
 legend {
   padding: 0;
 }
+
+/**
+ * `hidden` cache, quoi que dise le CSS. L'attribut ne vaut que
+ * `display: none` dans la feuille du navigateur : le moindre `display: flex`
+ * d'un composant l'emporte, et l'élément que le script croit masqué reste à
+ * l'écran. C'est l'un des rares `!important` légitimes hors des utilitaires.
+**/
+[hidden] {
+  display: none !important;
+}

@@ -40,6 +40,12 @@ rien casser, un *correctif* répare.
 
 ### Modifié
 
+- **Accueil redessiné** : une barre du haut commune à toutes les pages, un
+  hero qui annonce le cours en chiffres et propose de **reprendre** là où
+  l'on s'était arrêté, une **carte de progression** (part du cours terminée,
+  leçon à suivre) et le programme en **cartes de module** - jauge, état de
+  chaque leçon, PDF du module. Tout reste calculé dans le navigateur, sans
+  compte.
 - `npm run check` **fonctionne sans installation supplémentaire** :
   `@astrojs/check` et `typescript` font désormais partie des dépendances de
   développement. La vérification passe sans erreur ni avertissement.

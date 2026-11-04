@@ -1,0 +1,178 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Progress card
+ * Type: Component
+ * Description:
+ *   Carte « Votre progression » de l'accueil : un anneau pour la part du
+ *   cours terminée, et le lien vers la leçon à suivre.
+ *
+ *   L'anneau est un cercle SVG dont on ne dessine qu'une partie du trait :
+ *   `stroke-dasharray` vaut « longueur peinte, longueur vide ». La part
+ *   terminée arrive du script dans `--progress` (de 0 à 1), la circonférence
+ *   du HTML dans `--circumference` - le CSS fait la multiplication.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/effects";
+@use "../settings/spacing";
+@use "../settings/typography";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.get("md");
+  padding: spacing.get("lg");
+  background: colors.get("background");
+  border-radius: spacing.radius("lg");
+  box-shadow: effects.shadow("sm"), effects.shadow("lg");
+}
+
+  .c-progress-card__head {
+    display: flex;
+    align-items: center;
+    gap: spacing.get("md");
+  }
+
+/*******************************************************************************
+ * Anneau
+*******************************************************************************/
+
+    .c-progress-card__ring {
+      position: relative;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      width: rem.convert(88px);
+      aspect-ratio: 1;
+
+      svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        // Le trait part de midi, pas de trois heures.
+        transform: rotate(-90deg);
+      }
+    }
+
+      .c-progress-card__ring-track,
+      .c-progress-card__ring-fill {
+        fill: none;
+        stroke-width: 10;
+      }
+
+      .c-progress-card__ring-track {
+        stroke: colors.get("surface-muted");
+      }
+
+      .c-progress-card__ring-fill {
+        stroke: colors.get("primary");
+        stroke-linecap: round;
+        stroke-dasharray: calc(var(--progress, 0) * var(--circumference)) var(--circumference);
+        transition: stroke-dasharray 400ms ease;
+      }
+
+
+      .c-progress-card__percent {
+        position: relative;
+        font-family: typography.family("heading");
+        font-size: typography.size("lg");
+        font-weight: typography.$bold;
+        // Chiffres à largeur fixe : le pourcentage ne tremble pas en changeant.
+        font-variant-numeric: tabular-nums;
+      }
+
+    .c-progress-card__title {
+      font-size: typography.size("lg");
+    }
+
+    .c-progress-card__summary {
+      font-size: typography.size("sm");
+      color: colors.get("text-muted");
+    }
+
+/*******************************************************************************
+ * À suivre
+*******************************************************************************/
+
+  .c-progress-card__next {
+    padding-top: spacing.get("md");
+    border-top: rem.convert(1px) solid colors.get("border-soft");
+  }
+
+    .c-progress-card__label {
+      margin-bottom: spacing.get("xs");
+      font-size: typography.size("xs");
+      font-weight: typography.$semibold;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: colors.get("text-muted");
+    }
+
+    // Le lien déborde de la carte de la largeur de son retrait : son fond
+    // s'aligne ainsi sur les bords du contenu, et le texte sur le reste.
+    .c-progress-card__link {
+      display: flex;
+      align-items: center;
+      gap: spacing.get("sm");
+      margin-inline: calc(#{spacing.get("sm")} * -1);
+      padding: spacing.get("sm");
+      color: colors.get("text");
+      background: colors.get("canvas");
+      border-radius: spacing.radius();
+      transition: background-color 150ms ease;
+
+      &:hover {
+        background: colors.get("surface-muted");
+      }
+    }
+
+      .c-progress-card__play {
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        width: rem.convert(40px);
+        height: rem.convert(40px);
+        color: colors.get("primary");
+        background: colors.get("surface-muted");
+        border-radius: spacing.radius();
+      }
+
+      .c-progress-card__link-title {
+        font-weight: typography.$semibold;
+        line-height: typography.leading("tight");
+      }
+
+      .c-progress-card__link-meta {
+        font-size: typography.size("sm");
+        line-height: typography.leading("tight");
+        color: colors.get("text-muted");
+      }
+
+  .c-progress-card__note {
+    font-size: typography.size("xs");
+    line-height: 1.5;
+    color: colors.get("text-muted");
+  }
+
+/*******************************************************************************
+ * States
+*******************************************************************************/
+
+// Rien de terminé : un trait de longueur nulle, aux bouts arrondis, se
+// dessinerait quand même en point. On le retire.
+.c-progress-card.is-empty .c-progress-card__ring-fill {
+  visibility: hidden;
+}

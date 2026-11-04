@@ -61,6 +61,33 @@
     }
 
 /*******************************************************************************
+ * Variants
+*******************************************************************************/
+
+/**
+ * Jauge continue : une piste, et un remplissage dont la longueur vient de
+ * `--progress` (de 0 à 1), posé par le script. `scaleX` plutôt qu'une
+ * largeur : la transition ne relance pas la mise en page.
+**/
+.c-progress--bar .c-progress__track {
+  overflow: hidden;
+  height: rem.convert(6px);
+  background-color: colors.get("surface-muted");
+  border-radius: rem.convert(999px);
+}
+
+  .c-progress__fill {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: colors.get("primary");
+    border-radius: inherit;
+    transform: scaleX(var(--progress, 0));
+    transform-origin: left center;
+    transition: transform 300ms ease;
+  }
+
+/*******************************************************************************
  * States
 *******************************************************************************/
 

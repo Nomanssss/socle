@@ -1,0 +1,132 @@
+---
+import { site } from '../../scripts/config.mjs';
+
+// =============================================================
+// Topbar - la barre du haut, commune à toutes les pages
+//
+// La marque à gauche, qui ramène à l'accueil, puis selon la page :
+//
+//   - la navigation principale (accueil, pages-sommaires) ;
+//   - le fil d'Ariane (leçon) : on sait où l'on est dans le cours
+//     sans avoir à chercher la leçon surlignée dans le sommaire.
+//
+// Sur une leçon, elle porte aussi la jauge de lecture : un trait
+// sous la barre, qui avance avec le défilement. Elle reste alors
+// collée en haut de l'écran, sans quoi la jauge disparaîtrait au
+// premier tour de molette.
+//
+// Le symbole de la marque est un fond posé par le CSS (tools/logo),
+// comme dans le pied de page : il prend la couleur de la charte du
+// moment. Le nom, lui, est du texte - c'est celui du cours, réglé
+// dans socle.config.json, et pas celui du template.
+// =============================================================
+interface Crumb {
+  label: string;
+  href?: string;
+}
+
+interface Props {
+  /** L'entrée de la navigation principale à signaler comme courante. */
+  current?: string;
+  /** Fil d'Ariane : remplace la navigation principale quand il est fourni. */
+  crumbs?: Crumb[];
+  /** Jauge de lecture sous la barre (leçons). Rend aussi la barre collante. */
+  reading?: boolean;
+}
+
+const { current, crumbs, reading = false } = Astro.props;
+const { title } = site();
+
+// La navigation principale. Une entrée par page-sommaire du cours.
+const links: { key: string; label: string; href: string }[] = [
+  { key: 'home', label: 'Sommaire', href: '/' },
+];
+---
+
+<header class:list={['c-topbar', { 'c-topbar--sticky': reading }]}>
+  <div class:list={['c-topbar__content o-wrapper', reading ? 'o-wrapper--full' : null]}>
+    <div class="c-topbar__row o-cluster o-cluster--middle">
+      <a href="/" class="c-topbar__brand">
+        <span class="c-topbar__mark" aria-hidden="true"></span>
+        <span class="c-topbar__name">{title}</span>
+      </a>
+
+      {
+        crumbs ? (
+          <nav class="c-topbar__crumbs" aria-label="Fil d'Ariane">
+            <ol class="o-cluster o-cluster--xs o-cluster--middle">
+              {crumbs.map((crumb, i) => (
+                <li class="c-topbar__crumb">
+                  {crumb.href ? (
+                    <a href={crumb.href} class="c-topbar__crumb-link">
+                      {crumb.label}
+                    </a>
+                  ) : (
+                    <span aria-current={i === crumbs.length - 1 ? 'page' : undefined}>
+                      {crumb.label}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </nav>
+        ) : (
+          links.length > 1 && (
+            <nav class="c-topbar__nav" aria-label="Principale">
+              <ul class="o-cluster o-cluster--2xs">
+                {links.map((link) => (
+                  <li>
+                    <a
+                      href={link.href}
+                      aria-current={link.key === current ? 'page' : undefined}
+                      class="c-topbar__link"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )
+        )
+      }
+    </div>
+  </div>
+
+  {
+    reading && (
+      <div class="c-topbar__reading" aria-hidden="true">
+        <span class="c-topbar__reading-fill" data-reading-progress />
+      </div>
+    )
+  }
+</header>
+
+{
+  reading && (
+    <script>
+      // Jauge de lecture : la part de la page déjà défilée. Décorative (le
+      // lecteur d'écran a le texte, il n'a pas besoin qu'on le lui mesure),
+      // d'où l'aria-hidden plus haut. Un `transform` plutôt qu'une largeur :
+      // il ne relance pas la mise en page à chaque événement de défilement.
+      const fill = document.querySelector<HTMLElement>('[data-reading-progress]');
+      if (fill) {
+        let pending = false;
+        const update = () => {
+          pending = false;
+          const max = document.documentElement.scrollHeight - window.innerHeight;
+          const ratio = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 1;
+          fill.style.transform = `scaleX(${ratio})`;
+        };
+        const schedule = () => {
+          if (pending) return;
+          pending = true;
+          requestAnimationFrame(update);
+        };
+        window.addEventListener('scroll', schedule, { passive: true });
+        window.addEventListener('resize', schedule);
+        update();
+      }
+    </script>
+  )
+}
