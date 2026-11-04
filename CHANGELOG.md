@@ -55,6 +55,12 @@ rien casser, un *correctif* répare.
   leçon à suivre) et le programme en **cartes de module** - jauge, état de
   chaque leçon, PDF du module. Tout reste calculé dans le navigateur, sans
   compte.
+- **Slides redessinées** : un surtitre de module et une bande de pied qui
+  porte le cours, la leçon et la pagination « 2 / 12 », écrits par
+  `build-slides` ; une slide de titre avec la couverture en panneau à droite,
+  un surtitre et le chapô de la leçon ; des puces en losange et des listes
+  numérotées en pastilles ; des colonnes numérotées, aux images recadrées
+  pleine largeur plutôt qu'en tuiles carrées.
 - **Leçon redessinée** : fil d'Ariane et **jauge de lecture** dans la barre
   du haut, progression du cours et sommaire **replié par module** dans la
   barre latérale, un en-tête qui situe la leçon (« Module 2 · Leçon 1 sur

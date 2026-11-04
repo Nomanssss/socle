@@ -172,16 +172,16 @@ Dans tous les cas, les leçons concernées sont **entièrement** retraitées : i
 
 ### La slide de titre est automatique
 
-Ne l'écrivez jamais vous-même : elle est fabriquée depuis le frontmatter du `.mdx` (`title`, `module`, `cover`).
+Ne l'écrivez jamais vous-même : elle est fabriquée depuis le frontmatter du `.mdx` (`title`, `module`, `moduleOrder`, `order`, `description`, `cover`) - un surtitre qui situe la leçon (« Module 1 · Leçon 2 »), le titre, puis le chapô.
 
-Elle porte un **bandeau sur 30 % de la hauteur**, rempli dans cet ordre :
+Le texte occupe la gauche ; à droite, un **panneau d'image sur toute la hauteur** (40 % de la largeur), rempli dans cet ordre :
 
 1. l'image `cover:` de la leçon, si elle en a une ;
 2. sinon **la couverture de son module** — celle de la première leçon du module qui en déclare une, au sens du champ `order` ;
 3. sinon l'image par défaut du projet, si vous en configurez une ;
 4. sinon un aplat de la couleur principale.
 
-Le deuxième niveau évite un deck panaché : illustrer la première leçon d'un module suffit à donner un bandeau à toutes les autres, et à la slide de titre du **PDF de module**, qui suit la même règle. Une leçon qui veut son image à elle la déclare, et sa `cover:` gagne.
+Le deuxième niveau évite un deck panaché : illustrer la première leçon d'un module suffit à donner un panneau à toutes les autres, et à la slide de titre du **PDF de module**, qui suit la même règle. Une leçon qui veut son image à elle la déclare, et sa `cover:` gagne.
 
 L'image par défaut se règle dans `socle.config.json`, avec un chemin relatif à la racine du projet :
 
@@ -195,16 +195,27 @@ L'image par défaut se règle dans `socle.config.json`, avec un chemin relatif �
 
 La clé est facultative : sans elle, on retombe sur l'aplat. Si le fichier indiqué n'existe pas, `npm run slides` le signale et garde l'aplat plutôt que de produire un bandeau vide.
 
-Dans tous les cas l'image est recadrée en `cover` : elle remplit le bandeau et déborde, elle n'est **jamais déformée**.
+Dans tous les cas l'image est recadrée en `cover` : elle remplit le panneau et déborde, elle n'est **jamais déformée**. (La clé de configuration garde son nom historique, `band`.)
 
-Le cadrage appartient à la mise en page, pas au générateur : `layouts/_lead.scss` récupère l'image dans la variable `--background-image` que Marp expose, et la peint dans un `::before`. Il le fait parce que Marp écrit l'image **en style inline** sur la slide, avec ses propres `background-size` et `background-repeat` — aucune feuille de style ne peut la recadrer, d'où le `background-image: none !important` sur la slide et la reprise dans le bandeau. C'est le seul `!important` du projet en dehors de la couche `utilities` (où il est la règle), et c'est la seule façon de battre un style inline.
+Le cadrage appartient à la mise en page, pas au générateur : `layouts/_lead.scss` récupère l'image dans la variable `--background-image` que Marp expose, et la peint dans un `::before`. Il le fait parce que Marp écrit l'image **en style inline** sur la slide, avec ses propres `background-size` et `background-repeat` — aucune feuille de style ne peut la recadrer, d'où le `background-image: none !important` sur la slide et la reprise dans le panneau. C'est le seul `!important` du projet en dehors de la couche `utilities` (où il est la règle), et c'est la seule façon de battre un style inline.
 
-Pour le même bandeau sur une slide écrite à la main, la directive suffit :
+Pour le même panneau sur une slide écrite à la main, la directive suffit :
 
 ```md
 <!-- _class: lead -->
 <!-- _backgroundImage: url('mon-image.png') -->
 ```
+
+### Surtitre, pied de page et pagination
+
+Chaque slide porte, sans rien écrire :
+
+- en **surtitre**, au-dessus du titre, le module (« Module 1 · Prendre le template en main »), précédé du symbole de la marque ;
+- dans la **bande de pied**, le nom du cours et le titre de la leçon à gauche, la pagination « 2 / 12 » à droite.
+
+`build-slides` les écrit dans l'en-tête de chaque deck, en directives Marp `header` et `footer`. Dans le deck d'un module, l'intercalaire de chaque leçon relance le pied de page avec son titre. Les mises en page qui occupent toute la surface (titre, intercalaire, citation, image plein cadre, image côte à côte) n'en ont pas ; sur `image-left` et `image-right`, ils suivent le côté du texte.
+
+Une slide qui doit s'en passer le dit avec les directives locales : `<!-- _header: "" -->`, `<!-- _footer: "" -->`.
 
 ### Trois niveaux, le premier trouvé gagne
 
@@ -301,26 +312,21 @@ S'ouvre dans PowerPoint pour retouche.
 Se projette au navigateur, sans outil.
 ```
 
-Elle s'inscrit dans une **tuile carrée** en `object-fit: contain` : jamais déformée, jamais rognée, et les colonnes restent alignées quelles que soient les proportions des images. La tuile est centrée dans sa colonne (`margin-inline: auto`), le titre et le texte restant alignés à gauche. Le côté du carré se règle par `--tile`, une valeur par variante (260 / 200 / 170 px).
+Elle occupe **toute la largeur de sa colonne**, recadrée en `object-fit: cover` dans un format commun à la variante : jamais déformée, et les colonnes restent alignées quelles que soient les proportions des images. Plus les colonnes sont étroites, plus le format est haut (16:7, 16:9, 4:3), sans quoi l'image ne serait plus qu'un ruban.
 
-Une **tuile sur deux** porte le symbole du projet en filigrane derrière elle (`::before` sur le paragraphe qui encadre l'image).
+Chaque `###` reçoit un **numéro** (01, 02…) en surtitre, posé par un compteur CSS remis à zéro à chaque slide : rien à écrire.
 
 Tous les réglages des colonnes tiennent dans un seul tableau, en tête de `marp/layouts/_columns.scss` :
 
 ```scss
 $variants: (
-  2: (columns: 2, font: 25px, gap: 56px, tile: 260px, mark: 150px),
-  3: (columns: 3, font: 22px, gap: 56px, tile: 200px, mark: 120px),
-  4: (columns: 4, font: 19px, gap: 40px, tile: 170px, mark: 100px),
+  2: (columns: 2, font: 25px, gap: 64px, ratio: math.div(16, 7)),
+  3: (columns: 3, font: 22px, gap: 56px, ratio: math.div(16, 9)),
+  4: (columns: 4, font: 19px, gap: 40px, ratio: math.div(4, 3)),
 );
 ```
 
-`tile` est le côté du carré, `mark` la taille du filigrane. Les blocs CSS sont produits par une boucle en fin de fichier : **ajouter une variante `columns-5` ne demande qu'une ligne de plus** dans ce tableau.
-
-Deux détails de mécanique, si vous y touchez :
-
-- c'est le **paragraphe** qui porte le cadre et le pseudo-élément, pas l'image : un `<img>` est un élément remplacé, il ne peut pas avoir de `::before` ;
-- le fond de la tuile étant opaque, seule la **partie qui déborde** du filigrane se voit. C'est le débordement qui fait l'effet — retirez le fond de la tuile si vous voulez le voir au travers.
+`ratio` est le format des images. Les blocs CSS sont produits par une boucle en fin de fichier : **ajouter une variante `columns-5` ne demande qu'une ligne de plus** dans ce tableau.
 
 **Les deux ordres d'écriture fonctionnent** — image puis titre, ou titre puis image. Une colonne est un *groupe* (image facultative, titre, texte), et c'est son **premier élément** qui ouvre la colonne, quel qu'il soit. Trois exemptions garantissent qu'un groupe ne se fasse jamais couper en deux : le premier groupe de la slide reste dans la première colonne, un titre qui suit son image ne s'en détache pas, et une image qui suit son titre non plus.
 
@@ -390,7 +396,7 @@ Sa structure suit les modèles du thème :
 | Début de chaque leçon | `section` | le titre de la leçon, sur le fond plein de la couleur principale |
 | Le reste | inchangé | le contenu des slides de la leçon, tel quel |
 
-La slide de titre d'une leçon existe donc en deux versions, pour deux rôles : `lead` quand elle **ouvre** le deck de sa leçon — avec la couverture en bandeau et le nom du module en sous-titre — et `section` quand elle n'est plus qu'un **intercalaire** au milieu du deck du module. Le corps qui suit, lui, est assemblé une seule fois et sert aux deux.
+La slide de titre d'une leçon existe donc en deux versions, pour deux rôles : `lead` quand elle **ouvre** le deck de sa leçon — avec la couverture en panneau, un surtitre et le chapô — et `section` quand elle n'est plus qu'un **intercalaire** au milieu du deck du module. Le corps qui suit, lui, est assemblé une seule fois et sert aux deux.
 
 Le site s'en sert à deux endroits : chaque **carte de module** de l'accueil propose « Slides du module (PDF) », et **chaque leçon** affiche un bouton « PDF du module » dans son en-tête, à côté de la durée de lecture. Ni l'un ni l'autre n'apparaît tant que le PDF n'a pas été généré.
 
@@ -919,14 +925,15 @@ Trois contraintes à connaître :
 - le `#` d'un hexadécimal ouvrirait un fragment d'URL et tronquerait l'image : la fonction l'encode en `%23`, et refuse au build une couleur qu'elle ne sait pas sérialiser ;
 - les SVG stockés diffèrent des originaux sur un point : `viewBox` y remplace `width`/`height`. Sans viewBox, un SVG a une taille intrinsèque et **ignore `background-size`** — la marque resterait à sa taille de départ.
 
-Elles sont appelées à six endroits. Sur les slides, dans des pseudo-éléments plutôt qu'en couche de fond : un pseudo-élément accepte une opacité, une rotation, un `mix-blend-mode` ou une transition. Le `z-index: -1` sur une slide qui isole son contexte d'empilement les place au-dessus du fond mais sous le texte.
+Elles sont appelées à sept endroits. Sur les slides, dans des pseudo-éléments plutôt qu'en couche de fond : un pseudo-élément accepte une opacité, une rotation, un `mix-blend-mode` ou une transition. Le `z-index: -1` sur une slide qui isole son contexte d'empilement les place au-dessus du fond mais sous le texte.
 
 | Où | Quoi |
 | --- | --- |
 | `components/_hero.scss` | le symbole en filigrane du bandeau d'accueil, dans `::after` |
 | `components/_topbar.scss` | le symbole devant le nom du cours, dans la barre du haut |
 | `components/_footer.scss` | le logotype du pied de page, qui s'assombrit au survol |
-| `marp/layouts/_lead.scss` | le logotype en bas à droite, dans `::after` |
+| `marp/layouts/_lead.scss` | le logotype en bas à gauche, dans `::after` |
+| `marp/_base.scss` | le symbole devant le surtitre de chaque slide, dans `header::before` |
 | `marp/layouts/_section.scss` | le symbole en blanc, dans `::before` |
 | `marp/layouts/_statement.scss` | le symbole en bas à gauche, dans `::before` |
 

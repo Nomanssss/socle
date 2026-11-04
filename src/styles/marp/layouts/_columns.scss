@@ -46,18 +46,19 @@
  *     ### Avec un composant
  *     …
  *
- *   UNE IMAGE PAR COLONNE, entre le titre et le texte :
+ *   Chaque `###` reçoit un numéro (01, 02…), posé par un compteur CSS
+ *   propre à la slide : rien à écrire.
+ *
+ *   UNE IMAGE PAR COLONNE, au-dessus du titre ou entre le titre et le texte :
+ *
+ *     ![](balises.png)
  *
  *     ### HTML
- *     ![](balises.png)
  *     La structure : titres, paragraphes, liens.
  *
- *   Elle s'inscrit dans une tuile carrée (`object-fit: contain`), ce qui
- *   aligne les colonnes quelles que soient les proportions des images.
- *
- *   L'image doit venir APRÈS le `###`, pas avant : c'est le `###` qui ouvre
- *   la colonne, une image placée au-dessus resterait donc dans la colonne
- *   précédente.
+ *   Elle occupe toute la largeur de la colonne, recadrée (`object-fit:
+ *   cover`) dans un format commun à la variante : les colonnes restent
+ *   alignées quelles que soient les proportions des images.
 **/
 
 /*******************************************************************************
@@ -65,11 +66,11 @@
 *******************************************************************************/
 
 @use "sass:map";
+@use "sass:math";
 @use "sass-rem" as rem;
 @use "../../settings/colors";
 @use "../../settings/spacing";
 @use "../../settings/typography";
-@use "../../tools/logo";
 
 /*******************************************************************************
  * Layout
@@ -86,16 +87,16 @@
  *   font     taille du corps de texte - à resserrer quand les colonnes
  *            rétrécissent, sinon la mesure devient illisible
  *   gap      gouttière entre les colonnes
- *   tile     côté de la tuile carrée des images
- *   mark     taille du filigrane (le symbole derrière une tuile sur deux)
+ *   ratio    format des images - plus les colonnes sont étroites, plus
+ *            l'image doit être haute pour rester lisible
  *
  * Ajouter une variante `columns-5` : une ligne de plus dans ce tableau, rien
  * d'autre - les blocs CSS sont produits par la boucle en fin de fichier.
 **/
 $variants: (
-  2: (columns: 2, font: 25px, gap: 56px, tile: 260px, mark: 200px),
-  3: (columns: 3, font: 22px, gap: 56px, tile: 200px, mark: 170px),
-  4: (columns: 4, font: 19px, gap: 40px, tile: 170px, mark: 100px),
+  2: (columns: 2, font: 25px, gap: 64px, ratio: math.div(16, 7)),
+  3: (columns: 3, font: 22px, gap: 56px, ratio: math.div(16, 9)),
+  4: (columns: 4, font: 19px, gap: 40px, ratio: math.div(4, 3)),
 ) !default;
 
 /**
@@ -107,12 +108,13 @@ section.columns-2,
 section.columns-3,
 section.columns-4 {
   display: block;
+  counter-reset: column;
 
   // Le titre de la slide traverse toutes les colonnes.
   h2 {
     column-span: all;
     margin-bottom: spacing.get("lg");
-    font-size: rem.convert(36px);
+    font-size: rem.convert(48px);
   }
 
   // … et le chapô avec lui : le paragraphe écrit juste sous le titre
@@ -166,8 +168,20 @@ section.columns-4 {
   h3 {
     margin-top: 0;
     margin-bottom: spacing.get("xs");
-    font-size: 1.15em;
+    font-size: 1.3em;
     break-after: avoid;
+    counter-increment: column;
+
+    // Le numéro de la colonne, en surtitre du titre.
+    &::before {
+      content: counter(column, decimal-leading-zero);
+      display: block;
+      margin-bottom: rem.convert(10px);
+      font-family: typography.family("body");
+      font-size: rem.convert(16px);
+      letter-spacing: 0.1em;
+      color: colors.get("primary");
+    }
   }
 
   // L'image qui ouvre une colonne n'est pas un chapô : elle reprend la
@@ -175,10 +189,7 @@ section.columns-4 {
   // reprennent, pas seulement la première - sinon les colonnes ne
   // démarrent plus à la même hauteur, et le décalage saute aux yeux.
   p:has(> img) {
-    position: relative;
-    isolation: isolate;
-    width: var(--tile);
-    margin: spacing.get("lg") auto spacing.get("lg");
+    margin: spacing.get("lg") 0 spacing.get("md");
   }
 
   // L'image posée SOUS son ### n'ouvre aucune colonne - le titre l'a déjà
@@ -196,34 +207,23 @@ section.columns-4 {
   img {
     display: block;
     width: 100%;
-    aspect-ratio: 1;
-    object-fit: contain;
-    border-radius: spacing.radius();
-  }
-
-  p:has(> img):nth-child(odd of p:has(> img))::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    inset: -4% -25% auto auto;
-    width: var(--mark);
-    height: var(--mark);
-    background-image: logo.logo(colors.$primary);
-    background-repeat: no-repeat;
-    background-size: contain;
-    opacity: 0.1;
-    transform: rotate(38deg);
+    aspect-ratio: var(--ratio);
+    object-fit: cover;
+    border-radius: spacing.radius("lg");
   }
 
   p,
   li {
     // Un bloc ne doit pas se couper au milieu d'une colonne.
     break-inside: avoid;
+    // Des lignes courtes se lisent serrées : à l'interligne du corps de
+    // slide, un paragraphe de colonne se délitait en lignes isolées.
+    line-height: 1.45;
   }
 
   ul,
   ol {
-    padding-left: spacing.get("md");
+    padding-left: 0;
   }
 }
 
@@ -241,8 +241,7 @@ section.columns-4 {
 **/
 @each $name, $variant in $variants {
   section.columns-#{$name} {
-    --tile: #{rem.convert(map.get($variant, tile))};
-    --mark: #{rem.convert(map.get($variant, mark))};
+    --ratio: #{map.get($variant, ratio)};
 
     column-count: map.get($variant, columns);
     column-gap: rem.convert(map.get($variant, gap));
