@@ -1,5 +1,6 @@
 ---
 import { site } from '../../scripts/config.mjs';
+import { getCourse } from '../utils/course';
 
 // =============================================================
 // Topbar - la barre du haut, commune à toutes les pages
@@ -37,10 +38,16 @@ interface Props {
 const { current, crumbs, reading = false } = Astro.props;
 const { title } = site();
 
-// La navigation principale. Une entrée par page-sommaire du cours.
+// La navigation principale. Une entrée par page-sommaire du cours - et
+// seulement si la page a quelque chose à montrer : un lien vers une liste
+// vide n'apprend rien à celui qui clique.
+const modules = await getCourse();
 const links: { key: string; label: string; href: string }[] = [
   { key: 'home', label: 'Sommaire', href: '/' },
 ];
+if (modules.some((module) => module.pdf)) {
+  links.push({ key: 'presentations', label: 'Slides', href: '/presentations/' });
+}
 ---
 
 <header class:list={['c-topbar', { 'c-topbar--sticky': reading }]}>

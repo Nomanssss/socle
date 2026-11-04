@@ -92,6 +92,12 @@ const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
                       <span data-resume-label>Commencer le cours</span>
                       <Icon name="arrow-right" />
                     </a>
+                    {hasPdf && (
+                      <a href="/presentations/" class="c-button c-button--large c-button--light">
+                        <Icon name="slides" />
+                        Toutes les slides
+                      </a>
+                    )}
                   </div>
                 )
               }

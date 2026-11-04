@@ -1,0 +1,40 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Index
+ * Type: Component
+ * Description:
+ *   En-tête des pages-sommaires (slides, sources) : un titre et un chapô qui
+ *   dit ce que la page rassemble. Posé sur le fond teinté de `.c-home`, au
+ *   même rythme que l'accueil.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../tools/fonts";
+@use "../tools/responsive";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-index {}
+
+  .c-index__title {
+    @include responsive.fluid-size(36px, 56px, font-size, 375px, 1280px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+
+  .c-index__lead {
+    @include fonts.large-text;
+    max-width: rem.convert(640px);
+    line-height: 1.5;
+    color: colors.get("text-muted");
+  }

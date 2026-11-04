@@ -376,6 +376,8 @@ La slide de titre d'une leçon existe donc en deux versions, pour deux rôles : 
 
 Le site s'en sert à deux endroits : chaque **carte de module** de l'accueil propose « Slides du module (PDF) », et **chaque leçon** affiche un bouton « PDF du module » dans son en-tête, à côté de la durée de lecture. Ni l'un ni l'autre n'apparaît tant que le PDF n'a pas été généré.
 
+La page **Slides** (`/presentations/`, dans la barre du haut) les rassemble : une carte par module, ses leçons, et le bouton de téléchargement. Son lien n'apparaît que lorsqu'au moins un PDF existe. Elle ne remplace pas le sommaire du paquet livré (`dist/slides/index.html`, voir « Livrer le cours ») : celui-ci liste aussi les decks HTML et les decks de leçon, qui ne vivent que dans le paquet - d'où une adresse distincte, `/slides/` étant déjà le dossier des fichiers.
+
 Le module, ici, c'est le **dossier** (`module-1/` → `module-1.pdf`) et non le champ `module:` du frontmatter : il faut un nom de fichier, et « Module 1 - Prendre le template en main » n'en fait pas un bon. Le libellé, lui, titre la première slide et nomme le fichier tel qu'il arrivera dans les téléchargements de l'apprenant. Si un dossier réunit des leçons qui annoncent des `module:` différents, le build le signale et retient le premier.
 
 #### Où vit le fichier, et pourquoi là

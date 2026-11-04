@@ -21,6 +21,9 @@ rien casser, un *correctif* répare.
 
 ### Ajouté
 
+- **Page « Slides »** (`/presentations/`) : les PDF de module réunis sur
+  une page du site, accessible depuis la barre du haut et le bandeau
+  d'accueil dès qu'un PDF a été généré.
 - **Page 404** : une adresse inconnue tombe désormais sur une page du cours,
   et non sur l'erreur brute de l'hébergeur. Elle explique aussi le cas d'une
   leçon verrouillée, dont l'adresse est devinable depuis le sommaire.

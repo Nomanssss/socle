@@ -99,6 +99,21 @@
 }
 
 /**
+ * Light - bouton secondaire posé sur un fond teinté : un aplat blanc l'en
+ * détache, là où un simple contour s'y fondrait
+*******************************************************************************/
+
+.c-button--light {
+  background: colors.get("background");
+  border-color: colors.get("border-soft");
+
+  &:hover {
+    background-color: colors.get("background");
+    border-color: colors.get("primary");
+  }
+}
+
+/**
  * Large - l'action principale d'une page (« Commencer le cours »)
 *******************************************************************************/
 

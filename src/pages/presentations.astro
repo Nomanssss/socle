@@ -1,0 +1,118 @@
+---
+import '../styles/theme.scss';
+import BaseHead from '../components/BaseHead.astro';
+import SkipLink from '../components/SkipLink.astro';
+import Topbar from '../components/Topbar.astro';
+import Icon from '../components/Icon.astro';
+import Footer from '../components/Footer.astro';
+import { site } from '../../scripts/config.mjs';
+import { getCourse, pad, pdfFileName } from '../utils/course';
+
+// =============================================================
+// Page « Slides » - les présentations du cours, module par module.
+//
+// Une carte par module, avec son PDF résumé : toutes les slides de
+// ses leçons, enchaînées. C'est le fichier que `npm run slides`
+// copie dans public/slides/modules/, donc le seul format que le site
+// sert - les decks HTML projetables et ceux de chaque leçon ne vivent
+// que dans le paquet de `npm run bundle`, qui a son propre sommaire
+// (dist/slides/index.html). D'où l'adresse /presentations/ : /slides/
+// est déjà le dossier de ces fichiers.
+//
+// Un module dont le PDF n'a pas été généré reste listé, sans bouton :
+// la page dit ce qui manque plutôt que de le cacher. Et si AUCUN PDF
+// n'existe, le lien de la barre du haut disparaît (Topbar.astro).
+// =============================================================
+const modules = (await getCourse()).filter((module) => module.lessons.some((l) => !l.locked));
+const available = modules.filter((module) => module.pdf).length;
+const { title: siteTitle, lang } = site();
+---
+
+<html lang={lang}>
+  <head>
+    <BaseHead
+      title={`Slides - ${siteTitle}`}
+      description={`Les présentations du cours ${siteTitle}, un PDF par module.`}
+    />
+  </head>
+  <body>
+    <SkipLink />
+
+    <Topbar current="presentations" />
+
+    <div class="c-home">
+      <main id="contenu" tabindex="-1" class="c-home__program o-wrapper">
+        <div class="o-stack o-stack--xl">
+          <header class="c-index o-stack o-stack--sm">
+            <h1 class="c-index__title">Slides</h1>
+            <p class="c-index__lead">
+              Chaque module en un PDF : les slides de toutes ses leçons, dans l'ordre. De quoi
+              réviser hors ligne, ou garder une trace du cours.
+            </p>
+          </header>
+
+          {
+            available === 0 && (
+              <p class="c-page__todo">
+                Aucun PDF n'a encore été généré. Lancez <code>npm run slides</code> (il
+                demande Chrome ou Chromium), puis reconstruisez le site.
+              </p>
+            )
+          }
+
+          <div class="o-grid o-grid--large o-grid--lg">
+            {
+              modules.map((module) => {
+                const lessons = module.lessons.filter((l) => !l.locked);
+                return (
+                  <article class="c-module">
+                    <header class="c-module__head">
+                      <span class="c-module__number" aria-hidden="true">
+                        {pad(module.number)}
+                      </span>
+                      <div class="o-stack o-stack--2xs">
+                        <h2 class="c-module__title">
+                          <span class="u-hidden-visually">Module {module.number} : </span>
+                          {module.shortName}
+                        </h2>
+                        <p class="c-module__meta">
+                          {lessons.length} leçon{lessons.length > 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </header>
+
+                    <ul class="c-module__lessons">
+                      {lessons.map((lesson) => (
+                        <li>
+                          <a href={lesson.url} class="c-module__lesson">
+                            <Icon name="slides" size={18} class="c-module__icon" />
+                            <span class="c-module__lesson-title">{lesson.title}</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {module.pdf ? (
+                      <a
+                        href={module.pdf}
+                        download={pdfFileName(module.name)}
+                        class="c-button c-button--primary c-module__download"
+                      >
+                        <Icon name="download" />
+                        Télécharger le PDF
+                      </a>
+                    ) : (
+                      <p class="c-module__meta c-module__download">PDF pas encore généré</p>
+                    )}
+                  </article>
+                );
+              })
+            }
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <Footer />
+  </body>
+</html>
