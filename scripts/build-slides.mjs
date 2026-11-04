@@ -51,7 +51,7 @@ import { isLocked, unknownLocked, site } from './config.mjs';
 const ROOT = process.cwd();
 const LESSONS_DIR = join(ROOT, 'src/content/lecons');
 const OUT_DIR = join(ROOT, 'slides');
-// Le site LIE les PDF de module (bouton « Télécharger le PDF résumé ») :
+// Le site LIE les PDF de module (« PDF du module », page Slides) :
 // ils doivent donc être servis par Astro, ce que slides/ n'est pas - c'est
 // un dossier de travail à la racine, qu'Astro ignore en dev comme au build.
 // public/ est le seul endroit dont le contenu est servi tel quel dans les
@@ -382,8 +382,7 @@ for (const rel of lessons) {
 // -------------------------------------------------------------
 // Un deck par module
 //
-// La dernière leçon d'un module propose « Télécharger le PDF résumé » :
-// c'est ce fichier. Il enchaîne les corps déjà assemblés plus haut,
+// Chaque leçon d'un module propose « PDF du module » : c'est ce fichier. Il enchaîne les corps déjà assemblés plus haut,
 // derrière une slide de titre au nom du module - donc exactement ce que
 // l'apprenant a vu leçon après leçon, sans rien de recomposé. Les
 // leçons verrouillées n'y sont pas : elles ne sont pas dans `lessons`.

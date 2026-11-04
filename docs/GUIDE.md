@@ -869,7 +869,7 @@ Un composant peut régler un objet posé sur lui en surchargeant sa variable, pl
 
 Les couches basses visent des balises nues, donc sans classe. Deux pièges, dont le projet s'est fait prendre :
 
-- **jamais de pseudo-classe sur une balise nue dans `elements/`.** `a:hover` pèse (0,1,1) et l'emporterait sur `.c-home__lesson` (0,1,0) : toutes les cartes, la navigation et les boutons-liens se soulignent au survol. Le soulignement des liens appartient donc au scope du texte rédigé, pas à `elements/`.
+- **jamais de pseudo-classe sur une balise nue dans `elements/`.** `a:hover` pèse (0,1,1) et l'emporterait sur `.c-module__lesson` (0,1,0) : toutes les cartes, la navigation et les boutons-liens se soulignent au survol. Le soulignement des liens appartient donc au scope du texte rédigé, pas à `elements/`.
 - **un scope ne dresse que les balises sans classe** - d'où les `:not([class])` de `scopes/_richtext.scss`. Sans eux, `.s-richtext h3` (0,1,1) écrase `.c-quiz__title` (0,1,0), et `.s-richtext ul` écrase `.o-stack` : un composant déposé dans une leçon héritait du rythme du texte rédigé.
 
 Corollaire côté objets : **aucun objet ne remet `margin: 0` sur lui-même.** Il annulerait l'espace que lui donne un `.o-stack` parent - spécificité égale, mais déclaré après. Ces remises à zéro sont le travail de `generic/_reset.scss`, qui neutralise aussi puces et retraits de listes ; le scope du texte rédigé les réintroduit là où elles ont un sens.
@@ -882,15 +882,15 @@ Un fichier de composant nomme aussi les éléments qu'il ne style pas, sous form
 
 Il n'y a **aucune animation décorative** dans ce template, et c'est un choix : une chose qui bouge en continu sur une page qu'on lit finit par gêner la lecture. Les états se contentent de renseigner, puis s'arrêtent.
 
-| État | Bouton | Carte de leçon |
+| État | Bouton | Leçon dans une liste |
 | --- | --- | --- |
-| survol | le fond s'assombrit | monte de 2 px, filet coloré, ombre plus marquée, titre en couleur |
-| clic | s'enfonce d'1 px | redescend à sa place |
+| survol | le fond s'assombrit | fond teinté |
+| clic | s'enfonce d'1 px | - |
 | focus clavier | liseré de `generic/_focus.scss` | idem |
 
-Le bouton d'appel de la page d'accueil (`.c-header__cta`) se soulève en plus des mêmes 2 px que les cartes : c'est le geste déjà en place dans le template, pas un effet supplémentaire.
+Le retour au clic passe par `transition-duration: 0s` : un enfoncement qui met 150 ms à démarrer ne se ressent plus comme un appui. Il est neutralisé sur un bouton désactivé (`:not(:disabled):active`).
 
-Le retour au clic passe par `transition-duration: 0s` : un enfoncement qui met 150 ms à démarrer ne se ressent plus comme un appui. Et il est neutralisé sur un bouton désactivé (`:not(:disabled):active`) - sélecteur qui, à (0,3,0), l'emporte au passage sur le survol du bouton d'accueil (0,2,0) : on presse donc bien vers le bas, même en partant de la position soulevée.
+Les jauges et l'anneau de progression, eux, ne s'animent que lorsqu'une leçon est cochée **pendant** la visite : au chargement, ils apparaissent d'emblée à leur valeur. Une jauge qui repartirait de zéro à chaque leçon ouverte serait exactement l'animation décorative qu'on s'interdit.
 
 ### Les marques du projet
 

@@ -135,8 +135,8 @@ for (const entry of manifest) {
 if (moduleDecks.size > 0) {
   ok(`${moduleDecks.size} deck(s) de module copié(s) dans dist/slides/`);
 } else {
-  // Le bouton « Télécharger le PDF résumé » du site pointe dessus :
-  // absents, les pages de fin de module n'afficheront rien.
+  // Les boutons « PDF du module » du site pointent dessus : absents,
+  // ni les leçons ni la page Slides n'en proposeront.
   warn('aucun deck de module trouvé dans slides/ (npm run slides)');
 }
 
