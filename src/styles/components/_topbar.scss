@@ -116,7 +116,11 @@ $reading-height: 3px;
  * Fil d'Ariane
 *******************************************************************************/
 
+      // Le fil tient sur une ligne : un titre de leçon trop long se coupe en
+      // points de suspension plutôt que d'épaissir la barre - collante, elle
+      // mangerait l'écran d'un téléphone.
       .c-topbar__crumbs {
+        flex: 1 1 0;
         min-width: 0;
         font-size: typography.size("sm");
         color: colors.get("text-muted");
@@ -128,6 +132,17 @@ $reading-height: 3px;
           display: inline-flex;
           align-items: center;
           gap: spacing.get("xs");
+          min-width: 0;
+          white-space: nowrap;
+
+          &:last-child {
+            flex: 0 1 auto;
+          }
+
+          > * {
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
 
           &::before {
             content: "/";

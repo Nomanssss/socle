@@ -115,7 +115,11 @@ const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
                 const ids = module.lessons.filter((l) => !l.locked).map((l) => l.id);
                 const locked = module.lessons.filter((l) => l.locked).length;
                 return (
-                  <article class="c-module" data-module={JSON.stringify(ids)}>
+                  <article
+                    id={`module-${module.number}`}
+                    class="c-module"
+                    data-module={JSON.stringify(ids)}
+                  >
                     <header class="c-module__head">
                       <span class="c-module__number" aria-hidden="true">
                         {pad(module.number)}

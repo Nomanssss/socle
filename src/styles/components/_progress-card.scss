@@ -81,6 +81,10 @@
         stroke: colors.get("primary");
         stroke-linecap: round;
         stroke-dasharray: calc(var(--progress, 0) * var(--circumference)) var(--circumference);
+      }
+
+      // Même règle que la jauge (`c-progress`) : pas d'animation au chargement.
+      .c-progress-card.is-ready .c-progress-card__ring-fill {
         transition: stroke-dasharray 400ms ease;
       }
 

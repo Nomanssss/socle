@@ -46,6 +46,12 @@ rien casser, un *correctif* répare.
   leçon à suivre) et le programme en **cartes de module** - jauge, état de
   chaque leçon, PDF du module. Tout reste calculé dans le navigateur, sans
   compte.
+- **Leçon redessinée** : fil d'Ariane et **jauge de lecture** dans la barre
+  du haut, progression du cours et sommaire **replié par module** dans la
+  barre latérale, un en-tête qui situe la leçon (« Module 2 · Leçon 1 sur
+  3 »), son chapô et sa **durée de lecture**, puis un bloc **« En bref »**
+  tiré des `slidePoints`. Le PDF du module se télécharge désormais depuis
+  l'en-tête de chaque leçon, et non plus depuis la seule dernière.
 - `npm run check` **fonctionne sans installation supplémentaire** :
   `@astrojs/check` et `typescript` font désormais partie des dépendances de
   développement. La vérification passe sans erreur ni avertissement.

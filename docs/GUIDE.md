@@ -54,10 +54,10 @@ Validés par Zod (`src/content.config.ts`). Un champ inconnu est **silencieuseme
 | `module` | ✅ | Nom lisible du module. **C'est lui qui regroupe les leçons**, pas le nom du dossier |
 | `order` | ✅ | Ordre de la leçon *à l'intérieur* de son module (1, 2, 3…) |
 | `moduleOrder` | - | Ordre du module sur l'accueil. Absent → modules classés alphabétiquement |
-| `description` | - | Résumé affiché sous le titre sur l'accueil |
-| `cover` | - | Bandeau en tête de leçon. Chemin **relatif au `.mdx`**, optimisé par Astro |
+| `description` | - | Chapô de la leçon, affiché sous son titre |
+| `cover` | - | Image en tête de leçon, recadrée en bandeau. Chemin **relatif au `.mdx`**, optimisé par Astro |
 | `coverAlt` | - | Texte alternatif de la cover (vide si purement décorative) |
-| `slidePoints` | - | Deck de secours. **Ignoré si un `.slides.md` existe** - voir « Générer les slides » |
+| `slidePoints` | - | Points-clés : le bloc « En bref » en tête de leçon, et le deck de secours. **Ignoré par les slides si un `.slides.md` existe** - voir « Générer les slides » |
 
 > Le nom du dossier ne sert qu'à construire l'URL et l'identifiant de la leçon. Le regroupement visible par module vient du champ `module`. Gardez les deux cohérents.
 
@@ -374,7 +374,7 @@ Sa structure suit les modèles du thème :
 
 La slide de titre d'une leçon existe donc en deux versions, pour deux rôles : `lead` quand elle **ouvre** le deck de sa leçon — avec la couverture en bandeau et le nom du module en sous-titre — et `section` quand elle n'est plus qu'un **intercalaire** au milieu du deck du module. Le corps qui suit, lui, est assemblé une seule fois et sert aux deux.
 
-Le site s'en sert : la **dernière leçon de chaque module** affiche un bouton primaire « Télécharger le PDF résumé », à côté de « Marquer comme terminé ».
+Le site s'en sert à deux endroits : chaque **carte de module** de l'accueil propose « Slides du module (PDF) », et **chaque leçon** affiche un bouton « PDF du module » dans son en-tête, à côté de la durée de lecture. Ni l'un ni l'autre n'apparaît tant que le PDF n'a pas été généré.
 
 Le module, ici, c'est le **dossier** (`module-1/` → `module-1.pdf`) et non le champ `module:` du frontmatter : il faut un nom de fichier, et « Module 1 - Prendre le template en main » n'en fait pas un bon. Le libellé, lui, titre la première slide et nomme le fichier tel qu'il arrivera dans les téléchargements de l'apprenant. Si un dossier réunit des leçons qui annoncent des `module:` différents, le build le signale et retient le premier.
 
@@ -675,10 +675,12 @@ La palette est **monochrome par construction** : les traits, les filets et les f
 
 | Rôle dérivé | Calcul | Sert à |
 | --- | --- | --- |
-| `primary-soft` | `primary` à 12 % | bandeau d'accueil, leçon courante |
-| `surface` | `page` éclairci | cartes, encarts, barre latérale |
-| `surface-muted` | `primary` à 8 % | survols, fonds en creux, code en ligne |
-| `border` | `primary` à 30 % | filets |
+| `primary-soft` | `primary` à 12 % | fonds teintés |
+| `canvas` | `primary` à 4 % | fond des pages-sommaires, barre latérale, « En bref » |
+| `surface` | `page` éclairci | cartes, encarts |
+| `surface-muted` | `primary` à 8 % | bandeau d'accueil, survols, leçon courante, code en ligne |
+| `border` | `primary` à 30 % | filets des champs et des tableaux |
+| `border-soft` | `primary` à 14 % | contour des cartes, séparateurs |
 | `accent` | `primary` | rail de la timeline, pointillés, piste de progression |
 | `text-muted` | `text` à 72 % | légendes, métadonnées |
 | `on-primary` | blanc | texte des boutons |
@@ -897,11 +899,12 @@ Trois contraintes à connaître :
 - le `#` d'un hexadécimal ouvrirait un fragment d'URL et tronquerait l'image : la fonction l'encode en `%23`, et refuse au build une couleur qu'elle ne sait pas sérialiser ;
 - les SVG stockés diffèrent des originaux sur un point : `viewBox` y remplace `width`/`height`. Sans viewBox, un SVG a une taille intrinsèque et **ignore `background-size`** — la marque resterait à sa taille de départ.
 
-Elles sont appelées à cinq endroits. Sur les slides, dans des pseudo-éléments plutôt qu'en couche de fond : un pseudo-élément accepte une opacité, une rotation, un `mix-blend-mode` ou une transition. Le `z-index: -1` sur une slide qui isole son contexte d'empilement les place au-dessus du fond mais sous le texte.
+Elles sont appelées à six endroits. Sur les slides, dans des pseudo-éléments plutôt qu'en couche de fond : un pseudo-élément accepte une opacité, une rotation, un `mix-blend-mode` ou une transition. Le `z-index: -1` sur une slide qui isole son contexte d'empilement les place au-dessus du fond mais sous le texte.
 
 | Où | Quoi |
 | --- | --- |
-| `components/_header.scss` | le symbole en filigrane du bandeau d'accueil, dans `::after` |
+| `components/_hero.scss` | le symbole en filigrane du bandeau d'accueil, dans `::after` |
+| `components/_topbar.scss` | le symbole devant le nom du cours, dans la barre du haut |
 | `components/_footer.scss` | le logotype du pied de page, qui s'assombrit au survol |
 | `marp/layouts/_lead.scss` | le logotype en bas à droite, dans `::after` |
 | `marp/layouts/_section.scss` | le symbole en blanc, dans `::before` |
@@ -958,10 +961,12 @@ Le lien d'évitement mérite un mot. Au clavier, chaque leçon commence par le s
 Gérée par `src/scripts/progress.ts`, entièrement côté client :
 
 - clé `localStorage` : `mooc:progress`, contenant `{ "module-1/lecon-1": true, … }` ;
-- le bouton **« Marquer comme terminé »** en bas de leçon écrit dans cette clé ;
+- le bouton **« Marquer comme terminée »** en bas de leçon écrit dans cette clé ;
 - chaque écriture émet l'événement `mooc:progress-change`, qui rafraîchit les barres de progression de la page en direct.
 
-Une leçon terminée se signale à trois endroits, tous pilotés par une classe posée en JavaScript : la carte de l'accueil (fond vert et étiquette « Terminé »), la ligne de la barre latérale (fond vert et coche à droite) et la jauge du module, dont le segment de même rang se remplit — puis qui passe au vert et affiche « Terminé » une fois le module bouclé. La coche seule ne suffirait pas : elle est accompagnée d'un texte « Terminé » masqué visuellement (`.u-hidden-visually`), sans quoi l'information n'existerait que pour les voyants.
+Une leçon terminée se signale par sa **pastille** (`components/_status.scss`) : un cercle vide pour une leçon à faire, un cercle et un point pour la leçon en cours, un disque plein coché pour une leçon terminée. On la retrouve devant chaque leçon, sur les cartes de module de l'accueil comme dans la barre latérale. La pastille seule ne suffirait pas : elle est accompagnée d'un texte « (terminée) » masqué visuellement (`.u-hidden-visually`), sans quoi l'information n'existerait que pour les voyants.
+
+La progression se lit aussi en jauges : celle du cours entier en tête de la barre latérale, celle de chaque module sur sa carte, et l'anneau de la carte « Votre progression » de l'accueil. C'est cette carte qui désigne la leçon **à suivre** - la première leçon ouverte pas encore terminée, dans l'ordre du cours - et le bouton du bandeau d'accueil devient « Reprendre » dès la première leçon cochée.
 
 Aucune donnée ne quitte le navigateur : pas de compte, pas de serveur. Corollaire à annoncer aux apprenants - la progression est perdue s'ils changent de navigateur ou vident leur cache.
 

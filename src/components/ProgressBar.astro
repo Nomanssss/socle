@@ -110,6 +110,9 @@ const total = lessonIds.length;
 
   document.querySelectorAll<HTMLElement>('.c-progress').forEach((el) => {
     refresh(el);
+    // Les transitions attendent le prochain rendu : posées tout de suite,
+    // elles animeraient ce premier calcul.
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('is-ready')));
     window.addEventListener(PROGRESS_EVENT, () => refresh(el));
   });
 </script>

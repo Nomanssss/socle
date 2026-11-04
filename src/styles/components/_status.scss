@@ -44,7 +44,6 @@ $size: 20px;
   height: rem.convert($size);
   border: rem.convert(2px) solid colors.get("border");
   border-radius: 50%;
-  transition: background-color 200ms ease, border-color 200ms ease;
 
   &::after {
     content: "";

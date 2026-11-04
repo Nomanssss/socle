@@ -84,6 +84,13 @@
     border-radius: inherit;
     transform: scaleX(var(--progress, 0));
     transform-origin: left center;
+  }
+
+  // L'animation ne vaut que pour un changement en cours de page (une leçon
+  // cochée). Au chargement, la jauge doit apparaître à sa valeur, pas
+  // repartir de zéro à chaque leçon ouverte : le script pose `is-ready`
+  // après son premier calcul.
+  .c-progress.is-ready .c-progress__fill {
     transition: transform 300ms ease;
   }
 

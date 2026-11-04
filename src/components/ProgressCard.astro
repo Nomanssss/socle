@@ -129,6 +129,7 @@ const CIRCUMFERENCE = 2 * Math.PI * R;
     };
 
     refresh();
+    requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('is-ready')));
     window.addEventListener(PROGRESS_EVENT, refresh);
   }
 </script>

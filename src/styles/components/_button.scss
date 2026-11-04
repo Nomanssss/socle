@@ -109,6 +109,17 @@
 }
 
 /**
+ * Small - action secondaire posée dans une ligne de méta (« PDF du module »)
+*******************************************************************************/
+
+.c-button--small {
+  min-height: rem.convert(40px);
+  padding: 0 spacing.get("sm");
+  font-size: typography.size("sm");
+  border-radius: spacing.radius("sm");
+}
+
+/**
  * Compact
 *******************************************************************************/
 
