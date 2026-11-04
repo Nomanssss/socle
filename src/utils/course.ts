@@ -158,3 +158,12 @@ export async function getCourse(): Promise<CourseModule[]> {
 export function openLessons(modules: CourseModule[]): CourseLesson[] {
   return modules.flatMap((m) => m.lessons).filter((l) => !l.locked);
 }
+
+/**
+ * Le cours a-t-il des sources à montrer ? Seules comptent celles des leçons
+ * OUVERTES : la page /sources/ ne doit pas révéler ce que cite une leçon
+ * verrouillée, dont le contenu n'est pas en ligne.
+ */
+export function hasSources(modules: CourseModule[]): boolean {
+  return openLessons(modules).some((lesson) => (lesson.entry.data.sources ?? []).length > 0);
+}

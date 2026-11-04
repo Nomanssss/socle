@@ -153,6 +153,25 @@
   }
 
 /*******************************************************************************
+ * Page « Sources »
+*******************************************************************************/
+
+  // Le titre de leçon qui coiffe ses références.
+  .c-module__subtitle {
+    font-family: typography.family("body");
+    font-size: typography.size("base");
+    font-weight: typography.$bold;
+
+    a {
+      color: colors.get("text");
+
+      &:hover {
+        color: colors.get("primary");
+      }
+    }
+  }
+
+/*******************************************************************************
  * Page « Slides »
 *******************************************************************************/
 

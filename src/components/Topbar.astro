@@ -1,6 +1,6 @@
 ---
 import { site } from '../../scripts/config.mjs';
-import { getCourse } from '../utils/course';
+import { getCourse, hasSources } from '../utils/course';
 
 // =============================================================
 // Topbar - la barre du haut, commune à toutes les pages
@@ -47,6 +47,9 @@ const links: { key: string; label: string; href: string }[] = [
 ];
 if (modules.some((module) => module.pdf)) {
   links.push({ key: 'presentations', label: 'Slides', href: '/presentations/' });
+}
+if (hasSources(modules)) {
+  links.push({ key: 'sources', label: 'Sources', href: '/sources/' });
 }
 ---
 

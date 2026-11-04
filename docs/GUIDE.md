@@ -58,8 +58,26 @@ Validés par Zod (`src/content.config.ts`). Un champ inconnu est **silencieuseme
 | `cover` | - | Image en tête de leçon, recadrée en bandeau. Chemin **relatif au `.mdx`**, optimisé par Astro |
 | `coverAlt` | - | Texte alternatif de la cover (vide si purement décorative) |
 | `slidePoints` | - | Points-clés : le bloc « En bref » en tête de leçon, et le deck de secours. **Ignoré par les slides si un `.slides.md` existe** - voir « Générer les slides » |
+| `sources` | - | Références citées : listées en fin de leçon et rassemblées sur la page « Sources du cours » - voir ci-dessous |
 
 > Le nom du dossier ne sert qu'à construire l'URL et l'identifiant de la leçon. Le regroupement visible par module vient du champ `module`. Gardez les deux cohérents.
+
+### Citer ses sources
+
+Les références d'une leçon s'écrivent dans son frontmatter, une entrée par source. Seul le titre est obligatoire : un livre n'a pas toujours d'adresse.
+
+```yaml
+sources:
+  - title: "Collections de contenu"
+    author: "Documentation d'Astro"
+    url: "https://docs.astro.build/fr/guides/content-collections/"
+  - title: "Le titre d'un livre"
+    author: "Son autrice"
+```
+
+Elles apparaissent à deux endroits, sans rien recopier : **en fin de leçon**, sous un intertitre « Sources », et sur la page **« Sources du cours »** (`/sources/`), qui réunit celles de toutes les leçons, rangées par module. Le lien vers cette page s'ajoute à la barre du haut et au pied de page dès qu'une leçon cite une source. Celles d'une leçon verrouillée n'y figurent pas : son contenu n'est pas en ligne, ses références n'ont pas à l'annoncer.
+
+Une adresse mal formée (`url` sans `https://`) fait échouer le build : la validation Zod l'attrape avant qu'un lien mort n'arrive en ligne.
 
 ---
 
@@ -618,10 +636,10 @@ Elle porte `<meta name="robots" content="noindex, follow">` — une page d'erreu
 `src/components/Footer.astro` est posé sur l'accueil, sur chaque leçon et sur les pages annexes. Il porte trois choses :
 
 - **la marque**, qui ramène à l'accueil. Ce n'est pas une balise `<img>` mais un fond dessiné par `logo.logotype()` — donc toujours dans la couleur de la charte du moment, et assombrie au survol (voir « Les marques du projet ») ;
-- **le lien vers les mentions légales** ;
+- **les liens annexes** : « Sources du cours » quand une leçon cite des sources, et les mentions légales ;
 - **la note sur la progression** stockée dans le navigateur : une information de confidentialité, qui a sa place partout et non sur la seule page d'accueil.
 
-Pour ajouter une page annexe (conditions d'utilisation, accessibilité…), dupliquez `mentions-legales.astro` : le gabarit `.c-page` (lien de retour, titre, `.s-richtext`) est fait pour ça, et le lien s'ajoute dans le `<nav>` de `Footer.astro`.
+Pour ajouter une page annexe (conditions d'utilisation, accessibilité…), dupliquez `mentions-legales.astro` : le gabarit `.c-page` (barre du haut, titre, `.s-richtext`) est fait pour ça, et le lien s'ajoute dans le `<nav>` de `Footer.astro`.
 
 ---
 

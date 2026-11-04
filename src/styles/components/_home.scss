@@ -33,3 +33,12 @@
   }
 
     .c-home__title {}
+
+/**
+ * Le fond teinté descend jusqu'au pied de page : la marge que celui-ci se
+ * réserve laisserait sinon une bande blanche entre les deux. Même règle que
+ * sous les deux colonnes d'une leçon (`components/_lesson.scss`).
+**/
+.c-home + .c-footer {
+  margin-top: 0;
+}

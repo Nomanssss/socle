@@ -1,0 +1,100 @@
+---
+import '../styles/theme.scss';
+import BaseHead from '../components/BaseHead.astro';
+import SkipLink from '../components/SkipLink.astro';
+import Topbar from '../components/Topbar.astro';
+import Sources from '../components/Sources.astro';
+import Footer from '../components/Footer.astro';
+import { site } from '../../scripts/config.mjs';
+import { getCourse, pad } from '../utils/course';
+
+// =============================================================
+// Page « Sources du cours » - toutes les références, en un lieu.
+//
+// Rien ne s'y écrit : elle réunit le champ `sources:` du
+// frontmatter de chaque leçon, rangé par module puis par leçon.
+// Une référence citée dans une leçon y apparaît donc d'office, et
+// n'est tenue à jour qu'à un seul endroit.
+//
+// Les leçons verrouillées en sont exclues : leur contenu n'est pas
+// en ligne, leurs références n'ont pas à l'annoncer. Sans aucune
+// source, la page reste construite mais le dit - et son lien
+// disparaît de la barre du haut et du pied de page.
+// =============================================================
+const modules = (await getCourse())
+  .map((module) => ({
+    ...module,
+    lessons: module.lessons.filter(
+      (lesson) => !lesson.locked && (lesson.entry.data.sources ?? []).length > 0
+    ),
+  }))
+  .filter((module) => module.lessons.length > 0);
+
+const { title: siteTitle, lang } = site();
+---
+
+<html lang={lang}>
+  <head>
+    <BaseHead
+      title={`Sources du cours - ${siteTitle}`}
+      description={`Les références citées dans le cours ${siteTitle}, leçon par leçon.`}
+    />
+  </head>
+  <body>
+    <SkipLink />
+
+    <Topbar current="sources" />
+
+    <div class="c-home">
+      <main id="contenu" tabindex="-1" class="c-home__program o-wrapper">
+        <div class="o-stack o-stack--xl">
+          <header class="c-index o-stack o-stack--sm">
+            <h1 class="c-index__title">Sources du cours</h1>
+            <p class="c-index__lead">
+              Les ouvrages, articles et documentations cités au fil des leçons, rangés là où ils
+              servent.
+            </p>
+          </header>
+
+          {
+            modules.length === 0 && (
+              <p class="c-page__todo">
+                Aucune source pour l'instant. Elles s'ajoutent leçon par leçon, dans le champ{' '}
+                <code>sources</code> du frontmatter.
+              </p>
+            )
+          }
+
+          {
+            modules.map((module) => (
+              <section class="c-module" aria-labelledby={`sources-module-${module.number}`}>
+                <header class="c-module__head">
+                  <span class="c-module__number" aria-hidden="true">
+                    {pad(module.number)}
+                  </span>
+                  <h2 id={`sources-module-${module.number}`} class="c-module__title">
+                    <span class="u-hidden-visually">Module {module.number} : </span>
+                    {module.shortName}
+                  </h2>
+                </header>
+
+                <div class="o-stack o-stack--lg">
+                  {module.lessons.map((lesson) => (
+                    <div class="o-stack o-stack--sm">
+                      <h3 class="c-module__subtitle">
+                        <a href={lesson.url}>{lesson.title}</a>
+                      </h3>
+                      <Sources sources={lesson.entry.data.sources ?? []} />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))
+          }
+        </div>
+      </main>
+    </div>
+
+    <Footer />
+  </body>
+</html>

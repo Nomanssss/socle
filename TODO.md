@@ -40,10 +40,7 @@ Quand un point est traité, il quitte ce fichier et rejoint le
 
 *Le sommaire, le verrou des leçons, la progression de l'apprenant.*
 
-- [ ] **Il manque une page « Sources du cours ».** Les références citées au
-  fil des leçons n'ont nulle part où être rassemblées : il faut aujourd'hui
-  les recopier à la main en fin de leçon, sans page commune ni lien depuis
-  le pied de page.
+- [ ] _rien pour l'instant_
 
 ## Livraison
 

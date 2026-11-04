@@ -24,6 +24,12 @@ rien casser, un *correctif* répare.
 - **Page « Slides »** (`/presentations/`) : les PDF de module réunis sur
   une page du site, accessible depuis la barre du haut et le bandeau
   d'accueil dès qu'un PDF a été généré.
+- **Sources du cours** : un champ `sources` dans le frontmatter (titre,
+  auteur et adresse facultatifs) liste les références d'une leçon en fin de
+  page, et la page `/sources/` les réunit toutes, module par module - liée
+  depuis la barre du haut et le pied de page dès qu'une source existe.
+- La barre du haut apparaît aussi sur les **mentions légales** et la page
+  **404**, qui perdent leur lien « ← Accueil » devenu redondant.
 - **Page 404** : une adresse inconnue tombe désormais sur une page du cours,
   et non sur l'erreur brute de l'hébergeur. Elle explique aussi le cas d'une
   leçon verrouillée, dont l'adresse est devinable depuis le sommaire.

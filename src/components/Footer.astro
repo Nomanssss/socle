@@ -1,12 +1,14 @@
 ---
 import { site } from '../../scripts/config.mjs';
+import { getCourse, hasSources } from '../utils/course';
 
 // =============================================================
 // Footer - pied de page commun à l'accueil, aux leçons et aux
 // pages annexes.
 //
 // Trois choses, et pas une de plus : la marque (qui ramène à
-// l'accueil), le lien vers les mentions légales, et la note sur
+// l'accueil), les liens annexes (sources du cours, mentions
+// légales), et la note sur
 // la progression stockée dans le navigateur - une information de
 // confidentialité, qui a sa place sur toutes les pages et non sur
 // la seule page d'accueil.
@@ -22,17 +24,33 @@ const year = new Date().getFullYear();
 // Sur la page des mentions elles-mêmes, le lien est signalé comme
 // courant - le même `aria-current` que la barre latérale d'une leçon.
 const LEGAL_PATH = '/mentions-legales/';
-const isLegalPage = Astro.url.pathname.replace(/\/*$/, '/') === LEGAL_PATH;
+const path = Astro.url.pathname.replace(/\/*$/, '/');
+const isLegalPage = path === LEGAL_PATH;
+
+// Les sources du cours, quand il en a : même condition que la barre du haut.
+const SOURCES_PATH = '/sources/';
+const showSources = hasSources(await getCourse());
 ---
 
 <footer class="c-footer">
-  <div class="c-footer__content o-wrapper o-wrapper--large">
+  <div class="c-footer__content o-wrapper">
     <div class="c-footer__top o-cluster o-cluster--between o-cluster--middle">
       <a href="/" class="c-footer__brand">
         <span class="u-hidden-visually">{title} - retour à l'accueil</span>
       </a>
 
       <nav class="c-footer__nav o-cluster o-cluster--middle" aria-label="Liens de bas de page">
+        {
+          showSources && (
+            <a
+              href={SOURCES_PATH}
+              aria-current={path === SOURCES_PATH ? 'page' : undefined}
+              class="c-footer__link"
+            >
+              Sources du cours
+            </a>
+          )
+        }
         <a
           href={LEGAL_PATH}
           aria-current={isLegalPage ? 'page' : undefined}

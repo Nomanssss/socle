@@ -7,6 +7,7 @@ import SkipLink from '../components/SkipLink.astro';
 import Topbar from '../components/Topbar.astro';
 import ProgressBar from '../components/ProgressBar.astro';
 import Icon from '../components/Icon.astro';
+import Sources from '../components/Sources.astro';
 import Footer from '../components/Footer.astro';
 import { site } from '../../scripts/config.mjs';
 import { getCourse, openLessons, pad, pdfFileName, readingTime } from '../utils/course';
@@ -54,6 +55,7 @@ const courseIds = flat.map((l) => l.id);
 
 // Points-clés du frontmatter : ils font les slides ET le « En bref ».
 const slidePoints = current.entry.data.slidePoints ?? [];
+const sources = current.entry.data.sources ?? [];
 const minutes = readingTime(current.entry.body);
 
 // La langue du cours, réglée dans socle.config.json.
@@ -222,6 +224,15 @@ const { lang } = site();
           <div class="s-richtext">
             <slot />
           </div>
+
+          {
+            sources.length > 0 && (
+              <section class="c-lesson__sources o-stack o-stack--md" aria-labelledby="sources">
+                <h2 id="sources" class="c-lesson__sources-title">Sources</h2>
+                <Sources sources={sources} />
+              </section>
+            )
+          }
 
           <!-- Fin de leçon : la marquer terminée, puis passer à la suite -->
           <footer class="c-lesson__end o-stack o-stack--lg">

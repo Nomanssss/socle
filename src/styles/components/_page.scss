@@ -7,8 +7,7 @@
  * Type: Component
  * Description:
  *   Gabarit des pages annexes - mentions légales aujourd'hui, conditions
- *   d'utilisation ou déclaration d'accessibilité demain : un lien de retour,
- *   un titre, puis du texte rédigé confié au scope `.s-richtext`.
+ *   d'utilisation ou déclaration d'accessibilité demain : un titre, puis du texte rédigé confié au scope `.s-richtext`.
  *
  *   La largeur de lecture vient de `.o-wrapper--medium` posé dans le HTML,
  *   comme pour l'article d'une leçon. À ne pas confondre avec
@@ -33,25 +32,8 @@
   padding-block: spacing.get("xl");
 }
 
-  // Même lien de retour que la barre latérale d'une leçon : le visiteur
-  // n'a pas à réapprendre le geste d'une page à l'autre.
-  .c-page__back {
-    display: inline-flex;
-    align-items: center;
-    gap: spacing.get("2xs");
-    font-size: typography.size("sm");
-    font-weight: typography.$semibold;
-    color: colors.get("text");
-    text-decoration: none;
-    transition: color 150ms ease;
-
-    &:hover {
-      color: colors.get("primary-hover");
-    }
-  }
-
   .c-page__header {
-    margin-block: spacing.get("md") spacing.get("xl");
+    margin-bottom: spacing.get("xl");
     padding-bottom: spacing.get("sm");
     border-bottom: rem.convert(1px) solid colors.get("border");
   }
