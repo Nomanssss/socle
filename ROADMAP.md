@@ -40,6 +40,7 @@ Une case cochée = fait, vérifié, commité sur `feat/admin`.
 - [x] Interface : l'en-tête en formulaire (titre, module, ordres, description, points-clés, sources, couverture)
 - [x] Interface : l'éditeur de texte, `Ctrl+S`, alerte avant de quitter sans enregistrer
 - [x] Interface : l'aperçu de la vraie page, rechargé à l'enregistrement
+- [x] L'aperçu quitte la zone d'édition : un lien « Voir la page » suffit, l'éditeur prend toute la largeur
 
 ## Phase 2 - Les composants
 
@@ -49,9 +50,36 @@ Une case cochée = fait, vérifié, commité sur `feat/admin`.
 - [x] Éditeur du **Quiz** : questions, options, bonne réponse, explication, ordre
 - [x] Insérer un nouveau quiz, avec son `import` ajouté s'il manque
 - [ ] Éditeurs de la **Timeline**, des **Flashcards**, du **DragMatch**
-- [ ] Éditeurs des médias : **Figure**, **YouTubeEmbed**, **PodcastEmbed**, **CodepenEmbed**
+- [ ] Éditeurs des embeds : **YouTubeEmbed**, **PodcastEmbed**, **CodepenEmbed**
 
-## Phase 3 - Organiser le cours
+## Phase 3 - La médiathèque
+
+*Pour qu'une image s'ajoute sans savoir ce qu'est un `import`. Les images
+vivent dans `src/assets/` : c'est là qu'Astro sait les optimiser.*
+
+- [ ] API : lister les images, avec les leçons et les slides qui les utilisent
+- [ ] Envoyer une image par glisser-déposer : nom de fichier nettoyé, jamais d'écrasement
+- [ ] Supprimer une image, seulement si rien ne l'utilise
+- [ ] Une page « Médiathèque » : vignettes, recherche, utilisations
+- [ ] Insérer une image dans une leçon : choix dans la médiathèque, texte alternatif guidé, légende - les `import` s'écrivent tout seuls
+- [ ] Modifier une **Figure** existante (image, texte alternatif, légende), l'`import` devenu inutile est retiré
+- [ ] Choisir la couverture d'une leçon dans la médiathèque, plutôt que d'écrire un chemin
+
+## Phase 4 - Les slides
+
+*Écrire le deck d'une leçon en voyant les slides se dessiner, avec le vrai
+thème, sans attendre `npm run slides`.*
+
+- [ ] L'assemblage du deck d'une leçon sort de `build-slides.mjs`, pour être partagé avec l'admin (sortie identique vérifiée)
+- [ ] Un onglet « Slides » par leçon : son deck écrit à la main, ou à défaut ses points-clés
+- [ ] Aperçu des slides en direct, rendu par Marp avec le thème du cours
+- [ ] Le curseur dans le texte désigne sa slide dans l'aperçu
+- [ ] Ajouter une slide depuis un modèle : standard, intercalaire, phrase forte, colonnes, image…
+- [ ] Créer le deck d'une leçon qui n'en a pas, à partir de ses points-clés
+- [ ] Les images des slides choisies dans la médiathèque
+- [ ] Exporter le PDF de la leçon depuis l'admin
+
+## Phase 5 - Organiser le cours
 
 - [ ] Créer une leçon (dossier de module, nom de fichier, en-tête minimal)
   - ⚠ Constaté : une leçon créée pendant `npm run dev` n'a pas de page tant que le serveur n'a pas redémarré (`getStaticPaths` n'est pas relu). L'admin devra le redémarrer, ou le dire.
@@ -59,20 +87,20 @@ Une case cochée = fait, vérifié, commité sur `feat/admin`.
 - [ ] Réordonner leçons et modules par glisser-déposer (réécrit `order` et `moduleOrder`)
 - [ ] Verrouiller / déverrouiller une leçon depuis le sommaire
 
-## Phase 4 - Régler le site
+## Phase 6 - Régler le site
 
 - [ ] Éditer `socle.config.json` en **conservant** les clés `_…`, affichées comme aide sous chaque champ
 - [ ] Couleurs et polices, avec `npm run brand` relancé à l'enregistrement
-- [ ] Envoyer une image (couverture, photo de l'auteur, figure)
+- [ ] La photo de l'auteur choisie dans la médiathèque
 
-## Phase 5 - En ligne (plus tard, si le besoin se confirme)
+## Phase 7 - En ligne (plus tard, si le besoin se confirme)
 
 - [ ] Connexion sans base : empreinte du mot de passe en variable d'environnement, session en cookie signé
 - [ ] Enregistrement par commit via l'API GitHub, la CI reconstruit le site
 - [ ] `/admin/` rendu côté serveur (adaptateur), le reste du site toujours statique
 - [ ] Deux éditions simultanées : détecter le conflit plutôt qu'écraser
 
-## Phase 6 - Documenter
+## Phase 8 - Documenter
 
 - [ ] Une leçon du cours de démonstration consacrée à l'admin
 - [ ] README, `docs/GUIDE.md` et journal des versions

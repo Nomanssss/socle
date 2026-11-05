@@ -66,6 +66,8 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
+a.button { text-decoration: none; }
+
 .bar__brand {
   font-weight: 700;
   color: var(--text);
@@ -121,7 +123,8 @@ body {
 }
 
 .button:hover:not(:disabled) { border-color: var(--brand); }
-.button:disabled { opacity: 0.5; cursor: default; }
+.button:disabled,
+.button[aria-disabled='true'] { opacity: 0.5; cursor: default; }
 .button[aria-pressed='true'] { border-color: var(--brand); color: var(--brand); }
 
 .button--primary {
@@ -163,21 +166,17 @@ body {
 
 .layout {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr);
   height: calc(100vh - var(--bar));
 }
-
-.layout--no-preview { grid-template-columns: 260px minmax(0, 1fr); }
-.layout--no-preview .preview { display: none; }
 
 .toc,
 .editor {
   overflow-y: auto;
 }
 
-@media (max-width: 1100px) {
-  .layout { grid-template-columns: 220px minmax(0, 1fr); }
-  .preview { display: none; }
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 200px minmax(0, 1fr); }
 }
 
 /* --- Sommaire ------------------------------------------------ */
@@ -235,6 +234,13 @@ body {
 /* --- Éditeur ------------------------------------------------- */
 
 .editor { padding: 16px; }
+
+/* Sans aperçu à côté, une ligne de texte trop longue se lit mal : la
+   colonne d'édition plafonne, centrée. */
+.lesson {
+  max-width: 980px;
+  margin-inline: auto;
+}
 
 .empty {
   margin-top: 30vh;
@@ -400,42 +406,6 @@ textarea { resize: vertical; }
 .notice--error {
   background: color-mix(in srgb, var(--danger) 12%, transparent);
   color: var(--danger);
-}
-
-/* --- Aperçu -------------------------------------------------- */
-
-.preview {
-  display: flex;
-  flex-direction: column;
-  border-left: 1px solid var(--line);
-}
-
-.preview__bar {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--line);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.preview__bar small {
-  font-weight: 400;
-  color: var(--muted);
-}
-
-.preview__bar a { color: var(--brand); }
-
-.preview__frame {
-  flex: 1;
-  width: 100%;
-  border: 0;
-  background: #fff;
-}
-
-.preview__locked {
-  margin: 32px;
-  color: var(--muted);
 }
 
 /* --- Boîte de dialogue --------------------------------------- */

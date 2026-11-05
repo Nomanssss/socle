@@ -1,10 +1,10 @@
 // =============================================================
 // app.js - l'interface de l'admin
 //
-// Trois colonnes : le sommaire, la leçon ouverte (en-tête et texte),
-// et l'aperçu de la vraie page servie par Astro. L'aperçu montre la
-// version ENREGISTRÉE : c'est le serveur de dev qui la rend, avec les
-// vrais composants et la vraie charte - rien n'est imité ici.
+// Deux colonnes : le sommaire, et la leçon ouverte (en-tête et texte).
+// La page elle-même s'ouvre dans un autre onglet (« Voir la page ») :
+// c'est le serveur de dev qui la rend, avec les vrais composants et la
+// vraie charte, et il la recharge seul à chaque enregistrement.
 //
 // La leçon ouverte est désignée par l'ancre de l'adresse
 // (/admin/#module-1/lecon-1) : un rechargement la rouvre.
@@ -28,10 +28,7 @@ const ui = {
   body: $('#body'),
   chips: $('#components'),
   mdxError: $('#mdx-error'),
-  layout: $('#layout'),
-  frame: $('#preview-frame'),
-  previewOpen: $('#preview-open'),
-  previewLocked: $('#preview-locked'),
+  viewPage: $('#view-page'),
   dialog: $('#component-dialog'),
   dialogTitle: $('#dialog-title'),
   dialogBody: $('#dialog-body'),
@@ -157,7 +154,7 @@ async function openLesson(id) {
     ui.heading.textContent = lesson.data.title ?? id;
     document.title = `${lesson.data.title ?? id} · Admin`;
     renderToc();
-    updatePreview(true);
+    updateViewLink();
     setStatus('');
     updateDirty();
     await parseComponents();
@@ -301,7 +298,6 @@ async function save(force = false) {
     ui.heading.textContent = data.title;
     setStatus(`Enregistré à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`, 'ok');
     loadToc();
-    updatePreview();
   } catch (error) {
     if (error.payload?.conflict) {
       state.saving = false;
@@ -345,29 +341,25 @@ function setStatus(message, tone = '') {
 }
 
 // -------------------------------------------------------------
-// Aperçu
+// Voir la page
 // -------------------------------------------------------------
 
-/** @param {boolean} [navigate] Changer de page, et non seulement recharger. */
-function updatePreview(navigate = false) {
+// Une leçon verrouillée n'a pas de page : le lien le dit au lieu de
+// mener à une 404.
+function updateViewLink() {
   const lesson = state.lesson;
   if (!lesson) return;
-  const url = `/lecons/${lesson.id}/`;
-  ui.previewOpen.href = url;
-  ui.previewLocked.hidden = !lesson.locked;
-  ui.frame.hidden = lesson.locked;
-  if (lesson.locked) return;
-  if (navigate) ui.frame.src = url;
-  // Laisser à Astro le temps de relire la collection : recharger tout
-  // de suite servirait encore l'ancienne version.
-  else setTimeout(() => ui.frame.contentWindow?.location.reload(), 500);
+  ui.viewPage.hidden = false;
+  if (lesson.locked) {
+    ui.viewPage.removeAttribute('href');
+    ui.viewPage.setAttribute('aria-disabled', 'true');
+    ui.viewPage.title = 'Leçon verrouillée : sa page n’est pas générée. Retirez-la de « locked » dans socle.config.json pour la voir.';
+  } else {
+    ui.viewPage.href = `/lecons/${lesson.id}/`;
+    ui.viewPage.removeAttribute('aria-disabled');
+    ui.viewPage.title = 'Ouvrir la page dans un nouvel onglet : elle se recharge à chaque enregistrement.';
+  }
 }
-
-$('#toggle-preview').addEventListener('click', (/** @type {any} */ event) => {
-  const shown = event.currentTarget.getAttribute('aria-pressed') !== 'true';
-  event.currentTarget.setAttribute('aria-pressed', String(shown));
-  ui.layout.classList.toggle('layout--no-preview', !shown);
-});
 
 // -------------------------------------------------------------
 // Composants du texte
