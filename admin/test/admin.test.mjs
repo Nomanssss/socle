@@ -129,3 +129,18 @@ test('un nom d’image envoyé devient un nom de fichier sûr', async () => {
   }
   assert.equal(mediaPath('couverture.jpg').rel, 'couverture.jpg');
 });
+
+test('l’aperçu des slides compte les mêmes slides que le build', async () => {
+  const { previewSlides } = await import('../server/slides.mjs');
+  const data = matter(readFileSync(join(LESSONS_DIR, 'module-3/lecon-2.mdx'), 'utf8'), {}).data;
+  // Le deck écrit à la main : titre + 12 slides + fin, comme slides/module-3-lecon-2.md.
+  const deck = await previewSlides({ id: 'module-3/lecon-2', data, slides: readFileSync(join(LESSONS_DIR, 'module-3/lecon-2.slides.md'), 'utf8') });
+  assert.equal(deck.count, 14);
+  // Sans deck : titre, points-clés, fin.
+  const points = await previewSlides({ id: 'module-3/lecon-2', data: { ...data, slidePoints: ['Un', 'Deux'] }, slides: null });
+  assert.equal(points.count, 3);
+  assert.match(points.html, /Points clés/);
+  // Le CSS déjà connu n'est pas renvoyé.
+  const again = await previewSlides({ id: 'module-3/lecon-2', data, slides: null, knownCss: points.cssHash });
+  assert.equal(again.css, null);
+});

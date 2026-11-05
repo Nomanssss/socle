@@ -35,6 +35,19 @@ const ui = {
   tabLessons: $('#tab-lessons'),
   tabMedia: $('#tab-media'),
   coverThumb: $('#cover-thumb'),
+  tabPage: $('#tab-page'),
+  tabSlides: $('#tab-slides'),
+  pagePanel: $('#page-panel'),
+  slidesPanel: $('#slides-panel'),
+  slidesPoints: $('#slides-points'),
+  slidesDeck: $('#slides-deck'),
+  slidesText: $('#slides-text'),
+  slidesFrame: $('#slides-frame'),
+  slidesStatus: $('#slides-status'),
+  slidesError: $('#slides-error'),
+  slidesCount: $('#slides-count'),
+  slideTemplates: $('#slide-templates'),
+  slideAdd: $('#slide-add'),
   coverRemove: $('#cover-remove'),
   dialog: $('#component-dialog'),
   dialogTitle: $('#dialog-title'),
@@ -47,6 +60,10 @@ const ui = {
  *   lessons: any[],
  *   lesson: null | { id: string, data: Record<string, any>, body: string, hash: string, locked: boolean },
  *   saved: string,
+ *   slides: { exists: boolean, hash: string | null, deck: boolean },
+ *   savedSlides: string,
+ *   tab: 'page' | 'slides',
+ *   css: { hash: string | null, text: string },
  *   parsed: { source: string, components: any[], imports: { name: string, from: string, start: number, end: number }[], importsEnd: number | null, references: string[] },
  *   saving: boolean,
  * }}
@@ -55,6 +72,10 @@ const state = {
   lessons: [],
   lesson: null,
   saved: '',
+  slides: { exists: false, hash: null, deck: false },
+  savedSlides: '',
+  tab: 'page',
+  css: { hash: null, text: '' },
   parsed: { source: '', components: [], imports: [], importsEnd: null, references: [] },
   saving: false,
 };
@@ -189,11 +210,18 @@ async function openLesson(id) {
     return;
   }
   try {
-    const lesson = await request(`/lesson?id=${encodeURIComponent(id)}`);
+    const [lesson, slides] = await Promise.all([
+      request(`/lesson?id=${encodeURIComponent(id)}`),
+      request(`/slides?id=${encodeURIComponent(id)}`),
+    ]);
     state.lesson = lesson;
     fillForm(lesson.data);
     ui.body.value = lesson.body;
     state.saved = snapshot();
+    state.slides = { exists: slides.exists, hash: slides.hash, deck: slides.exists };
+    ui.slidesText.value = slides.markdown;
+    state.savedSlides = slidesSnapshot();
+    renderSlidesMode();
     showView('lesson');
     ui.heading.textContent = lesson.data.title ?? id;
     document.title = `${lesson.data.title ?? id} · Admin`;
@@ -201,6 +229,7 @@ async function openLesson(id) {
     updateViewLink();
     setStatus('');
     updateDirty();
+    if (state.tab === 'slides') previewNow();
     await parseComponents();
   } catch (error) {
     setStatus(error.message, 'error');
@@ -352,8 +381,13 @@ function snapshot() {
   return JSON.stringify([collectData(), ui.body.value]);
 }
 
+/** Le deck tel que l'interface le décrit : écrit à la main (et son texte), ou non. */
+function slidesSnapshot() {
+  return JSON.stringify(state.slides.deck ? ui.slidesText.value : null);
+}
+
 function isDirty() {
-  return Boolean(state.lesson) && snapshot() !== state.saved;
+  return Boolean(state.lesson) && (snapshot() !== state.saved || slidesSnapshot() !== state.savedSlides);
 }
 
 function updateDirty() {
@@ -366,31 +400,55 @@ function updateDirty() {
 ui.form.addEventListener('input', updateDirty);
 ui.form.addEventListener('submit', (/** @type {Event} */ event) => event.preventDefault());
 
-/** @param {boolean} [force] Écraser une modification faite ailleurs. */
-async function save(force = false) {
-  if (!state.lesson || state.saving || (!force && !isDirty())) return;
+/**
+ * Enregistre ce qui a changé : la leçon (en-tête et texte), son deck,
+ * ou les deux - chacun dans son fichier, chacun avec sa détection de
+ * conflit.
+ *
+ * @param {'' | 'lesson' | 'slides'} [force] La partie à écraser malgré un conflit.
+ */
+async function save(force = '') {
+  if (!state.lesson || state.saving) return;
+  const lessonChanged = force === 'lesson' || snapshot() !== state.saved;
+  const slidesChanged = force === 'slides' || slidesSnapshot() !== state.savedSlides;
+  if (!lessonChanged && !slidesChanged) return;
+
   state.saving = true;
   ui.save.disabled = true;
   setStatus('Enregistrement…');
-  const data = collectData();
-  const body = ui.body.value;
+  /** @type {'lesson' | 'slides'} */
+  let part = 'lesson';
   try {
-    const result = await request('/lesson', {
-      method: 'PUT',
-      json: { id: state.lesson.id, data, body, hash: state.lesson.hash, force },
-    });
-    state.lesson = { ...state.lesson, data, body, hash: result.hash };
-    state.saved = snapshot();
-    ui.heading.textContent = data.title;
+    if (lessonChanged) {
+      const data = collectData();
+      const body = ui.body.value;
+      const result = await request('/lesson', {
+        method: 'PUT',
+        json: { id: state.lesson.id, data, body, hash: state.lesson.hash, force: force === 'lesson' },
+      });
+      state.lesson = { ...state.lesson, data, body, hash: result.hash };
+      state.saved = snapshot();
+      ui.heading.textContent = data.title;
+      loadToc();
+    }
+    if (slidesChanged) {
+      part = 'slides';
+      const markdown = state.slides.deck ? ui.slidesText.value : null;
+      const result = await request('/slides', {
+        method: 'PUT',
+        json: { id: state.lesson.id, markdown, hash: state.slides.hash, force: force === 'slides' },
+      });
+      state.slides = { ...state.slides, exists: result.exists, hash: result.hash };
+      state.savedSlides = slidesSnapshot();
+    }
     setStatus(`Enregistré à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`, 'ok');
-    loadToc();
   } catch (error) {
     if (error.payload?.conflict) {
       state.saving = false;
       const overwrite = confirm(
         `${error.message}\n\nOK : écraser avec la version de l’admin.\nAnnuler : garder le fichier, puis rouvrir la leçon pour le recharger.`
       );
-      if (overwrite) return save(true);
+      if (overwrite) return save(part);
       setStatus('Non enregistré : le fichier a changé ailleurs.', 'error');
     } else {
       setStatus(error.message, 'error');
@@ -711,9 +769,9 @@ function replaceText(start, end, text) {
  *
  * @param {number} start
  * @param {number} end
+ * @param {HTMLTextAreaElement} [field] Le texte de la page, ou celui des slides.
  */
-function selectRange(start, end) {
-  const field = ui.body;
+function selectRange(start, end, field = ui.body) {
   const style = getComputedStyle(field);
   const mirror = h('div', {
     style: `position:absolute;visibility:hidden;white-space:pre-wrap;overflow-wrap:break-word;box-sizing:border-box;width:${field.clientWidth}px;font:${style.font};line-height:${style.lineHeight};padding:${style.padding};letter-spacing:${style.letterSpacing};tab-size:${style.tabSize}`,
@@ -724,7 +782,7 @@ function selectRange(start, end) {
   field.focus();
   field.setSelectionRange(start, end);
   field.scrollTop = Math.max(0, top - field.clientHeight / 3);
-  highlightCurrent();
+  if (field === ui.body) highlightCurrent();
 }
 
 // -------------------------------------------------------------
@@ -776,6 +834,328 @@ function openDialog(editor, props) {
     cancel.addEventListener('click', onCancel);
     ui.dialog.addEventListener('cancel', onCancel);
   });
+}
+
+// -------------------------------------------------------------
+// Onglets : la page, ou ses slides
+// -------------------------------------------------------------
+
+/** @param {'page' | 'slides'} tab */
+function showTab(tab) {
+  state.tab = tab;
+  const slides = tab === 'slides';
+  ui.tabPage.setAttribute('aria-selected', String(!slides));
+  ui.tabSlides.setAttribute('aria-selected', String(slides));
+  ui.tabPage.tabIndex = slides ? -1 : 0;
+  ui.tabSlides.tabIndex = slides ? 0 : -1;
+  ui.pagePanel.hidden = slides;
+  ui.slidesPanel.hidden = !slides;
+  ui.form.classList.toggle('lesson--wide', slides);
+  if (slides) previewNow();
+}
+
+ui.tabPage.addEventListener('click', () => showTab('page'));
+ui.tabSlides.addEventListener('click', () => showTab('slides'));
+// Les flèches passent d'un onglet à l'autre, comme le veut le motif
+// « onglets » de l'ARIA.
+for (const tab of [ui.tabPage, ui.tabSlides]) {
+  tab.addEventListener('keydown', (/** @type {KeyboardEvent} */ event) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    const next = tab === ui.tabPage ? ui.tabSlides : ui.tabPage;
+    showTab(next === ui.tabSlides ? 'slides' : 'page');
+    next.focus();
+  });
+}
+
+// -------------------------------------------------------------
+// Les slides
+//
+// Deux états pour une leçon : sans deck, ses slides viennent de ses
+// points-clés ; avec un deck écrit à la main (« lecon.slides.md »), on
+// l'écrit ici. L'aperçu suit la frappe, enregistrée ou non : c'est le
+// serveur qui assemble et rend le deck comme `npm run slides` le ferait.
+// -------------------------------------------------------------
+
+function renderSlidesMode() {
+  ui.slidesPoints.hidden = state.slides.deck;
+  ui.slidesDeck.hidden = !state.slides.deck;
+  updateSlidesCount();
+}
+
+/**
+ * Les séparateurs de slides d'un deck : les lignes « --- », hors des
+ * blocs de code, où un « --- » n'est que du texte.
+ *
+ * @param {string} text
+ * @returns {number[]} La position du début de chaque séparateur.
+ */
+function separators(text) {
+  const found = [];
+  let fence = '';
+  let offset = 0;
+  for (const line of text.split('\n')) {
+    const marker = line.match(/^\s*(```|~~~)/)?.[1];
+    if (marker && (!fence || fence === marker)) fence = fence ? '' : marker;
+    else if (!fence && /^---\s*$/.test(line)) found.push(offset);
+    offset += line.length + 1;
+  }
+  return found;
+}
+
+function updateSlidesCount() {
+  // Titre et fin sont ajoutés au deck ; sans deck, une slide de points-clés.
+  const body = state.slides.deck ? separators(ui.slidesText.value).length + 1 : 1;
+  ui.slidesCount.textContent = String(body + 2);
+}
+
+$('#slides-create').addEventListener('click', () => {
+  const points = ui.form.elements.slidePoints.value
+    .split('\n')
+    .map((/** @type {string} */ line) => line.trim())
+    .filter(Boolean);
+  // Le deck part de ce que la leçon montrait déjà : ses points-clés.
+  ui.slidesText.value = points.length
+    ? `## Points clés\n\n${points.map((/** @type {string} */ p) => `- ${p}`).join('\n')}\n`
+    : '## Une première slide\n\nLe texte de la slide.\n';
+  state.slides.deck = true;
+  renderSlidesMode();
+  updateDirty();
+  previewNow();
+  ui.slidesText.focus();
+});
+
+$('#slides-drop').addEventListener('click', () => {
+  if (!confirm('Supprimer ce deck ? À l’enregistrement, le fichier sera effacé et les slides reviendront aux points-clés.')) return;
+  state.slides.deck = false;
+  renderSlidesMode();
+  updateDirty();
+  previewNow();
+});
+
+let previewTimer = 0;
+ui.form.addEventListener('input', () => {
+  if (state.tab !== 'slides') return;
+  updateSlidesCount();
+  clearTimeout(previewTimer);
+  previewTimer = window.setTimeout(previewNow, 450);
+});
+
+let previewRun = 0;
+
+async function previewNow() {
+  if (!state.lesson) return;
+  const run = ++previewRun;
+  ui.slidesStatus.textContent = 'Rendu…';
+  try {
+    const result = await request('/slides/preview', {
+      method: 'POST',
+      json: {
+        id: state.lesson.id,
+        data: collectData(),
+        slides: state.slides.deck ? ui.slidesText.value : null,
+        knownCss: state.css.hash,
+      },
+    });
+    // Une frappe plus récente a déjà demandé un autre rendu.
+    if (run !== previewRun) return;
+    if (result.css !== null) state.css = { hash: result.cssHash, text: result.css };
+    ui.slidesError.hidden = true;
+    ui.slidesStatus.textContent = `${result.count} slides`;
+    ui.slidesCount.textContent = String(result.count);
+    await showPreview(result.html);
+  } catch (error) {
+    if (run !== previewRun) return;
+    ui.slidesStatus.textContent = '';
+    ui.slidesError.textContent = error.message;
+    ui.slidesError.hidden = false;
+  }
+}
+
+/**
+ * Le rendu tient dans un <iframe> : le CSS du thème, qui stylise des
+ * <section> nues, ne doit pas déborder sur l'admin. La position de
+ * défilement survit au rechargement - sans quoi chaque frappe
+ * ramènerait en haut du deck.
+ *
+ * @param {string} html
+ */
+function showPreview(html) {
+  const frame = ui.slidesFrame;
+  const scroll = frame.contentWindow?.scrollY ?? 0;
+  const brand = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim();
+  return new Promise((resolve) => {
+    frame.onload = () => {
+      frame.contentWindow?.scrollTo(0, scroll);
+      highlightSlide(false);
+      resolve(undefined);
+    };
+    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8">
+<style>${state.css.text}</style>
+<style>
+  html { background: #d9d9e0; }
+  body { margin: 0; padding: 12px; }
+  svg[data-marpit-svg] { display: block; width: 100%; height: auto; margin: 0 0 12px; border-radius: 4px; box-shadow: 0 1px 3px rgb(0 0 0 / 0.25); }
+  svg[data-marpit-svg].is-current { outline: 3px solid ${brand}; outline-offset: 3px; }
+</style></head><body>${html}</body></html>`;
+  });
+}
+
+/**
+ * La slide où se trouve le curseur s'allume dans l'aperçu. La slide de
+ * titre, ajoutée au deck, est la n° 0 : la première du texte est la 1.
+ *
+ * @param {boolean} [scroll] Faire défiler l'aperçu jusqu'à elle.
+ */
+function highlightSlide(scroll = true) {
+  const doc = ui.slidesFrame.contentDocument;
+  if (!doc) return;
+  const slides = [...doc.querySelectorAll('svg[data-marpit-svg]')];
+  let index = -1;
+  if (state.slides.deck && document.activeElement === ui.slidesText) {
+    const caret = ui.slidesText.selectionStart;
+    index = 1 + separators(ui.slidesText.value).filter((at) => at < caret).length;
+  }
+  slides.forEach((slide, i) => slide.classList.toggle('is-current', i === index));
+  if (scroll && slides[index]) slides[index].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+for (const type of ['click', 'keyup', 'focus']) ui.slidesText.addEventListener(type, () => highlightSlide());
+
+// -------------------------------------------------------------
+// Ajouter une slide depuis un modèle
+//
+// Les modèles du thème (src/styles/marp/layouts/), avec la syntaxe que
+// chacun attend - c'est elle qu'on oublie, surtout pour les images, où
+// chaque famille veut la sienne. `image: true` : on choisit d'abord
+// l'image dans la médiathèque.
+// -------------------------------------------------------------
+
+const SLIDE_TEMPLATES = [
+  { label: 'Standard', hint: 'Un titre et du contenu', text: () => '## Titre de la slide\n\n- Un premier point\n- Un deuxième point' },
+  { label: 'Intercalaire', hint: 'Ouvre une partie', text: () => '<!-- _class: section -->\n\n## Partie 2 - Son titre' },
+  { label: 'Phrase forte', hint: 'Une idée, en grand', text: () => '<!-- _class: statement -->\n\n> Une idée forte, en une phrase.' },
+  {
+    label: 'Deux colonnes',
+    hint: 'Comparer, opposer',
+    text: () => '<!-- _class: columns-2 -->\n\n## Titre\n\nUn chapô facultatif, au-dessus des colonnes.\n\n### À gauche\n\nLe texte.\n\n### À droite\n\nLe texte.',
+  },
+  {
+    label: 'Trois colonnes',
+    hint: 'Trois idées côte à côte',
+    text: () => '<!-- _class: columns-3 -->\n\n## Titre\n\n### Un\n\nLe texte.\n\n### Deux\n\nLe texte.\n\n### Trois\n\nLe texte.',
+  },
+  {
+    label: 'Image à gauche',
+    hint: 'Image d’un côté, texte de l’autre',
+    image: true,
+    text: (/** @type {string} */ src) => `<!-- _class: image-left -->\n<!-- _backgroundImage: url('${src}') -->\n\n## Titre\n\nLe texte, à côté de l’image.`,
+  },
+  {
+    label: 'Image à droite',
+    hint: 'Le même, inversé',
+    image: true,
+    text: (/** @type {string} */ src) => `<!-- _class: image-right -->\n<!-- _backgroundImage: url('${src}') -->\n\n## Titre\n\nLe texte, à côté de l’image.`,
+  },
+  {
+    label: 'Image en moitié',
+    hint: 'L’image prend une part réglable',
+    image: true,
+    text: (/** @type {string} */ src) => `<!-- _class: image-split -->\n\n![bg right:40%](${src})\n\n## Titre\n\nLe texte.`,
+  },
+  {
+    label: 'Image plein cadre',
+    hint: 'L’image en fond, le texte par-dessus',
+    image: true,
+    text: (/** @type {string} */ src) => `<!-- _class: image-full -->\n\n![bg brightness:0.35](${src})\n\n## Titre\n\nLe texte, en blanc sur l’image.`,
+  },
+];
+
+ui.slideTemplates.replaceChildren(
+  ...SLIDE_TEMPLATES.map((template) =>
+    h(
+      'li',
+      {},
+      h(
+        'button',
+        { type: 'button', class: 'menu__item', onclick: () => addSlide(template) },
+        h('strong', {}, template.label),
+        h('span', {}, template.hint)
+      )
+    )
+  )
+);
+
+/** @param {boolean} open */
+function toggleSlideMenu(open) {
+  ui.slideTemplates.hidden = !open;
+  ui.slideAdd.setAttribute('aria-expanded', String(open));
+  if (open) ui.slideTemplates.querySelector('button')?.focus();
+}
+
+ui.slideAdd.addEventListener('click', () => toggleSlideMenu(ui.slideTemplates.hidden));
+document.addEventListener('click', (event) => {
+  if (!$('#slide-menu').contains(event.target)) toggleSlideMenu(false);
+});
+ui.slideTemplates.addEventListener('keydown', (/** @type {KeyboardEvent} */ event) => {
+  if (event.key === 'Escape') {
+    toggleSlideMenu(false);
+    ui.slideAdd.focus();
+  }
+});
+
+/** @param {{ text: (src: string) => string, image?: boolean }} template */
+async function addSlide(template) {
+  toggleSlideMenu(false);
+  if (!state.lesson) return;
+  let src = '';
+  if (template.image) {
+    const picked = await openDialog(imagePicker, { path: null });
+    if (!picked) return;
+    // Un deck cite ses images depuis le dossier de SA leçon.
+    src = `${'../'.repeat(state.lesson.id.split('/').length + 1)}assets/${picked.path}`;
+  }
+  // Une leçon sans deck en reçoit un : ajouter une slide, c'est déjà
+  // écrire le deck à la main.
+  if (!state.slides.deck) {
+    state.slides.deck = true;
+    ui.slidesText.value = '';
+    renderSlidesMode();
+  }
+
+  const field = ui.slidesText;
+  const text = field.value;
+  const snippet = template.text(src);
+  let at;
+  let insert;
+  if (!text.trim()) {
+    at = 0;
+    insert = `${snippet}\n`;
+    field.value = '';
+  } else {
+    // La nouvelle slide vient juste APRÈS celle du curseur.
+    const next = separators(text).find((position) => position > field.selectionStart);
+    if (next === undefined) {
+      at = text.length;
+      insert = `${text.endsWith('\n') ? '' : '\n'}\n---\n\n${snippet}\n`;
+    } else {
+      at = next;
+      insert = `---\n\n${snippet}\n\n`;
+    }
+  }
+  field.focus();
+  field.setSelectionRange(at, at);
+  if (!document.execCommand('insertText', false, insert)) {
+    field.setRangeText(insert, at, at, 'end');
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  // Le curseur se pose sur le titre de la nouvelle slide, prêt à le
+  // réécrire - et le texte comme l'aperçu défilent jusqu'à elle.
+  const title = field.value.indexOf('## ', at);
+  if (title !== -1) selectRange(title + 3, field.value.indexOf('\n', title + 3), field);
+  updateDirty();
+  updateSlidesCount();
+  await previewNow();
+  highlightSlide();
 }
 
 // -------------------------------------------------------------

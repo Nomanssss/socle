@@ -718,3 +718,155 @@ button.media:hover { border-color: var(--brand); }
   align-items: flex-start;
   gap: 8px;
 }
+
+/* --- Onglets Page / Slides ----------------------------------- */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: -1px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabs__tab:hover { color: var(--text); }
+
+.tabs__tab[aria-selected='true'] {
+  border-color: var(--line);
+  border-bottom-color: var(--bg);
+  background: var(--bg);
+  color: var(--brand);
+}
+
+.tabs__count {
+  min-width: 1.5em;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--text);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.tabs__count:empty { display: none; }
+
+.tabs__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Les slides se lisent à côté de leur texte : la colonne s'élargit. */
+.lesson--wide { max-width: 1600px; }
+
+/* --- Slides -------------------------------------------------- */
+
+.slides {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  .slides { grid-template-columns: minmax(0, 1fr); }
+}
+
+.slides__editor,
+.slides__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.slides__preview {
+  position: sticky;
+  top: 0;
+}
+
+.slides__intro {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+#slides-points,
+#slides-deck {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+#slides-points .field { align-self: stretch; }
+
+.slides__text {
+  align-self: stretch;
+  min-height: 60vh;
+}
+
+.slides__status {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.slides__frame {
+  width: 100%;
+  height: calc(100vh - var(--bar) - 150px);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #d9d9e0;
+}
+
+.toolbar__spacer { flex: 1; }
+
+/* --- Menu des modèles de slide ------------------------------- */
+
+.menu { position: relative; }
+
+.menu__list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 3;
+  width: 280px;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
+  list-style: none;
+}
+
+.menu__item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu__item:hover,
+.menu__item:focus-visible { background: var(--bg); }
+
+.menu__item span { font-size: 0.8125rem; color: var(--muted); }

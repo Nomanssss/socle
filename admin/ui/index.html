@@ -41,6 +41,14 @@
         </section>
 
         <form class="lesson" id="lesson-form" hidden>
+          <div class="tabs" role="tablist" aria-label="Ce que l'on édite">
+            <button type="button" class="tabs__tab" role="tab" id="tab-page" aria-controls="page-panel" aria-selected="true">Page</button>
+            <button type="button" class="tabs__tab" role="tab" id="tab-slides" aria-controls="slides-panel" aria-selected="false" tabindex="-1">
+              Slides <span class="tabs__count" id="slides-count"></span>
+            </button>
+          </div>
+
+          <div class="tabs__panel" id="page-panel" role="tabpanel" aria-labelledby="tab-page">
           <details class="panel" id="frontmatter-panel" open>
             <summary class="panel__title">En-tête</summary>
             <div class="fields">
@@ -83,11 +91,6 @@
                 <input name="coverAlt" />
                 <span class="field__help">Vide si l'image est purement décorative.</span>
               </label>
-              <label class="field field--wide">
-                <span class="field__label">Points-clés des slides</span>
-                <textarea name="slidePoints" rows="4"></textarea>
-                <span class="field__help">Un point par ligne. Ignorés si la leçon a son propre deck.</span>
-              </label>
               <fieldset class="field field--wide">
                 <legend class="field__label">Sources</legend>
                 <ol class="sources" id="sources"></ol>
@@ -106,6 +109,53 @@
             <p class="notice notice--error" id="mdx-error" hidden></p>
             <textarea class="body" id="body" name="body" spellcheck="true" aria-labelledby="text-title"></textarea>
           </section>
+          </div>
+
+          <div class="tabs__panel slides" id="slides-panel" role="tabpanel" aria-labelledby="tab-slides" hidden>
+            <section class="panel slides__editor" aria-labelledby="slides-title">
+              <div class="toolbar">
+                <h2 class="panel__title" id="slides-title">Slides</h2>
+                <span class="toolbar__spacer"></span>
+                <div class="menu" id="slide-menu">
+                  <button type="button" class="button button--small" id="slide-add" aria-expanded="false" aria-controls="slide-templates">+ Slide</button>
+                  <ul class="menu__list" id="slide-templates" hidden></ul>
+                </div>
+              </div>
+
+              <div id="slides-points">
+                <p class="slides__intro">
+                  Cette leçon n'a pas de deck écrit à la main : ses slides sont fabriquées à partir de ses
+                  points-clés, sur une seule slide. Pour aller plus loin, écrivez son deck.
+                </p>
+                <label class="field field--wide">
+                  <span class="field__label">Points-clés</span>
+                  <textarea name="slidePoints" rows="6"></textarea>
+                  <span class="field__help">Un point par ligne.</span>
+                </label>
+                <button type="button" class="button" id="slides-create">Écrire le deck à la main</button>
+              </div>
+
+              <div id="slides-deck" hidden>
+                <p class="slides__intro">
+                  Une slide par bloc, séparées par une ligne <code>---</code>. La slide de titre et la slide
+                  de fin sont ajoutées toutes seules : ne les écrivez pas.
+                </p>
+                <textarea class="body slides__text" id="slides-text" spellcheck="true" aria-labelledby="slides-title"></textarea>
+                <button type="button" class="link link--danger" id="slides-drop">Supprimer ce deck et revenir aux points-clés</button>
+              </div>
+            </section>
+
+            <section class="panel slides__preview" aria-labelledby="slides-preview-title">
+              <div class="toolbar">
+                <h2 class="panel__title" id="slides-preview-title">Aperçu</h2>
+                <span class="slides__status" id="slides-status" role="status" aria-live="polite"></span>
+              </div>
+              <p class="notice notice--error" id="slides-error" hidden></p>
+              <!-- Sans « allow-scripts » : un deck ne peut rien exécuter. « allow-same-origin »
+                   laisse l'admin faire défiler l'aperçu jusqu'à la slide du curseur. -->
+              <iframe class="slides__frame" id="slides-frame" title="Aperçu des slides" sandbox="allow-same-origin"></iframe>
+            </section>
+          </div>
         </form>
       </main>
 

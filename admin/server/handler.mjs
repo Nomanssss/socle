@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { listLessons, readLesson, writeLesson, AdminError } from './lessons.mjs';
 import { findComponents, printComponent } from './mdx.mjs';
 import { listMedia, readMedia, uploadMedia, deleteMedia, MAX_UPLOAD } from './media.mjs';
+import { readSlides, writeSlides, previewSlides, readSlideImage } from './slides.mjs';
 import { readConfig } from '../../scripts/config.mjs';
 
 const UI_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'ui');
@@ -75,7 +76,8 @@ export function createHandler(base) {
       if (path.startsWith('/api/')) {
         if (req.method !== 'GET') assertSameOrigin(req);
         const route = path.slice('/api'.length);
-        if (req.method === 'GET' && route === '/media/file') return await serveMedia(res, url.searchParams.get('path'));
+        if (req.method === 'GET' && route === '/media/file') return serveImage(res, await readMedia(url.searchParams.get('path')));
+        if (req.method === 'GET' && route === '/slides/image') return serveImage(res, await readSlideImage(url.searchParams.get('path')));
         const result = await api(req, route, url.searchParams);
         return send(res, 200, result);
       }
@@ -119,6 +121,16 @@ async function api(req, route, params) {
       return { media: await uploadMedia(params.get('name'), await readBody(req, MAX_UPLOAD)) };
     case 'DELETE /media':
       return await deleteMedia(params.get('path'));
+    case 'GET /slides':
+      return await readSlides(params.get('id'));
+    case 'PUT /slides': {
+      const { id, markdown, hash, force } = await readJson(req);
+      return await writeSlides({ id, markdown, hash, force });
+    }
+    case 'POST /slides/preview': {
+      const { id, data, slides, knownCss } = await readJson(req);
+      return await previewSlides({ id, data, slides, knownCss });
+    }
     default:
       throw new AdminError(404, `Route inconnue : ${key}`);
   }
@@ -166,16 +178,15 @@ async function readJson(req) {
 }
 
 /**
- * Une image de la médiathèque, pour les vignettes. Un SVG peut contenir
- * du script : servi depuis l'origine de l'admin, il pourrait appeler
- * l'API. La politique de sécurité l'en empêche, même ouvert seul dans
- * un onglet.
+ * Une image : vignette de la médiathèque, ou image citée par un deck.
+ * Un SVG peut contenir du script : servi depuis l'origine de l'admin, il
+ * pourrait appeler l'API. La politique de sécurité l'en empêche, même
+ * ouvert seul dans un onglet.
  *
  * @param {import('node:http').ServerResponse} res
- * @param {string | null} path
+ * @param {{ content: Buffer, type: string }} image
  */
-async function serveMedia(res, path) {
-  const { content, type } = await readMedia(path);
+function serveImage(res, { content, type }) {
   res.writeHead(200, {
     'Content-Type': type,
     'Content-Security-Policy': "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox",

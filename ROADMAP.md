@@ -71,12 +71,13 @@ vivent dans `src/assets/` : c'est là qu'Astro sait les optimiser.*
 thème, sans attendre `npm run slides`.*
 
 - [x] L'assemblage du deck d'une leçon sort de `build-slides.mjs`, pour être partagé avec l'admin (sortie identique vérifiée)
-- [ ] Un onglet « Slides » par leçon : son deck écrit à la main, ou à défaut ses points-clés
-- [ ] Aperçu des slides en direct, rendu par Marp avec le thème du cours
-- [ ] Le curseur dans le texte désigne sa slide dans l'aperçu
-- [ ] Ajouter une slide depuis un modèle : standard, intercalaire, phrase forte, colonnes, image…
-- [ ] Créer le deck d'une leçon qui n'en a pas, à partir de ses points-clés
-- [ ] Les images des slides choisies dans la médiathèque
+- [x] Un onglet « Slides » par leçon : son deck écrit à la main, ou à défaut ses points-clés
+- [x] Aperçu des slides en direct, rendu par Marp avec le thème du cours
+- [x] Le curseur dans le texte désigne sa slide dans l'aperçu
+- [x] Ajouter une slide depuis un modèle : standard, intercalaire, phrase forte, colonnes, image…
+- [x] Créer le deck d'une leçon qui n'en a pas, à partir de ses points-clés
+- [x] Les images des slides choisies dans la médiathèque (via les modèles à image)
+  - Reste : changer l'image d'une slide existante sans retoucher le chemin à la main
 - [ ] Exporter le PDF de la leçon depuis l'admin
 
 ## Phase 5 - Organiser le cours
