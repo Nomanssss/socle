@@ -42,6 +42,7 @@ const UI_FILES = {
   '/media.js': { file: 'media.js', type: 'text/javascript; charset=utf-8' },
   '/dom.js': { file: 'dom.js', type: 'text/javascript; charset=utf-8' },
   '/text-editor.js': { file: 'text-editor.js', type: 'text/javascript; charset=utf-8' },
+  '/slides-editor.js': { file: 'slides-editor.js', type: 'text/javascript; charset=utf-8' },
   '/admin.css': { file: 'admin.css', type: 'text/css; charset=utf-8' },
 };
 

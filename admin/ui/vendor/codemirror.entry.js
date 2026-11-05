@@ -15,7 +15,7 @@
 export { EditorState, EditorSelection, StateField, StateEffect, RangeSetBuilder } from '@codemirror/state';
 export { EditorView, Decoration, WidgetType, ViewPlugin, keymap, drawSelection, placeholder } from '@codemirror/view';
 export { history, historyKeymap, defaultKeymap, indentMore, indentLess } from '@codemirror/commands';
-export { syntaxHighlighting, syntaxTree, HighlightStyle } from '@codemirror/language';
+export { syntaxHighlighting, syntaxTree, ensureSyntaxTree, HighlightStyle } from '@codemirror/language';
 export { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 // Les langages des blocs de code d'un cours : ceux du web.
 export { javascript } from '@codemirror/lang-javascript';

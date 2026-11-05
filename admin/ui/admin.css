@@ -1059,3 +1059,82 @@ button.media:hover { border-color: var(--brand); }
   display: flex;
   gap: 8px;
 }
+
+/* --- Éditeur riche des slides -------------------------------- */
+
+.slides__host { align-self: stretch; }
+
+/* Le bandeau d'une slide : là où le texte disait « --- ». */
+.slide-band {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 20px 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--brand) 10%, var(--surface));
+  border-left: 4px solid var(--brand);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.slide-band__label {
+  font-weight: 700;
+  color: var(--brand);
+  white-space: nowrap;
+}
+
+.slide-band__layout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.slide-band__layout select {
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+/* L'image de fond d'une slide, à la place de sa directive. */
+.slide-image {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 20px;
+  padding: 6px 10px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.slide-image .media__thumb {
+  flex: none;
+  width: 72px;
+  aspect-ratio: 16 / 9;
+}
+
+.slide-image__label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.slide-image__label small {
+  overflow: hidden;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.slide-hidden { display: block; height: 0; }
+
+.format--slides { align-self: stretch; }

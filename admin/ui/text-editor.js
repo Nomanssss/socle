@@ -58,6 +58,7 @@ import {
   tags,
 } from './vendor/codemirror.js';
 import { h } from './dom.js';
+import { slidesExtension } from './slides-editor.js';
 
 /**
  * @typedef {{ name: string, start: number, end: number, editable: boolean, props: any }} Component
@@ -339,9 +340,15 @@ class CardWidget extends WidgetType {
 
 /**
  * @param {HTMLElement} parent
- * @param {{ cards: Cards, label: string }} options
+ * @param {{
+ *   cards: Cards,
+ *   label: string,
+ *   placeholder?: string,
+ *   slides?: import('./slides-editor.js').SlideOptions,
+ * }} options `slides` : l'éditeur est celui d'un deck - bandeaux de
+ *   slides, mises en page, images de fond.
  */
-export function createRichEditor(parent, { cards, label }) {
+export function createRichEditor(parent, { cards, label, placeholder: hint = 'Écrivez ici le texte de la leçon…', slides }) {
   const host = h('div', { class: 'rich-editor', 'data-text-editor': '' });
   parent.append(host);
 
@@ -357,7 +364,8 @@ export function createRichEditor(parent, { cards, label }) {
     codeBlocks,
     theme,
     cardsField,
-    placeholder('Écrivez ici le texte de la leçon…'),
+    ...(slides ? [slidesExtension(slides)] : []),
+    placeholder(hint),
     EditorView.contentAttributes.of({ 'aria-label': label, spellcheck: 'true', lang: document.documentElement.lang }),
     keymap.of([
       { key: 'Mod-b', run: (view) => wrap(view, '**') },

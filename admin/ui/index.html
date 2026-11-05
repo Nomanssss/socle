@@ -108,7 +108,7 @@
                 <ul class="menu__list" id="insert-list" hidden></ul>
               </div>
             </div>
-            <div class="format" id="format-bar" role="toolbar" aria-label="Mise en forme" aria-controls="body-host">
+            <div class="format" id="format-bar" data-editor="body" role="toolbar" aria-label="Mise en forme" aria-controls="body-host">
               <button type="button" class="format__button" data-command="bold" title="Gras (⌘B)"><strong>G</strong></button>
               <button type="button" class="format__button" data-command="italic" title="Italique (⌘I)"><em>I</em></button>
               <span class="format__separator"></span>
@@ -123,7 +123,7 @@
               <button type="button" class="format__button" data-command="table" title="Insérer un tableau">▦ Tableau</button>
               <button type="button" class="format__button" data-command="code" title="Bloc de code (Tab y indente)">&lt;/&gt; Code</button>
               <label class="format__mode">
-                <input type="checkbox" id="plain-mode" />
+                <input type="checkbox" class="plain-toggle" id="plain-mode" />
                 Texte brut
               </label>
             </div>
@@ -163,7 +163,28 @@
                   Une slide par bloc, séparées par une ligne <code>---</code>. La slide de titre et la slide
                   de fin sont ajoutées toutes seules : ne les écrivez pas.
                 </p>
-                <textarea class="body slides__text" id="slides-text" spellcheck="true" aria-labelledby="slides-title"></textarea>
+                <div class="format format--slides" id="slides-format-bar" data-editor="slides" role="toolbar" aria-label="Mise en forme des slides" aria-controls="slides-host">
+                  <button type="button" class="format__button" data-command="bold" title="Gras (⌘B)"><strong>G</strong></button>
+                  <button type="button" class="format__button" data-command="italic" title="Italique (⌘I)"><em>I</em></button>
+                  <span class="format__separator"></span>
+                  <button type="button" class="format__button" data-command="heading" data-level="2" title="Titre de la slide">Titre</button>
+                  <button type="button" class="format__button" data-command="heading" data-level="3" title="Intertitre (une colonne, dans les mises en page à colonnes)">Colonne</button>
+                  <span class="format__separator"></span>
+                  <button type="button" class="format__button" data-command="bullets" title="Liste à puces">• Liste</button>
+                  <button type="button" class="format__button" data-command="numbers" title="Liste numérotée">1. Liste</button>
+                  <button type="button" class="format__button" data-command="link" title="Lien (⌘K)">🔗 Lien</button>
+                  <span class="format__separator"></span>
+                  <button type="button" class="format__button" data-command="image" title="Une image dans la slide">🖼 Image</button>
+                  <button type="button" class="format__button" data-command="table" title="Insérer un tableau">▦ Tableau</button>
+                  <button type="button" class="format__button" data-command="code" title="Bloc de code (Tab y indente)">&lt;/&gt; Code</button>
+                  <label class="format__mode">
+                    <input type="checkbox" class="plain-toggle" />
+                    Texte brut
+                  </label>
+                </div>
+                <div class="body-host slides__host" id="slides-host">
+                  <textarea class="body slides__text" id="slides-text" spellcheck="true" aria-labelledby="slides-title" hidden></textarea>
+                </div>
                 <button type="button" class="link link--danger" id="slides-drop">Supprimer ce deck et revenir aux points-clés</button>
               </div>
             </section>

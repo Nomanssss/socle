@@ -79,7 +79,7 @@ thème, sans attendre `npm run slides`.*
 - [x] Ajouter une slide depuis un modèle : standard, intercalaire, phrase forte, colonnes, image…
 - [x] Créer le deck d'une leçon qui n'en a pas, à partir de ses points-clés
 - [x] Les images des slides choisies dans la médiathèque (via les modèles à image)
-  - Reste : changer l'image d'une slide existante sans retoucher le chemin à la main
+  - [x] Changer l'image d'une slide existante sans retoucher le chemin à la main (vignette « Changer » de l'éditeur riche)
 - [ ] Exporter le PDF de la leçon depuis l'admin
 
 ## Phase 5 - Un éditeur de texte pour tout le monde
@@ -97,7 +97,8 @@ de code, et l'on n'a plus à connaître la syntaxe Markdown.*
 - [x] Les tableaux en cartes, édités dans une grille : lignes, colonnes, alignement, sans aligner un « | » à la main
 - [x] Thème clair seulement : pas de mode sombre
 - [ ] Une image collée ou glissée dans le texte part dans la médiathèque et devient une Figure
-- [ ] Le même éditeur pour le texte des slides, les `---` affichés en séparateurs
+- [x] Un éditeur riche pour les slides : chaque `---` devient un bandeau « Slide N » avec son menu de mise en page, la directive `_class` disparaît, les images de fond deviennent des vignettes à changer en un clic
+- [x] Une barre d'outils adaptée aux slides : titre, colonne, listes, lien, image, tableau, code
 - [ ] (Facultatif) La syntaxe n'apparaît que sur la ligne du curseur, comme dans Obsidian
 
 ## Phase 6 - Organiser le cours

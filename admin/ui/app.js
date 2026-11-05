@@ -13,7 +13,7 @@
 
 import { h, EDITORS, EditorError, imagePicker, tableEditor } from './editors.js';
 import { mountLibrary, thumbnail } from './media.js';
-import { createPlainEditor, createRichEditor, selectInTextarea } from './text-editor.js';
+import { createPlainEditor, createRichEditor } from './text-editor.js';
 
 const API = './api';
 
@@ -46,6 +46,8 @@ const ui = {
   slidesPoints: $('#slides-points'),
   slidesDeck: $('#slides-deck'),
   slidesText: $('#slides-text'),
+  slidesHost: $('#slides-host'),
+  slidesFormatBar: $('#slides-format-bar'),
   slidesFrame: $('#slides-frame'),
   slidesStatus: $('#slides-status'),
   slidesError: $('#slides-error'),
@@ -223,7 +225,7 @@ async function openLesson(id) {
     body.value = lesson.body;
     state.saved = snapshot();
     state.slides = { exists: slides.exists, hash: slides.hash, deck: slides.exists };
-    ui.slidesText.value = slides.markdown;
+    slidesBody.value = slides.markdown;
     state.savedSlides = slidesSnapshot();
     renderSlidesMode();
     showView('lesson');
@@ -387,7 +389,7 @@ function snapshot() {
 
 /** Le deck tel que l'interface le décrit : écrit à la main (et son texte), ou non. */
 function slidesSnapshot() {
-  return JSON.stringify(state.slides.deck ? ui.slidesText.value : null);
+  return JSON.stringify(state.slides.deck ? slidesBody.value : null);
 }
 
 function isDirty() {
@@ -437,7 +439,7 @@ async function save(force = '') {
     }
     if (slidesChanged) {
       part = 'slides';
-      const markdown = state.slides.deck ? ui.slidesText.value : null;
+      const markdown = state.slides.deck ? slidesBody.value : null;
       const result = await request('/slides', {
         method: 'PUT',
         json: { id: state.lesson.id, markdown, hash: state.slides.hash, force: force === 'slides' },
@@ -978,8 +980,36 @@ function describe(component) {
   return h('strong', {}, component.name);
 }
 
+// Ce que l'éditeur d'un deck demande à l'admin : choisir une image
+// dans la médiathèque, et en montrer la vignette. Un deck cite ses
+// images depuis le dossier de SA leçon (« ../../../assets/x.jpg »).
+const SLIDE_OPTIONS = {
+  pickImage: async (/** @type {string | null} */ current) => {
+    const picked = await openDialog(imagePicker, { path: current ? coverAsset(current) : null });
+    return picked && state.lesson ? `${'../'.repeat(state.lesson.id.split('/').length + 1)}assets/${picked.path}` : null;
+  },
+  thumb: (/** @type {string} */ url) => {
+    const asset = coverAsset(url);
+    return asset ? thumbnail({ path: asset, name: asset }) : null;
+  },
+};
+
+// Le texte d'un deck n'a ni composants ni tableaux à mettre en cartes :
+// ce sont ses bandeaux de slides qui en tiennent lieu.
+const NO_CARDS = {
+  canEdit: () => false,
+  card: () => h('span'),
+  onEdit() {},
+  onDelete() {},
+  tableCard: () => h('span'),
+  onEditTable() {},
+  onDeleteTable() {},
+};
+
 /** @type {ReturnType<typeof createPlainEditor> | ReturnType<typeof createRichEditor>} */
 let body = createBodyEditor(readPlain());
+/** @type {ReturnType<typeof createPlainEditor> | ReturnType<typeof createRichEditor>} */
+let slidesBody = createSlidesEditor(readPlain());
 
 function readPlain() {
   try {
@@ -991,36 +1021,95 @@ function readPlain() {
 
 /** @param {boolean} plain */
 function createBodyEditor(plain) {
-  ui.plainMode.checked = plain;
   ui.formatBar.classList.toggle('format--plain', plain);
   return plain
     ? createPlainEditor(ui.bodyField)
     : createRichEditor(ui.bodyHost, { cards: CARDS, label: 'Texte de la leçon' });
 }
 
-ui.plainMode.addEventListener('change', () => {
-  const plain = ui.plainMode.checked;
-  try {
-    localStorage.setItem(PLAIN_KEY, plain ? '1' : '0');
-  } catch {}
-  // Le texte passe d'un éditeur à l'autre tel quel : modifications non
-  // enregistrées comprises. Seul l'historique d'annulation est perdu.
-  const text = body.value;
-  body.destroy();
-  body = createBodyEditor(plain);
-  body.value = text;
-  state.parsed.source = '';
-  parseComponents();
-});
+/** @param {boolean} plain */
+function createSlidesEditor(plain) {
+  ui.slidesFormatBar.classList.toggle('format--plain', plain);
+  return plain
+    ? createPlainEditor(ui.slidesText)
+    : createRichEditor(ui.slidesHost, {
+        cards: NO_CARDS,
+        label: 'Texte des slides',
+        placeholder: 'Écrivez ici vos slides, ou ajoutez-en une avec « + Slide »…',
+        slides: SLIDE_OPTIONS,
+      });
+}
 
-ui.formatBar.addEventListener('click', (/** @type {MouseEvent} */ event) => {
-  const button = /** @type {HTMLElement} */ (event.target).closest('[data-command]');
-  if (!button || !('commands' in body)) return;
-  const command = /** @type {HTMLElement} */ (button).dataset.command;
-  if (command === 'table') insertTable();
-  else if (command === 'heading') body.commands.heading(Number(/** @type {HTMLElement} */ (button).dataset.level));
-  else body.commands[/** @type {'bold'} */ (command)]();
-});
+const plainToggles = [...document.querySelectorAll('.plain-toggle')];
+for (const toggle of plainToggles) toggle.checked = readPlain();
+
+// Une seule préférence pour les deux éditeurs : qui préfère le texte
+// brut le préfère partout.
+for (const toggle of plainToggles) {
+  toggle.addEventListener('change', () => {
+    const plain = toggle.checked;
+    for (const other of plainToggles) other.checked = plain;
+    try {
+      localStorage.setItem(PLAIN_KEY, plain ? '1' : '0');
+    } catch {}
+    // Le texte passe d'un éditeur à l'autre tel quel : modifications non
+    // enregistrées comprises. Seul l'historique d'annulation est perdu.
+    const text = body.value;
+    body.destroy();
+    body = createBodyEditor(plain);
+    body.value = text;
+    const slidesText = slidesBody.value;
+    slidesBody.destroy();
+    slidesBody = createSlidesEditor(plain);
+    slidesBody.value = slidesText;
+    state.parsed.source = '';
+    parseComponents();
+  });
+}
+
+for (const bar of [ui.formatBar, ui.slidesFormatBar]) {
+  bar.addEventListener('click', (/** @type {MouseEvent} */ event) => {
+    const button = /** @type {HTMLElement} */ (event.target).closest('[data-command]');
+    const slides = bar === ui.slidesFormatBar;
+    const editor = slides ? slidesBody : body;
+    if (!button || !('commands' in editor)) return;
+    const command = /** @type {HTMLElement} */ (button).dataset.command;
+    if (command === 'table') slides ? insertSlidesTable() : insertTable();
+    else if (command === 'image') insertSlideImage();
+    else if (command === 'heading') editor.commands.heading(Number(/** @type {HTMLElement} */ (button).dataset.level));
+    else editor.commands[/** @type {'bold'} */ (command)]();
+  });
+}
+
+/**
+ * Pose un bloc dans le texte des slides, dans son propre paragraphe,
+ * au bout de la ligne du curseur.
+ *
+ * @param {string} source
+ */
+function insertSlidesBlock(source) {
+  const text = slidesBody.value;
+  const lineEnd = text.indexOf('\n', slidesBody.selectionStart);
+  const at = lineEnd === -1 ? text.length : lineEnd;
+  const before = text.slice(0, at);
+  const after = text.slice(at);
+  const lead = before === '' || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n';
+  const tail = after.startsWith('\n\n') ? '' : after.startsWith('\n') ? '\n' : '\n\n';
+  slidesBody.replace(at, at, `${lead}${source}${tail}`);
+}
+
+async function insertSlidesTable() {
+  const edited = await openDialog(tableEditor, tableEditor.create());
+  if (!edited) return;
+  const { source } = await request('/table/print', { method: 'POST', json: edited });
+  insertSlidesBlock(source);
+}
+
+/** Une image dans le cours de la slide - et non en fond : `![](…)`. */
+async function insertSlideImage() {
+  const url = await SLIDE_OPTIONS.pickImage(null);
+  if (url) insertSlidesBlock(`![](${url})`);
+}
 
 // -------------------------------------------------------------
 // La boîte de dialogue des éditeurs
@@ -1123,6 +1212,8 @@ for (const tab of [ui.tabPage, ui.tabSlides]) {
 function renderSlidesMode() {
   ui.slidesPoints.hidden = state.slides.deck;
   ui.slidesDeck.hidden = !state.slides.deck;
+  // Créé caché, CodeMirror doit se mesurer une fois visible.
+  if ('view' in slidesBody) slidesBody.view.requestMeasure();
   updateSlidesCount();
 }
 
@@ -1148,7 +1239,7 @@ function separators(text) {
 
 function updateSlidesCount() {
   // Titre et fin sont ajoutés au deck ; sans deck, une slide de points-clés.
-  const body = state.slides.deck ? separators(ui.slidesText.value).length + 1 : 1;
+  const body = state.slides.deck ? separators(slidesBody.value).length + 1 : 1;
   ui.slidesCount.textContent = String(body + 2);
 }
 
@@ -1158,14 +1249,14 @@ $('#slides-create').addEventListener('click', () => {
     .map((/** @type {string} */ line) => line.trim())
     .filter(Boolean);
   // Le deck part de ce que la leçon montrait déjà : ses points-clés.
-  ui.slidesText.value = points.length
+  slidesBody.value = points.length
     ? `## Points clés\n\n${points.map((/** @type {string} */ p) => `- ${p}`).join('\n')}\n`
     : '## Une première slide\n\nLe texte de la slide.\n';
   state.slides.deck = true;
   renderSlidesMode();
   updateDirty();
   previewNow();
-  ui.slidesText.focus();
+  slidesBody.focus();
 });
 
 $('#slides-drop').addEventListener('click', () => {
@@ -1196,7 +1287,7 @@ async function previewNow() {
       json: {
         id: state.lesson.id,
         data: collectData(),
-        slides: state.slides.deck ? ui.slidesText.value : null,
+        slides: state.slides.deck ? slidesBody.value : null,
         knownCss: state.css.hash,
       },
     });
@@ -1255,15 +1346,15 @@ function highlightSlide(scroll = true) {
   if (!doc) return;
   const slides = [...doc.querySelectorAll('svg[data-marpit-svg]')];
   let index = -1;
-  if (state.slides.deck && document.activeElement === ui.slidesText) {
-    const caret = ui.slidesText.selectionStart;
-    index = 1 + separators(ui.slidesText.value).filter((at) => at < caret).length;
+  if (state.slides.deck && ui.slidesHost.contains(document.activeElement)) {
+    const caret = slidesBody.selectionStart;
+    index = 1 + separators(slidesBody.value).filter((at) => at < caret).length;
   }
   slides.forEach((slide, i) => slide.classList.toggle('is-current', i === index));
   if (scroll && slides[index]) slides[index].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
-for (const type of ['click', 'keyup', 'focus']) ui.slidesText.addEventListener(type, () => highlightSlide());
+ui.slidesHost.addEventListener('caret', () => highlightSlide());
 
 // -------------------------------------------------------------
 // Ajouter une slide depuis un modèle
@@ -1362,22 +1453,21 @@ async function addSlide(template) {
   // écrire le deck à la main.
   if (!state.slides.deck) {
     state.slides.deck = true;
-    ui.slidesText.value = '';
+    slidesBody.value = '';
     renderSlidesMode();
   }
 
-  const field = ui.slidesText;
-  const text = field.value;
+  const text = slidesBody.value;
   const snippet = template.text(src);
   let at;
   let insert;
   if (!text.trim()) {
     at = 0;
     insert = `${snippet}\n`;
-    field.value = '';
+    slidesBody.value = '';
   } else {
     // La nouvelle slide vient juste APRÈS celle du curseur.
-    const next = separators(text).find((position) => position > field.selectionStart);
+    const next = separators(text).find((position) => position > slidesBody.selectionStart);
     if (next === undefined) {
       at = text.length;
       insert = `${text.endsWith('\n') ? '' : '\n'}\n---\n\n${snippet}\n`;
@@ -1386,16 +1476,11 @@ async function addSlide(template) {
       insert = `---\n\n${snippet}\n\n`;
     }
   }
-  field.focus();
-  field.setSelectionRange(at, at);
-  if (!document.execCommand('insertText', false, insert)) {
-    field.setRangeText(insert, at, at, 'end');
-    field.dispatchEvent(new Event('input', { bubbles: true }));
-  }
+  slidesBody.replace(at, at, insert);
   // Le curseur se pose sur le titre de la nouvelle slide, prêt à le
   // réécrire - et le texte comme l'aperçu défilent jusqu'à elle.
-  const title = field.value.indexOf('## ', at);
-  if (title !== -1) selectInTextarea(field, title + 3, field.value.indexOf('\n', title + 3));
+  const title = slidesBody.value.indexOf('## ', at);
+  if (title !== -1) slidesBody.select(title + 3, slidesBody.value.indexOf('\n', title + 3));
   updateDirty();
   updateSlidesCount();
   await previewNow();
