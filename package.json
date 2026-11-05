@@ -25,7 +25,8 @@
     "slides:modules": "npm run slides:theme && node scripts/build-slides.mjs --only=modules",
     "slides:modules:html": "npm run slides:theme && node scripts/build-slides.mjs --format=html --only=modules",
     "bundle": "npm run slides && npm run slides:html && npm run build && node scripts/bundle-dist.mjs",
-    "reset": "node scripts/reset-content.mjs"
+    "reset": "node scripts/reset-content.mjs",
+    "test:admin": "node --test admin/test/admin.test.mjs"
   },
   "keywords": [
     "astro",
@@ -49,6 +50,9 @@
     "@astrojs/check": "^0.9.10",
     "@marp-team/marp-cli": "^4.4.1",
     "gray-matter": "^4.0.3",
+    "mdast-util-from-markdown": "^2.0.3",
+    "mdast-util-mdx": "^3.0.0",
+    "micromark-extension-mdxjs": "^3.0.0",
     "typescript": "^6.0.3"
   }
 }

@@ -4,6 +4,7 @@ import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import rehypeScrollableTables from './scripts/rehype-scrollable-tables.mjs';
 import { site } from './scripts/config.mjs';
+import admin from './admin/integration.mjs';
 
 // L'adresse publique du cours, réglée dans socle.config.json. Elle est ce
 // qui permet à Astro de composer des URL absolues - liens canoniques et
@@ -33,6 +34,9 @@ export default defineConfig({
   // le mérite - elle existe dans dist/, mais n'est l'adresse de rien.
   integrations: [
     mdx(),
+    // L'admin (/admin/) : branchée sur `npm run dev` seulement, jamais
+    // construite. Voir admin/integration.mjs.
+    admin(),
     ...(siteUrl ? [sitemap({ filter: (page) => !page.includes('/404') })] : []),
   ],
   markdown: {
