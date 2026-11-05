@@ -70,7 +70,7 @@ vivent dans `src/assets/` : c'est là qu'Astro sait les optimiser.*
 *Écrire le deck d'une leçon en voyant les slides se dessiner, avec le vrai
 thème, sans attendre `npm run slides`.*
 
-- [ ] L'assemblage du deck d'une leçon sort de `build-slides.mjs`, pour être partagé avec l'admin (sortie identique vérifiée)
+- [x] L'assemblage du deck d'une leçon sort de `build-slides.mjs`, pour être partagé avec l'admin (sortie identique vérifiée)
 - [ ] Un onglet « Slides » par leçon : son deck écrit à la main, ou à défaut ses points-clés
 - [ ] Aperçu des slides en direct, rendu par Marp avec le thème du cours
 - [ ] Le curseur dans le texte désigne sa slide dans l'aperçu

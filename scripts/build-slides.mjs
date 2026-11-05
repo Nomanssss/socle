@@ -43,11 +43,12 @@
 // =============================================================
 
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, copyFileSync } from 'node:fs';
-import { join, dirname, resolve, basename } from 'node:path';
+import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import matter from 'gray-matter';
-import { stageImage, stageImages } from './stage-images.mjs';
-import { isLocked, unknownLocked, author } from './config.mjs';
+import { stageImage } from './stage-images.mjs';
+import { isLocked, unknownLocked } from './config.mjs';
+import { defaultBand, marpHeader, endSlide, moduleCovers, lessonParts } from './slides-deck.mjs';
 
 const ROOT = process.cwd();
 const LESSONS_DIR = join(ROOT, 'src/content/lecons');
@@ -64,31 +65,9 @@ const OUT_DIR = join(ROOT, 'slides');
 const PUBLIC_SLIDES = join(ROOT, 'public/slides/modules');
 const THEME = join(OUT_DIR, 'theme.css');
 
-/**
- * Image du bandeau des slides de titre, pour les leçons SANS `cover:`.
- * Se règle dans socle.config.json :
- *
- *   "slides": { "band": "src/assets/mon-bandeau.png" }
- *
- * Chemin relatif à la racine du projet. Absente, le bandeau reste un aplat de
- * la couleur principale (c'est layouts/_lead.scss qui le décide).
- */
-const DEFAULT_BAND = (() => {
-  const configPath = join(ROOT, 'socle.config.json');
-  if (!existsSync(configPath)) return null;
-  try {
-    const band = JSON.parse(readFileSync(configPath, 'utf8'))?.slides?.band;
-    if (!band) return null;
-    const abs = resolve(ROOT, String(band));
-    if (!existsSync(abs)) {
-      console.warn(`  ⚠ slides.band introuvable : ${band} (bandeau laissé en aplat)`);
-      return null;
-    }
-    return abs;
-  } catch {
-    return null;
-  }
-})();
+// Le bandeau des leçons sans couverture (« slides.band » dans
+// socle.config.json) : voir slides-deck.mjs.
+const DEFAULT_BAND = defaultBand(ROOT);
 const MARP_BIN = join(ROOT, 'node_modules/.bin/marp');
 
 // Format de sortie → drapeau Marp. Accepté en drapeau (--format=html) ou
@@ -118,9 +97,6 @@ if (!existsSync(THEME)) {
   process.exit(1);
 }
 mkdirSync(OUT_DIR, { recursive: true });
-
-// Échappe une valeur pour le frontmatter YAML (guillemets).
-const yamlString = (s) => `"${String(s).replace(/"/g, '\\"')}"`;
 
 // Réécrit les chemins d'images markdown (y compris ![bg](...)) en chemins
 // absolus, résolus relativement au fichier source. Nécessaire car le deck
@@ -194,74 +170,10 @@ function render(mdPath, outPath) {
   execFileSync(MARP_BIN, args, { stdio: 'inherit' });
 }
 
-/** L'en-tête Marp d'un deck : les mêmes réglages pour tous. */
-function marpHeader(title) {
-  let head = '---\n';
-  head += 'marp: true\n';
-  head += 'theme: socle\n';
-  head += 'paginate: true\n';
-  if (title) head += `title: ${yamlString(title)}\n`;
-  head += '---\n\n';
-  return head;
-}
-
-/**
- * La slide de fin, commune à tous les decks : un remerciement, le logo
- * (peint par layouts/_end.scss), puis le nom et les liens de l'auteur, lus
- * dans « author.name » et « author.links » de socle.config.json. Sans eux,
- * la slide garde son « Merci ! » et son logo.
- *
- * Les crochets d'un libellé sont échappés : « [Blog] » casserait la
- * syntaxe du lien markdown.
- */
-const END_SLIDE = (() => {
-  let slide = '\n---\n\n<!-- _class: end -->\n<!-- _paginate: false -->\n\n# Merci !\n';
-  const { name, links } = author();
-  if (name) slide += `\n${name}\n`;
-  if (links.length) {
-    slide += '\n';
-    for (const { label, url } of links) {
-      slide += `- [${label.replace(/[[\]]/g, '\\$&')}](<${url}>)\n`;
-    }
-  }
-  return slide;
-})();
-
-/** Le dossier de module d'une leçon, ou null si elle est à la racine. */
-function moduleDirOf(rel) {
-  return rel.includes('/') || rel.includes('\\') ? rel.split(/[/\\]/)[0] : null;
-}
-
-/**
- * La couverture d'un module : celle de sa PREMIÈRE leçon qui en déclare
- * une, au sens du champ « order » et non de l'ordre alphabétique des
- * fichiers.
- *
- * Elle sert deux fois : de bandeau aux leçons du module qui n'ont pas la
- * leur, et à la slide de titre du deck de module. Sans elle, un module
- * dont une seule leçon est illustrée produisait un deck panaché - une
- * slide de titre en image, les suivantes en aplat.
- *
- * Il faut une passe séparée : la leçon 2 peut avoir besoin de la
- * couverture de la leçon 1, or la boucle principale les traite dans
- * l'ordre des fichiers, sans savoir ce qui vient après.
- */
-const moduleCovers = new Map();
-
-for (const rel of lessons) {
-  const dir = moduleDirOf(rel);
-  if (!dir) continue;
-
-  const file = join(LESSONS_DIR, rel);
-  const { data } = matter(readFileSync(file, 'utf8'));
-  if (!data.cover) continue;
-
-  const order = Number.isFinite(Number(data.order)) ? Number(data.order) : Infinity;
-  const known = moduleCovers.get(dir);
-  if (!known || order < known.order) {
-    moduleCovers.set(dir, { order, path: resolve(dirname(file), String(data.cover)) });
-  }
-}
+// La slide de fin et la couverture de chaque module : voir slides-deck.mjs,
+// qui assemble les decks pour ce script ET pour l'aperçu de l'admin.
+const END_SLIDE = endSlide();
+const covers = moduleCovers(LESSONS_DIR, lessons);
 
 const generated = [];
 const manifest = [];
@@ -272,54 +184,21 @@ const byModuleDir = new Map();
 
 for (const rel of lessons) {
   const file = join(LESSONS_DIR, rel);
-  const dir = dirname(file);
   const { data } = matter(readFileSync(file, 'utf8'));
 
   const id = rel.replace(/\.mdx$/, ''); // ex : module-1/lecon-1
   const slug = id.replace(/[/\\]/g, '-'); // ex : module-1-lecon-1
 
-  // -- Slide de titre ------------------------------------------------------
-  // Elle existe en DEUX versions, pour deux rôles : « lead » ouvre le deck
-  // de la leçon, « section » n'est qu'un intercalaire dans celui du module.
-  // Le corps qui suit, lui, est le même - assemblé une fois, servi deux fois.
-  let leadSlide = '<!-- _class: lead -->\n';
-  leadSlide += '<!-- _paginate: false -->\n\n';
-  // La couverture alimente le bandeau haut de la slide de titre. On ne passe
-  // pas par `![bg]` : cette syntaxe répartit l'image en colonnes (left/right)
-  // et ne sait pas cadrer une bande en hauteur. La directive, elle, expose
-  // l'image dans la variable `--background-image`, que `layouts/_lead.scss`
-  // récupère pour la cadrer lui-même. Aucun réglage de taille à passer ici :
-  // le cadrage appartient à la mise en page.
-  const bandSource =
-    (data.cover && resolve(dir, String(data.cover))) ||
-    moduleCovers.get(moduleDirOf(rel))?.path ||
-    DEFAULT_BAND;
-  if (bandSource) {
-    const staged = stageImage(bandSource, OUT_DIR);
-    if (staged) leadSlide += `<!-- _backgroundImage: url('${staged}') -->\n`;
-  }
-  leadSlide += '\n';
-  leadSlide += `# ${data.title ?? id}\n\n`;
-  if (data.module) leadSlide += `**${data.module}**\n`;
-
-  // L'intercalaire, lui, se réduit au titre : le nom du module est déjà sur
-  // la première slide du deck, et le fond plein du modèle « section » ne
-  // s'accommode ni d'une couverture ni d'un sous-titre. La pagination y
-  // reste active - on est au milieu d'un deck, plus à son ouverture.
-  const sectionSlide = `<!-- _class: section -->\n\n# ${data.title ?? id}\n`;
-
-  // -- Corps, commun aux deux versions -------------------------------------
-  let content = '';
-  const slidesFile = join(dir, `${basename(file, '.mdx')}.slides.md`);
-  if (existsSync(slidesFile)) {
-    const lessonSlides = stageImages(readFileSync(slidesFile, 'utf8').trim(), dir, OUT_DIR);
-    content += `\n---\n\n${lessonSlides}\n`;
-  } else if (Array.isArray(data.slidePoints) && data.slidePoints.length) {
-    content += '\n---\n\n## Points clés\n\n';
-    for (const point of data.slidePoints) content += `- ${point}\n`;
-  } else {
-    content += '\n---\n\n## Résumé\n\nRetrouvez cette leçon en ligne.\n';
-  }
+  // La slide de titre, l'intercalaire du deck de module, et le corps
+  // commun aux deux : voir slides-deck.mjs.
+  const { lead: leadSlide, section: sectionSlide, content } = lessonParts({
+    rel,
+    file,
+    data,
+    covers,
+    band: DEFAULT_BAND,
+    stage: (absPath) => stageImage(absPath, OUT_DIR),
+  });
 
   // -- Écriture + rendu ----------------------------------------------------
   // Le corps est assemblé même quand on ne rend que les modules : c'est lui
@@ -406,7 +285,7 @@ for (const [dir, { label, labels, bodies }] of DO_MODULES ? byModuleDir : []) {
 
   let body = '<!-- _class: lead -->\n';
   body += '<!-- _paginate: false -->\n\n';
-  const moduleBand = moduleCovers.get(dir)?.path ?? DEFAULT_BAND;
+  const moduleBand = covers.get(dir)?.path ?? DEFAULT_BAND;
   if (moduleBand) {
     const staged = stageImage(moduleBand, OUT_DIR);
     if (staged) body += `<!-- _backgroundImage: url('${staged}') -->\n`;
