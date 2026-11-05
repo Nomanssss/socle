@@ -28,6 +28,8 @@
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { mdxjs } from 'micromark-extension-mdxjs';
 import { mdxFromMarkdown } from 'mdast-util-mdx';
+import { gfmTable } from 'micromark-extension-gfm-table';
+import { gfmTableFromMarkdown } from 'mdast-util-gfm-table';
 import { AdminError } from './lessons.mjs';
 
 // La façon d'écrire chaque composant dans le texte, quand elle s'écarte
@@ -50,8 +52,9 @@ export function findComponents(body) {
   let tree;
   try {
     tree = fromMarkdown(body, {
-      extensions: [mdxjs()],
-      mdastExtensions: [mdxFromMarkdown()],
+      // Les tableaux GFM, comme le MDX d'Astro (remark-gfm) les lit.
+      extensions: [mdxjs(), gfmTable()],
+      mdastExtensions: [mdxFromMarkdown(), gfmTableFromMarkdown()],
     });
   } catch (error) {
     // Un texte en cours de frappe est souvent invalide : ce n'est pas une
@@ -69,8 +72,13 @@ export function findComponents(body) {
   // expression : un import absent de cette liste ne sert plus à rien.
   const references = new Set();
   const components = [];
+  const tables = [];
 
   visit(tree, (node) => {
+    if (node.type === 'table') {
+      tables.push(readTable(node, body));
+      return;
+    }
     if (node.type === 'mdxjsEsm') {
       const offset = node.position.start.offset;
       for (const match of node.value.matchAll(/^import\s+(\w+)\s+from\s+['"]([^'"]+)['"];?/gm)) {
@@ -112,7 +120,77 @@ export function findComponents(body) {
     components.push(component);
   });
 
-  return { components, imports, importsEnd, references: [...references], error: null };
+  return { components, imports, importsEnd, references: [...references], tables, error: null };
+}
+
+/**
+ * Un tableau, lu cellule par cellule. Chaque cellule garde son texte
+ * tel qu'il est écrit - « **oui** », « `title` » - : c'est ce texte que
+ * l'éditeur montre et réécrit, sans repasser par un rendu. Seuls les
+ * « \| », obligatoires dans une cellule, sont rendus lisibles.
+ *
+ * @param {any} node
+ * @param {string} source
+ */
+function readTable(node, source) {
+  const width = node.children[0]?.children.length ?? 0;
+  const rows = node.children.map((/** @type {any} */ row) => {
+    const cells = row.children.map((/** @type {any} */ cell) =>
+      source
+        .slice(cell.position.start.offset, cell.position.end.offset)
+        .replace(/^\|/, '')
+        .replace(/\|\s*$/, '')
+        .trim()
+        .replace(/\\\|/g, '|')
+    );
+    // Une ligne plus courte que l'en-tête : GFM complète par des vides.
+    while (cells.length < width) cells.push('');
+    return cells.slice(0, width);
+  });
+  return {
+    start: node.position.start.offset,
+    end: node.position.end.offset,
+    line: node.position.start.line,
+    align: (node.align ?? []).map((/** @type {string | null} */ a) => a ?? null),
+    rows,
+  };
+}
+
+/**
+ * Le texte d'un tableau, écrit comme dans les leçons du cours :
+ *
+ *   | Champ | Requis |
+ *   | --- | --- |
+ *   | `title` | oui |
+ *
+ * Un « | » dans une cellule est échappé : sans quoi il ouvrirait une
+ * colonne de plus.
+ *
+ * @param {unknown} rows
+ * @param {unknown} align
+ */
+export function printTable(rows, align) {
+  if (!Array.isArray(rows) || rows.length < 1 || !rows.every((row) => Array.isArray(row))) {
+    throw new AdminError(400, 'Tableau invalide.');
+  }
+  const width = Math.max(...rows.map((row) => row.length));
+  if (width < 1) throw new AdminError(400, 'Un tableau a au moins une colonne.');
+  const cell = (/** @type {unknown} */ value) =>
+    String(value ?? '')
+      .replace(/\n+/g, ' ')
+      .trim()
+      .replace(/(?<!\\)\|/g, '\\|');
+  // Une case vide s'écrit « | | », avec une seule espace, comme dans
+  // les leçons existantes.
+  const line = (/** @type {unknown[]} */ cells) =>
+    `|${Array.from({ length: width }, (_, i) => cell(cells[i]))
+      .map((text) => (text ? ` ${text} ` : ' '))
+      .join('|')}|`;
+  const marks = Array.from({ length: width }, (_, i) => {
+    const a = Array.isArray(align) ? align[i] : null;
+    return a === 'left' ? ':---' : a === 'center' ? ':---:' : a === 'right' ? '---:' : '---';
+  });
+  return [line(rows[0]), `| ${marks.join(' | ')} |`, ...rows.slice(1).map(line)].join('\n');
 }
 
 /**

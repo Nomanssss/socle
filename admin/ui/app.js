@@ -11,7 +11,7 @@
 // rechargement rouvre la même chose.
 // =============================================================
 
-import { h, EDITORS, EditorError, imagePicker } from './editors.js';
+import { h, EDITORS, EditorError, imagePicker, tableEditor } from './editors.js';
 import { mountLibrary, thumbnail } from './media.js';
 import { createPlainEditor, createRichEditor, selectInTextarea } from './text-editor.js';
 
@@ -68,7 +68,7 @@ const ui = {
  *   savedSlides: string,
  *   tab: 'page' | 'slides',
  *   css: { hash: string | null, text: string },
- *   parsed: { source: string, components: any[], imports: { name: string, from: string, start: number, end: number }[], importsEnd: number | null, references: string[] },
+ *   parsed: { source: string, components: any[], imports: { name: string, from: string, start: number, end: number }[], importsEnd: number | null, references: string[], tables: { start: number, end: number, line: number, rows: string[][], align: (string | null)[] }[] },
  *   saving: boolean,
  * }}
  */
@@ -80,7 +80,7 @@ const state = {
   savedSlides: '',
   tab: 'page',
   css: { hash: null, text: '' },
-  parsed: { source: '', components: [], imports: [], importsEnd: null, references: [] },
+  parsed: { source: '', components: [], imports: [], importsEnd: null, references: [], tables: [] },
   saving: false,
 };
 
@@ -537,11 +537,12 @@ async function parseComponents() {
       imports: result.imports ?? [],
       importsEnd: result.importsEnd ?? null,
       references: result.references ?? [],
+      tables: result.tables ?? [],
     };
     ui.mdxError.hidden = !result.error;
     ui.mdxError.textContent = result.error ?? '';
     renderChips();
-    body.setComponents(state.parsed.components, state.parsed.imports);
+    body.setComponents(state.parsed.components, state.parsed.imports, state.parsed.tables);
   } catch (error) {
     setStatus(error.message, 'error');
   }
@@ -669,10 +670,19 @@ async function insertComponent(name) {
   if (!edited) return;
   const { props, imports } = fromEditor(edited);
   const { source } = await request('/component/print', { method: 'POST', json: { name, props, indent: 0 } });
+  await insertBlock(source);
+  await ensureImport(name, `@components/${name}.astro`);
+  for (const imported of imports) await ensureImport(imported.name, imported.from);
+}
 
-  // Le composant prend sa place dans son propre paragraphe : au bout de
-  // la ligne du curseur, entouré de lignes vides - et jamais au-dessus
-  // des imports, qui ouvrent le fichier.
+/**
+ * Pose un bloc (composant, tableau) dans son propre paragraphe : au bout
+ * de la ligne du curseur, entouré de lignes vides - et jamais au-dessus
+ * des imports, qui ouvrent le fichier.
+ *
+ * @param {string} source
+ */
+async function insertBlock(source) {
   const { importsEnd } = await parseComponents();
   const text = body.value;
   const lineEnd = text.indexOf('\n', Math.max(body.selectionStart, importsEnd ?? 0));
@@ -682,9 +692,69 @@ async function insertComponent(name) {
   const lead = before === '' || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n';
   const tail = after.startsWith('\n\n') ? '' : after.startsWith('\n') ? '\n' : '\n\n';
   replaceText(at, at, `${lead}${source}${tail}`);
+}
 
-  await ensureImport(name, `@components/${name}.astro`);
-  for (const imported of imports) await ensureImport(imported.name, imported.from);
+// -------------------------------------------------------------
+// Les tableaux
+//
+// Un tableau Markdown s'écrit en alignant des « | » à la main : c'est
+// précisément ce qu'on ne veut pas demander. Il s'édite dans une grille,
+// et l'admin réécrit le tableau - lui seul, comme un composant.
+// -------------------------------------------------------------
+
+/** @param {number} index */
+async function editTable(index) {
+  const before = state.parsed.tables[index];
+  const { tables } = await parseComponents();
+  // Le tableau a pu bouger : on le retrouve par son rang.
+  const table = tables[index];
+  if (!table || !before) return;
+  const edited = await openDialog(tableEditor, { rows: table.rows, align: table.align });
+  if (!edited) return;
+  if (JSON.stringify([edited.rows, edited.align]) === JSON.stringify([table.rows, table.align])) return;
+  const { source } = await request('/table/print', { method: 'POST', json: edited });
+  replaceText(table.start, table.end, source);
+}
+
+async function insertTable() {
+  const edited = await openDialog(tableEditor, tableEditor.create());
+  if (!edited) return;
+  const { source } = await request('/table/print', { method: 'POST', json: edited });
+  await insertBlock(source);
+}
+
+/** @param {number} index */
+async function deleteTable(index) {
+  const table = state.parsed.tables[index];
+  if (!table || state.parsed.source !== body.value) return;
+  if (!confirm('Supprimer ce tableau ?')) return;
+  let end = table.end;
+  while (body.value[end] === '\n' && end - table.end < 2) end++;
+  replaceText(table.start, end, '');
+}
+
+/**
+ * L'aperçu d'un tableau dans sa carte : le vrai tableau, en petit, ses
+ * premières lignes seulement. Les marques de gras et de code sont
+ * retirées - c'est un aperçu, pas un rendu.
+ *
+ * @param {{ rows: string[][], align: (string | null)[] }} table
+ */
+function tableCard(table) {
+  const plain = (/** @type {string} */ text) => text.replace(/\*\*|__|`/g, '');
+  const [head, ...rest] = table.rows;
+  const shown = rest.slice(0, 4);
+  return h(
+    'div',
+    { class: 'card-widget__table' },
+    h(
+      'table',
+      {},
+      h('thead', {}, h('tr', {}, ...head.map((cell, i) => h('th', { style: `text-align:${table.align[i] ?? 'left'}` }, plain(cell))))),
+      h('tbody', {}, ...shown.map((row) => h('tr', {}, ...row.map((cell, i) => h('td', { style: `text-align:${table.align[i] ?? 'left'}` }, plain(cell))))))
+    ),
+    rest.length > shown.length ? h('span', {}, `… et ${rest.length - shown.length} ligne${rest.length - shown.length > 1 ? 's' : ''} de plus`) : null
+  );
 }
 
 // -------------------------------------------------------------
@@ -846,6 +916,9 @@ const CARDS = {
   card: (/** @type {any} */ component) => describe(component),
   onEdit: (/** @type {number} */ index) => editComponent(index),
   onDelete: (/** @type {number} */ index) => deleteComponent(index),
+  tableCard: (/** @type {any} */ table) => tableCard(table),
+  onEditTable: (/** @type {number} */ index) => editTable(index),
+  onDeleteTable: (/** @type {number} */ index) => deleteTable(index),
 };
 
 /** @param {any} component */
@@ -944,7 +1017,8 @@ ui.formatBar.addEventListener('click', (/** @type {MouseEvent} */ event) => {
   const button = /** @type {HTMLElement} */ (event.target).closest('[data-command]');
   if (!button || !('commands' in body)) return;
   const command = /** @type {HTMLElement} */ (button).dataset.command;
-  if (command === 'heading') body.commands.heading(Number(/** @type {HTMLElement} */ (button).dataset.level));
+  if (command === 'table') insertTable();
+  else if (command === 'heading') body.commands.heading(Number(/** @type {HTMLElement} */ (button).dataset.level));
   else body.commands[/** @type {'bold'} */ (command)]();
 });
 

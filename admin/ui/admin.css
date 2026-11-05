@@ -7,7 +7,7 @@
    ============================================================= */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --bg: #f6f6f8;
   --surface: #ffffff;
   --text: #1d1d24;
@@ -21,18 +21,6 @@
   font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #15151a;
-    --surface: #1e1e25;
-    --text: #ececf1;
-    --muted: #a0a0ad;
-    --line: #34343e;
-    --danger: #ff7b72;
-    --ok: #56d364;
-    --warn: #e3b341;
-  }
-}
 
 *,
 *::before,
@@ -998,3 +986,76 @@ button.media:hover { border-color: var(--brand); }
 }
 
 .card--inline .card__fields .field--wide { grid-column: auto; }
+
+/* --- Tableaux : la carte, et l'éditeur en grille ------------- */
+
+.card-widget__table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.card-widget__table table {
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.card-widget__table th,
+.card-widget__table td {
+  max-width: 22ch;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card-widget__table th { background: var(--bg); }
+.card-widget__table > span { font-size: 0.75rem; color: var(--muted); }
+
+.table-editor__scroll { overflow-x: auto; }
+
+.table-editor {
+  border-collapse: separate;
+  border-spacing: 4px;
+}
+
+.table-editor td { min-width: 150px; }
+.table-editor input { padding: 6px 8px; }
+
+.table-editor__head input {
+  font-weight: 700;
+  background: color-mix(in srgb, var(--brand) 8%, var(--surface));
+}
+
+.table-editor__label {
+  padding-right: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table-editor__tools td { vertical-align: bottom; }
+
+.table-editor__tools td > * { vertical-align: middle; }
+
+.table-editor__tools select {
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 0.8125rem;
+}
+
+.table-editor td.table-editor__row-tools,
+.table-editor__tools td:first-child,
+.table-editor__tools td:last-child { min-width: 0; white-space: nowrap; }
+
+.table-editor__actions {
+  display: flex;
+  gap: 8px;
+}

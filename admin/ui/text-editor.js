@@ -20,8 +20,8 @@
 //   selectionStart     la position du curseur
 //   replace(a, b, t)   remplace un passage, annulable par Ctrl+Z
 //   select(a, b)       sélectionne un passage et le fait défiler
-//   setComponents(l, i) les composants à montrer en cartes, et les
-//                      imports à estomper
+//   setComponents(l, i, t) les composants et les tableaux à montrer
+//                      en cartes, et les imports à estomper
 //   focus(), destroy()
 //
 // et préviennent par deux évènements, émis sur l'élément qui les
@@ -37,26 +37,39 @@ import {
   EditorView,
   Decoration,
   WidgetType,
+  ViewPlugin,
   keymap,
   drawSelection,
   placeholder,
   history,
   historyKeymap,
   defaultKeymap,
+  indentMore,
+  indentLess,
   syntaxHighlighting,
+  syntaxTree,
   HighlightStyle,
   markdown,
+  markdownLanguage,
+  javascript,
+  html,
+  css,
+  yaml,
   tags,
 } from './vendor/codemirror.js';
 import { h } from './dom.js';
 
 /**
  * @typedef {{ name: string, start: number, end: number, editable: boolean, props: any }} Component
+ * @typedef {{ start: number, end: number, rows: string[][], align: (string | null)[] }} Table
  * @typedef {{
  *   canEdit: (component: Component) => boolean,
  *   card: (component: Component) => Node,
  *   onEdit: (index: number) => void,
  *   onDelete: (index: number) => void,
+ *   tableCard: (table: Table) => Node,
+ *   onEditTable: (index: number) => void,
+ *   onDeleteTable: (index: number) => void,
  * }} Cards
  */
 
@@ -159,7 +172,86 @@ const markdownStyle = HighlightStyle.define([
   { tag: tags.quote, color: 'var(--muted)', fontStyle: 'italic' },
   { tag: tags.monospace, fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace', fontSize: '0.9em' },
   { tag: [tags.processingInstruction, tags.contentSeparator], color: 'var(--muted)', opacity: '0.55' },
+  // Le code des blocs de code, coloré comme dans un éditeur de code.
+  { tag: [tags.keyword, tags.operatorKeyword, tags.modifier], color: '#8a3ab9' },
+  { tag: [tags.string, tags.special(tags.string), tags.regexp], color: '#0b7a3e' },
+  { tag: [tags.comment, tags.lineComment, tags.blockComment], color: '#6e7781', fontStyle: 'italic' },
+  { tag: [tags.number, tags.bool, tags.null, tags.atom], color: '#b35900' },
+  { tag: [tags.tagName, tags.typeName, tags.className], color: '#1f5fbf' },
+  { tag: [tags.attributeName, tags.propertyName], color: '#9a5b00' },
+  { tag: [tags.definition(tags.variableName), tags.function(tags.variableName)], color: '#24292f' },
 ]);
+
+// Les langages reconnus après les trois accents graves (```js) : ceux
+// qu'un cours sur le web montre, et ceux de Socle lui-même - l'en-tête
+// (YAML) et le texte des leçons (Markdown). Les autres (bash…) restent
+// en police fixe, sans couleur.
+const CODE_LANGUAGES = (/** @type {string} */ info) => {
+  const name = info.trim().toLowerCase();
+  if (['js', 'javascript', 'mjs', 'jsx', 'ts', 'typescript', 'tsx', 'json'].includes(name)) {
+    return javascript({ jsx: name.includes('x'), typescript: name.startsWith('t') }).language;
+  }
+  if (['html', 'astro', 'svelte', 'vue', 'xml', 'svg'].includes(name)) return html().language;
+  if (['css', 'scss', 'sass'].includes(name)) return css().language;
+  if (['yaml', 'yml'].includes(name)) return yaml().language;
+  if (['markdown', 'md', 'mdx'].includes(name)) return markdownLanguage;
+  return null;
+};
+
+/**
+ * Un bloc de code se lit comme du code : chacune de ses lignes reçoit une
+ * classe, et le CSS en fait un bloc à fond gris, en police fixe. Seules les
+ * lignes visibles sont décorées - un plugin de vue, recalculé au défilement.
+ */
+const codeBlocks = ViewPlugin.fromClass(
+  class {
+    /** @param {EditorView} view */
+    constructor(view) {
+      this.decorations = this.build(view);
+    }
+
+    /** @param {import('@codemirror/view').ViewUpdate} update */
+    update(update) {
+      if (update.docChanged || update.viewportChanged) this.decorations = this.build(update.view);
+    }
+
+    /** @param {EditorView} view */
+    build(view) {
+      const lines = [];
+      for (const { from, to } of view.visibleRanges) {
+        syntaxTree(view.state).iterate({
+          from,
+          to,
+          enter: (node) => {
+            if (node.name !== 'FencedCode') return;
+            const first = view.state.doc.lineAt(node.from).number;
+            const last = view.state.doc.lineAt(node.to).number;
+            for (let n = first; n <= last; n++) {
+              const line = view.state.doc.line(n);
+              const edge = n === first ? ' cm-codeblock--first' : n === last ? ' cm-codeblock--last' : '';
+              lines.push(Decoration.line({ class: `cm-codeblock${edge}` }).range(line.from));
+            }
+            return false;
+          },
+        });
+      }
+      return Decoration.set(lines, true);
+    }
+  },
+  { decorations: (plugin) => plugin.decorations }
+);
+
+/**
+ * Le curseur est-il dans un bloc de code ? Tab y indente, au lieu de
+ * passer au champ suivant comme partout ailleurs.
+ *
+ * @param {EditorView} view
+ */
+function inCode(view) {
+  const node = syntaxTree(view.state).resolveInner(view.state.selection.main.head, -1);
+  for (let n = /** @type {any} */ (node); n; n = n.parent) if (n.name === 'FencedCode') return true;
+  return false;
+}
 
 const theme = EditorView.theme({
   '&': { fontSize: '16px', background: 'var(--bg)', borderRadius: '6px', border: '1px solid var(--line)' },
@@ -169,6 +261,16 @@ const theme = EditorView.theme({
   '.cm-line': { padding: '0 20px' },
   '.cm-cursor': { borderLeftColor: 'var(--text)' },
   '.cm-placeholder': { color: 'var(--muted)' },
+  '.cm-codeblock': {
+    fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+    fontSize: '0.875em',
+    lineHeight: '1.55',
+    background: '#f0f1f4',
+    margin: '0 20px',
+    padding: '0 14px !important',
+  },
+  '.cm-codeblock--first': { borderRadius: '6px 6px 0 0', paddingTop: '6px !important', color: 'var(--muted)' },
+  '.cm-codeblock--last': { borderRadius: '0 0 6px 6px', paddingBottom: '6px !important', color: 'var(--muted)' },
   '.cm-import-line': { color: 'var(--muted)', fontSize: '0.8em', opacity: '0.7', fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' },
 });
 
@@ -189,40 +291,41 @@ const cardsField = StateField.define({
   provide: (field) => [EditorView.decorations.from(field), EditorView.atomicRanges.of((view) => view.state.field(field))],
 });
 
+/**
+ * Une carte à la place d'un bloc de texte : un composant ou un tableau.
+ * Elle montre ce que le bloc produit, et propose de le modifier ou de
+ * le supprimer.
+ */
 class CardWidget extends WidgetType {
   /**
-   * @param {Component} component
-   * @param {number} index
-   * @param {Cards} cards
+   * @param {{ key: string, label: string, render: () => Node, onEdit: () => void, onDelete: () => void }} card
    */
-  constructor(component, index, cards) {
+  constructor(card) {
     super();
-    this.component = component;
-    this.index = index;
-    this.cards = cards;
-    this.key = `${index}:${component.name}:${JSON.stringify(component.props)}`;
+    this.card = card;
   }
 
   /** @param {CardWidget} other */
   eq(other) {
-    return other.key === this.key;
+    return other.card.key === this.card.key;
   }
 
   toDOM() {
+    const { label, render, onEdit, onDelete } = this.card;
     return h(
       'div',
       { class: 'card-widget', contenteditable: 'false' },
-      h('div', { class: 'card-widget__body' }, this.cards.card(this.component)),
+      h('div', { class: 'card-widget__body' }, render()),
       h(
         'div',
         { class: 'card-widget__actions' },
-        h('button', { type: 'button', class: 'button button--small', onclick: () => this.cards.onEdit(this.index) }, 'Modifier'),
+        h('button', { type: 'button', class: 'button button--small', onclick: onEdit }, 'Modifier'),
         h('button', {
           type: 'button',
           class: 'icon icon--danger',
           title: 'Supprimer',
-          'aria-label': `Supprimer ce composant (${this.component.name})`,
-          onclick: () => this.cards.onDelete(this.index),
+          'aria-label': `Supprimer ce bloc (${label})`,
+          onclick: onDelete,
         }, '✕')
       )
     );
@@ -248,8 +351,10 @@ export function createRichEditor(parent, { cards, label }) {
     history(),
     drawSelection(),
     EditorView.lineWrapping,
-    markdown(),
+    // La base GFM : tableaux et texte barré, comme le MDX d'Astro.
+    markdown({ base: markdownLanguage, codeLanguages: CODE_LANGUAGES }),
     syntaxHighlighting(markdownStyle),
+    codeBlocks,
     theme,
     cardsField,
     placeholder('Écrivez ici le texte de la leçon…'),
@@ -258,6 +363,18 @@ export function createRichEditor(parent, { cards, label }) {
       { key: 'Mod-b', run: (view) => wrap(view, '**') },
       { key: 'Mod-i', run: (view) => wrap(view, '*') },
       { key: 'Mod-k', run: (view) => link(view) },
+      // Dans un bloc de code, Tab indente ; ailleurs, il garde son rôle
+      // de passage au champ suivant (accessibilité clavier).
+      {
+        key: 'Tab',
+        run: (view) => {
+          if (!inCode(view)) return false;
+          if (view.state.selection.main.empty) view.dispatch(view.state.replaceSelection('  '));
+          else indentMore(view);
+          return true;
+        },
+        shift: (view) => (inCode(view) ? indentLess(view) : false),
+      },
       ...historyKeymap,
       ...defaultKeymap,
     ]),
@@ -312,22 +429,46 @@ export function createRichEditor(parent, { cards, label }) {
      *
      * @param {Component[]} components
      * @param {{ start: number, end: number }[]} [imports]
+     * @param {Table[]} [tables]
      */
-    setComponents(components, imports = []) {
+    setComponents(components, imports = [], tables = []) {
       const { doc } = view.state;
+      const block = (/** @type {{ start: number, end: number }} */ at, /** @type {CardWidget} */ widget) =>
+        Decoration.replace({ widget, block: true }).range(doc.lineAt(at.start).from, doc.lineAt(at.end).to);
       const dimmed = imports
         .filter((i) => i.end <= doc.length)
         .map((i) => Decoration.line({ class: 'cm-import-line' }).range(doc.lineAt(i.start).from));
-      const ranges = components
+      const componentCards = components
         .map((component, index) => ({ component, index }))
         .filter(({ component }) => cards.canEdit(component) && component.end <= doc.length)
         .map(({ component, index }) =>
-          Decoration.replace({ widget: new CardWidget(component, index, cards), block: true }).range(
-            doc.lineAt(component.start).from,
-            doc.lineAt(component.end).to
+          block(
+            component,
+            new CardWidget({
+              key: `c${index}:${component.name}:${JSON.stringify(component.props)}`,
+              label: component.name,
+              render: () => cards.card(component),
+              onEdit: () => cards.onEdit(index),
+              onDelete: () => cards.onDelete(index),
+            })
           )
         );
-      view.dispatch({ effects: setCards.of(Decoration.set([...dimmed, ...ranges], true)) });
+      const tableCards = tables
+        .map((table, index) => ({ table, index }))
+        .filter(({ table }) => table.end <= doc.length)
+        .map(({ table, index }) =>
+          block(
+            table,
+            new CardWidget({
+              key: `t${index}:${JSON.stringify([table.rows, table.align])}`,
+              label: 'tableau',
+              render: () => cards.tableCard(table),
+              onEdit: () => cards.onEditTable(index),
+              onDelete: () => cards.onDeleteTable(index),
+            })
+          )
+        );
+      view.dispatch({ effects: setCards.of(Decoration.set([...dimmed, ...componentCards, ...tableCards], true)) });
     },
     /** La barre d'outils appelle ces commandes. */
     commands: {
@@ -338,6 +479,7 @@ export function createRichEditor(parent, { cards, label }) {
       numbers: () => prefixLines(view, (i) => `${i + 1}. `, /^\d+\. /),
       quote: () => prefixLines(view, () => '> ', /^> ?/),
       link: () => link(view),
+      code: () => codeFence(view),
     },
     destroy() {
       view.destroy();
@@ -431,6 +573,29 @@ function prefixLines(view, prefix, existing) {
     return { from: line.from, to: line.from + (match?.[0].length ?? 0), insert: prefix(i) };
   });
   view.dispatch({ changes });
+  view.focus();
+  return true;
+}
+
+/**
+ * Un bloc de code : la sélection entre deux lignes de trois accents
+ * graves, ou un bloc vide, curseur dedans. Le bloc prend ses propres
+ * lignes, séparées du texte par une ligne vide.
+ *
+ * @param {EditorView} view
+ */
+function codeFence(view) {
+  const { state } = view;
+  const { from, to } = state.selection.main;
+  const start = state.doc.lineAt(from).from;
+  const end = state.doc.lineAt(to).to;
+  const inner = state.doc.sliceString(start, end);
+  const before = start > 0 && state.doc.sliceString(start - 2, start) !== '\n\n' ? '\n' : '';
+  const after = end < state.doc.length && state.doc.sliceString(end, end + 2) !== '\n\n' ? '\n' : '';
+  const insert = `${before}\`\`\`\n${inner}\n\`\`\`${after}`;
+  // Le curseur se pose juste après les accents : on y écrit le langage (js, html, css…).
+  const cursor = start + before.length + 3;
+  view.dispatch({ changes: { from: start, to: end, insert }, selection: { anchor: cursor } });
   view.focus();
   return true;
 }

@@ -144,3 +144,24 @@ test('l’aperçu des slides compte les mêmes slides que le build', async () =>
   const again = await previewSlides({ id: 'module-3/lecon-2', data, slides: null, knownCss: points.cssHash });
   assert.equal(again.css, null);
 });
+
+test('chaque tableau se réécrit à l’identique', async () => {
+  const { printTable } = await import('../server/mdx.mjs');
+  let count = 0;
+  for (const { file, body } of lessons) {
+    for (const table of findComponents(body).tables) {
+      assert.equal(printTable(table.rows, table.align), body.slice(table.start, table.end), `${file}, ligne ${table.line}`);
+      count++;
+    }
+  }
+  assert.ok(count > 0, 'aucun tableau trouvé : le banc d’essai est vide');
+});
+
+test('une cellule garde son texte, « | » compris', async () => {
+  const { printTable } = await import('../server/mdx.mjs');
+  const source = '| a | b \\| c |\n| :--- | ---: |\n| `x\\|y` | |';
+  const [table] = findComponents(`${source}\n`).tables;
+  assert.deepEqual(table.rows, [['a', 'b | c'], ['`x|y`', '']]);
+  assert.deepEqual(table.align, ['left', 'right']);
+  assert.equal(printTable(table.rows, table.align), source);
+});

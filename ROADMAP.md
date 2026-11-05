@@ -93,6 +93,9 @@ de code, et l'on n'a plus à connaître la syntaxe Markdown.*
 - [x] Une barre d'outils et ses raccourcis : gras, italique, titres, listes, citation, lien
 - [x] Les composants affichés en cartes cliquables, qui ouvrent leur éditeur
 - [x] Un interrupteur « texte brut », pour qui préfère voir le fichier tel quel
+- [x] Les blocs de code se lisent comme du code : police fixe, fond, coloration (JS, HTML, CSS, YAML, Markdown), Tab qui indente
+- [x] Les tableaux en cartes, édités dans une grille : lignes, colonnes, alignement, sans aligner un « | » à la main
+- [x] Thème clair seulement : pas de mode sombre
 - [ ] Une image collée ou glissée dans le texte part dans la médiathèque et devient une Figure
 - [ ] Le même éditeur pour le texte des slides, les `---` affichés en séparateurs
 - [ ] (Facultatif) La syntaxe n'apparaît que sur la ligne du curseur, comme dans Obsidian

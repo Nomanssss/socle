@@ -13,8 +13,13 @@
 // =============================================================
 
 export { EditorState, EditorSelection, StateField, StateEffect, RangeSetBuilder } from '@codemirror/state';
-export { EditorView, Decoration, WidgetType, keymap, drawSelection, placeholder } from '@codemirror/view';
-export { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirror/commands';
-export { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
+export { EditorView, Decoration, WidgetType, ViewPlugin, keymap, drawSelection, placeholder } from '@codemirror/view';
+export { history, historyKeymap, defaultKeymap, indentMore, indentLess } from '@codemirror/commands';
+export { syntaxHighlighting, syntaxTree, HighlightStyle } from '@codemirror/language';
 export { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+// Les langages des blocs de code d'un cours : ceux du web.
+export { javascript } from '@codemirror/lang-javascript';
+export { html } from '@codemirror/lang-html';
+export { css } from '@codemirror/lang-css';
+export { yaml } from '@codemirror/lang-yaml';
 export { tags } from '@lezer/highlight';

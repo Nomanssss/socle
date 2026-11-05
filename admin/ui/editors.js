@@ -613,5 +613,159 @@ const dragMatch = listEditor({
   },
 });
 
+// -------------------------------------------------------------
+// Tableau
+//
+// Une grille de cases, comme dans un tableur : la première ligne est
+// l'en-tête. Chaque case garde son texte Markdown tel quel - un
+// « **oui** » reste en gras, un « `code` » reste du code.
+// -------------------------------------------------------------
+
+const ALIGNMENTS = [
+  { value: '', label: 'Auto' },
+  { value: 'left', label: 'À gauche' },
+  { value: 'center', label: 'Centré' },
+  { value: 'right', label: 'À droite' },
+];
+
+export const tableEditor = {
+  label: 'Tableau',
+  create: () => ({ rows: [['', ''], ['', '']], align: [null, null] }),
+
+  /**
+   * @param {HTMLElement} root
+   * @param {{ rows: string[][], align: (string | null)[] }} props
+   */
+  mount(root, props) {
+    const rows = structuredClone(props.rows);
+    const align = Array.from({ length: rows[0].length }, (_, i) => props.align?.[i] ?? null);
+    const grid = h('table', { class: 'table-editor' });
+
+    /** Redessine la grille ; `focus` : la case [ligne, colonne] à reprendre. */
+    function render(/** @type {[number, number] | null} */ focus = null) {
+      const width = rows[0].length;
+      const columnTools = h(
+        'tr',
+        { class: 'table-editor__tools' },
+        h('td'),
+        ...Array.from({ length: width }, (_, c) =>
+          h(
+            'td',
+            {},
+            h(
+              'select',
+              {
+                'aria-label': `Alignement de la colonne ${c + 1}`,
+                onchange: (/** @type {any} */ e) => (align[c] = e.target.value || null),
+              },
+              ...ALIGNMENTS.map(({ value, label }) => h('option', { value, selected: (align[c] ?? '') === value }, label))
+            ),
+            h('button', {
+              type: 'button',
+              class: 'icon icon--danger',
+              title: 'Supprimer la colonne',
+              'aria-label': `Supprimer la colonne ${c + 1}`,
+              disabled: width <= 1,
+              onclick: () => {
+                for (const row of rows) row.splice(c, 1);
+                align.splice(c, 1);
+                render();
+              },
+            }, '✕')
+          )
+        ),
+        h('td')
+      );
+
+      const body = rows.map((row, r) =>
+        h(
+          'tr',
+          { class: r === 0 ? 'table-editor__head' : '' },
+          h('th', { scope: 'row', class: 'table-editor__label' }, r === 0 ? 'En-tête' : String(r)),
+          ...row.map((value, c) =>
+            h(
+              'td',
+              {},
+              h('input', {
+                value,
+                'data-cell': `${r}-${c}`,
+                'aria-label': r === 0 ? `En-tête, colonne ${c + 1}` : `Ligne ${r}, colonne ${c + 1}`,
+                oninput: (/** @type {any} */ e) => (rows[r][c] = e.target.value),
+              })
+            )
+          ),
+          h(
+            'td',
+            { class: 'table-editor__row-tools' },
+            r > 0 &&
+              h('button', { type: 'button', class: 'icon', title: 'Monter', 'aria-label': `Monter la ligne ${r}`, disabled: r === 1, onclick: () => moveRow(r, r - 1) }, '↑'),
+            r > 0 &&
+              h('button', { type: 'button', class: 'icon', title: 'Descendre', 'aria-label': `Descendre la ligne ${r}`, disabled: r === rows.length - 1, onclick: () => moveRow(r, r + 1) }, '↓'),
+            r > 0 &&
+              h('button', {
+                type: 'button',
+                class: 'icon icon--danger',
+                title: 'Supprimer la ligne',
+                'aria-label': `Supprimer la ligne ${r}`,
+                onclick: () => {
+                  rows.splice(r, 1);
+                  render();
+                },
+              }, '✕')
+          )
+        )
+      );
+      grid.replaceChildren(h('tbody', {}, columnTools, ...body));
+      if (focus) /** @type {HTMLElement | null} */ (grid.querySelector(`[data-cell="${focus[0]}-${focus[1]}"]`))?.focus();
+    }
+
+    /**
+     * @param {number} from
+     * @param {number} to
+     */
+    function moveRow(from, to) {
+      rows.splice(to, 0, rows.splice(from, 1)[0]);
+      render([to, 0]);
+    }
+
+    root.replaceChildren(
+      h('div', { class: 'table-editor__scroll' }, grid),
+      h(
+        'div',
+        { class: 'table-editor__actions' },
+        h('button', {
+          type: 'button',
+          class: 'button',
+          onclick: () => {
+            rows.push(rows[0].map(() => ''));
+            render([rows.length - 1, 0]);
+          },
+        }, '+ Ajouter une ligne'),
+        h('button', {
+          type: 'button',
+          class: 'button',
+          onclick: () => {
+            for (const row of rows) row.push('');
+            align.push(null);
+            render([0, rows[0].length - 1]);
+          },
+        }, '+ Ajouter une colonne')
+      ),
+      h('p', { class: 'field__help' }, 'Une case peut contenir du **gras** ou du `code`, comme le texte de la leçon. Une case d’en-tête peut rester vide.')
+    );
+    render([0, 0]);
+
+    return {
+      read() {
+        if (rows.length < 2) throw new EditorError('Un tableau a besoin d’au moins une ligne sous son en-tête.');
+        if (rows.slice(1).every((row) => row.every((cell) => !cell.trim()))) {
+          throw new EditorError('Le tableau est vide : remplissez au moins une case sous l’en-tête.');
+        }
+        return { rows: rows.map((row) => row.map((cell) => cell.trim())), align };
+      },
+    };
+  },
+};
+
 /** Les éditeurs disponibles, par nom de composant. */
 export const EDITORS = { Quiz: quiz, Figure: figure, Timeline: timeline, Flashcards: flashcards, DragMatch: dragMatch };

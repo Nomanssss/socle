@@ -25,7 +25,7 @@ import { readFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listLessons, readLesson, writeLesson, AdminError } from './lessons.mjs';
-import { findComponents, printComponent } from './mdx.mjs';
+import { findComponents, printComponent, printTable } from './mdx.mjs';
 import { listMedia, readMedia, uploadMedia, deleteMedia, MAX_UPLOAD } from './media.mjs';
 import { readSlides, writeSlides, previewSlides, readSlideImage } from './slides.mjs';
 import { codemirrorBundle } from './vendor.mjs';
@@ -121,6 +121,10 @@ async function api(req, route, params) {
     case 'POST /component/print': {
       const { name, props, indent } = await readJson(req);
       return { source: printComponent(name, props, indent) };
+    }
+    case 'POST /table/print': {
+      const { rows, align } = await readJson(req);
+      return { source: printTable(rows, align) };
     }
     case 'GET /media':
       return { media: await listMedia() };
