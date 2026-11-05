@@ -18,8 +18,10 @@ Les partis pris, posés avant d'écrire la première ligne :
 - **Pas de WYSIWYG.** Le texte reste du Markdown, lisible et diffable.
   Ce sont les composants - là où le MDX devient du JavaScript - qui ont
   droit à un éditeur visuel.
-- **Zéro dépendance côté navigateur**, comme les composants du cours :
-  du JavaScript natif, sans framework.
+- **Le moins de dépendances possible côté navigateur.** Du JavaScript
+  natif, sans framework. Seule exception, l'éditeur de texte
+  (CodeMirror) : il ne sert qu'à l'admin, en local, et n'arrive jamais
+  dans le site livré.
 
 Une case cochée = fait, vérifié, commité sur `feat/admin`.
 
@@ -80,7 +82,22 @@ thème, sans attendre `npm run slides`.*
   - Reste : changer l'image d'une slide existante sans retoucher le chemin à la main
 - [ ] Exporter le PDF de la leçon depuis l'admin
 
-## Phase 5 - Organiser le cours
+## Phase 5 - Un éditeur de texte pour tout le monde
+
+*Le texte reste le fichier, au caractère près - pas de WYSIWYG qui
+réécrirait tout à l'enregistrement. Mais il s'habille : on n'y voit plus
+de code, et l'on n'a plus à connaître la syntaxe Markdown.*
+
+- [x] CodeMirror 6 servi à l'admin (empaqueté à la volée, jamais dans `dist/`)
+- [x] Le texte d'une leçon dans CodeMirror : titres en grand, gras en gras, syntaxe estompée, retour à la ligne
+- [x] Une barre d'outils et ses raccourcis : gras, italique, titres, listes, citation, lien
+- [x] Les composants affichés en cartes cliquables, qui ouvrent leur éditeur
+- [x] Un interrupteur « texte brut », pour qui préfère voir le fichier tel quel
+- [ ] Une image collée ou glissée dans le texte part dans la médiathèque et devient une Figure
+- [ ] Le même éditeur pour le texte des slides, les `---` affichés en séparateurs
+- [ ] (Facultatif) La syntaxe n'apparaît que sur la ligne du curseur, comme dans Obsidian
+
+## Phase 6 - Organiser le cours
 
 - [ ] Créer une leçon (dossier de module, nom de fichier, en-tête minimal)
   - ⚠ Constaté : une leçon créée pendant `npm run dev` n'a pas de page tant que le serveur n'a pas redémarré (`getStaticPaths` n'est pas relu). L'admin devra le redémarrer, ou le dire.
@@ -88,20 +105,20 @@ thème, sans attendre `npm run slides`.*
 - [ ] Réordonner leçons et modules par glisser-déposer (réécrit `order` et `moduleOrder`)
 - [ ] Verrouiller / déverrouiller une leçon depuis le sommaire
 
-## Phase 6 - Régler le site
+## Phase 7 - Régler le site
 
 - [ ] Éditer `socle.config.json` en **conservant** les clés `_…`, affichées comme aide sous chaque champ
 - [ ] Couleurs et polices, avec `npm run brand` relancé à l'enregistrement
 - [ ] La photo de l'auteur choisie dans la médiathèque
 
-## Phase 7 - En ligne (plus tard, si le besoin se confirme)
+## Phase 8 - En ligne (plus tard, si le besoin se confirme)
 
 - [ ] Connexion sans base : empreinte du mot de passe en variable d'environnement, session en cookie signé
 - [ ] Enregistrement par commit via l'API GitHub, la CI reconstruit le site
 - [ ] `/admin/` rendu côté serveur (adaptateur), le reste du site toujours statique
 - [ ] Deux éditions simultanées : détecter le conflit plutôt qu'écraser
 
-## Phase 8 - Documenter
+## Phase 9 - Documenter
 
 - [ ] Une leçon du cours de démonstration consacrée à l'admin
 - [ ] README, `docs/GUIDE.md` et journal des versions

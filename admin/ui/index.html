@@ -106,8 +106,26 @@
               <button type="button" class="button button--small" id="insert-figure">+ Image</button>
               <button type="button" class="button button--small" id="insert-quiz">+ Quiz</button>
             </div>
+            <div class="format" id="format-bar" role="toolbar" aria-label="Mise en forme" aria-controls="body-host">
+              <button type="button" class="format__button" data-command="bold" title="Gras (⌘B)"><strong>G</strong></button>
+              <button type="button" class="format__button" data-command="italic" title="Italique (⌘I)"><em>I</em></button>
+              <span class="format__separator"></span>
+              <button type="button" class="format__button" data-command="heading" data-level="2" title="Titre de section">Titre</button>
+              <button type="button" class="format__button" data-command="heading" data-level="3" title="Sous-titre">Sous-titre</button>
+              <span class="format__separator"></span>
+              <button type="button" class="format__button" data-command="bullets" title="Liste à puces">• Liste</button>
+              <button type="button" class="format__button" data-command="numbers" title="Liste numérotée">1. Liste</button>
+              <button type="button" class="format__button" data-command="quote" title="Citation">❝ Citation</button>
+              <button type="button" class="format__button" data-command="link" title="Lien (⌘K)">🔗 Lien</button>
+              <label class="format__mode">
+                <input type="checkbox" id="plain-mode" />
+                Texte brut
+              </label>
+            </div>
             <p class="notice notice--error" id="mdx-error" hidden></p>
-            <textarea class="body" id="body" name="body" spellcheck="true" aria-labelledby="text-title"></textarea>
+            <div class="body-host" id="body-host">
+              <textarea class="body" id="body" name="body" spellcheck="true" aria-labelledby="text-title" hidden></textarea>
+            </div>
           </section>
           </div>
 

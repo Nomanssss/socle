@@ -28,6 +28,7 @@ import { listLessons, readLesson, writeLesson, AdminError } from './lessons.mjs'
 import { findComponents, printComponent } from './mdx.mjs';
 import { listMedia, readMedia, uploadMedia, deleteMedia, MAX_UPLOAD } from './media.mjs';
 import { readSlides, writeSlides, previewSlides, readSlideImage } from './slides.mjs';
+import { codemirrorBundle } from './vendor.mjs';
 import { readConfig } from '../../scripts/config.mjs';
 
 const UI_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'ui');
@@ -40,6 +41,7 @@ const UI_FILES = {
   '/editors.js': { file: 'editors.js', type: 'text/javascript; charset=utf-8' },
   '/media.js': { file: 'media.js', type: 'text/javascript; charset=utf-8' },
   '/dom.js': { file: 'dom.js', type: 'text/javascript; charset=utf-8' },
+  '/text-editor.js': { file: 'text-editor.js', type: 'text/javascript; charset=utf-8' },
   '/admin.css': { file: 'admin.css', type: 'text/css; charset=utf-8' },
 };
 
@@ -82,6 +84,11 @@ export function createHandler(base) {
         return send(res, 200, result);
       }
       if (req.method === 'GET' && UI_FILES[path]) return await serveUi(res, UI_FILES[path]);
+      if (req.method === 'GET' && path === '/vendor/codemirror.js') {
+        res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+        res.end(await codemirrorBundle());
+        return;
+      }
       return send(res, 404, { error: 'Rien à cette adresse.' });
     } catch (error) {
       if (error instanceof AdminError) return send(res, error.status, { error: error.message, ...error.details });

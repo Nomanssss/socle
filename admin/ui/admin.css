@@ -870,3 +870,105 @@ button.media:hover { border-color: var(--brand); }
 .menu__item:focus-visible { background: var(--bg); }
 
 .menu__item span { font-size: 0.8125rem; color: var(--muted); }
+
+/* --- Barre de mise en forme ---------------------------------- */
+
+.format {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.format__button {
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.format__button:hover { border-color: var(--line); background: var(--surface); }
+
+.format__separator {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--line);
+}
+
+.format__mode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 0 6px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.format__mode input { width: auto; accent-color: var(--brand); }
+
+/* En texte brut, la mise en forme ne s'applique pas : seul
+   l'interrupteur reste. */
+.format--plain .format__button,
+.format--plain .format__separator { display: none; }
+
+/* --- Cartes de composants, dans le texte --------------------- */
+
+.card-widget {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 20px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--brand);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  cursor: default;
+}
+
+.card-widget__body { flex: 1; min-width: 0; }
+
+.card-widget__summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-widget__summary > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.card-widget__summary span:not(.card-widget__icon) {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card-widget__summary .media__thumb {
+  flex: none;
+  width: 72px;
+}
+
+.card-widget__icon { font-size: 1.5rem; }
+
+.card-widget__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

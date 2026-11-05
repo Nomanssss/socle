@@ -13,6 +13,7 @@
 
 import { h, EDITORS, EditorError, imagePicker } from './editors.js';
 import { mountLibrary, thumbnail } from './media.js';
+import { createPlainEditor, createRichEditor, selectInTextarea } from './text-editor.js';
 
 const API = './api';
 
@@ -27,7 +28,10 @@ const ui = {
   save: $('#save'),
   modules: $('#modules'),
   sources: $('#sources'),
-  body: $('#body'),
+  bodyField: $('#body'),
+  bodyHost: $('#body-host'),
+  formatBar: $('#format-bar'),
+  plainMode: $('#plain-mode'),
   chips: $('#components'),
   mdxError: $('#mdx-error'),
   viewPage: $('#view-page'),
@@ -216,7 +220,7 @@ async function openLesson(id) {
     ]);
     state.lesson = lesson;
     fillForm(lesson.data);
-    ui.body.value = lesson.body;
+    body.value = lesson.body;
     state.saved = snapshot();
     state.slides = { exists: slides.exists, hash: slides.hash, deck: slides.exists };
     ui.slidesText.value = slides.markdown;
@@ -378,7 +382,7 @@ function collectData() {
 // -------------------------------------------------------------
 
 function snapshot() {
-  return JSON.stringify([collectData(), ui.body.value]);
+  return JSON.stringify([collectData(), body.value]);
 }
 
 /** Le deck tel que l'interface le décrit : écrit à la main (et son texte), ou non. */
@@ -421,12 +425,12 @@ async function save(force = '') {
   try {
     if (lessonChanged) {
       const data = collectData();
-      const body = ui.body.value;
+      const text = body.value;
       const result = await request('/lesson', {
         method: 'PUT',
-        json: { id: state.lesson.id, data, body, hash: state.lesson.hash, force: force === 'lesson' },
+        json: { id: state.lesson.id, data, body: text, hash: state.lesson.hash, force: force === 'lesson' },
       });
-      state.lesson = { ...state.lesson, data, body, hash: result.hash };
+      state.lesson = { ...state.lesson, data, body: text, hash: result.hash };
       state.saved = snapshot();
       ui.heading.textContent = data.title;
       loadToc();
@@ -510,23 +514,23 @@ function updateViewLink() {
 // -------------------------------------------------------------
 
 let parseTimer = 0;
-ui.body.addEventListener('input', () => {
+ui.bodyHost.addEventListener('input', () => {
   clearTimeout(parseTimer);
   parseTimer = window.setTimeout(parseComponents, 400);
 });
 
 // La puce du composant sous le curseur s'allume : on sait ce qu'on
 // modifiera avant de cliquer.
-for (const type of ['click', 'keyup', 'select']) ui.body.addEventListener(type, highlightCurrent);
+ui.bodyHost.addEventListener('caret', highlightCurrent);
 
 /** Analyse le texte, sauf s'il l'a déjà été tel quel. */
 async function parseComponents() {
-  const source = ui.body.value;
+  const source = body.value;
   if (source === state.parsed.source && state.parsed.components.length) return state.parsed;
   try {
     const result = await request('/components', { method: 'POST', json: { body: source } });
     // Le texte a pu changer pendant l'analyse : seule la dernière compte.
-    if (ui.body.value !== source) return parseComponents();
+    if (body.value !== source) return parseComponents();
     state.parsed = {
       source,
       components: result.components,
@@ -537,6 +541,7 @@ async function parseComponents() {
     ui.mdxError.hidden = !result.error;
     ui.mdxError.textContent = result.error ?? '';
     renderChips();
+    body.setComponents(state.parsed.components, state.parsed.imports);
   } catch (error) {
     setStatus(error.message, 'error');
   }
@@ -568,9 +573,9 @@ function renderChips() {
 }
 
 function highlightCurrent() {
-  const caret = ui.body.selectionStart;
+  const caret = body.selectionStart;
   state.parsed.components.forEach((component, index) => {
-    const inside = state.parsed.source === ui.body.value && caret >= component.start && caret <= component.end;
+    const inside = state.parsed.source === body.value && caret >= component.start && caret <= component.end;
     ui.chips.querySelector(`[data-index="${index}"]`)?.classList.toggle('chip--current', inside);
   });
 }
@@ -587,7 +592,7 @@ async function editComponent(index) {
 
   const editor = EDITORS[component.name];
   if (!component.editable || !editor) {
-    selectRange(component.start, component.end);
+    body.select(component.start, component.end);
     return;
   }
 
@@ -617,8 +622,8 @@ async function insertComponent(name) {
 
   // Le composant prend sa place dans son propre paragraphe : au bout de
   // la ligne du curseur, entouré de lignes vides.
-  const text = ui.body.value;
-  const lineEnd = text.indexOf('\n', ui.body.selectionStart);
+  const text = body.value;
+  const lineEnd = text.indexOf('\n', body.selectionStart);
   const at = lineEnd === -1 ? text.length : lineEnd;
   const before = text.slice(0, at);
   const after = text.slice(at);
@@ -718,7 +723,7 @@ async function dropUnusedImports(names) {
     const imported = imports.find((i) => i.name === name);
     if (!imported || !ASSET_IMPORT.test(imported.from) || references.includes(name)) continue;
     // La ligne entière part, saut de ligne compris.
-    const end = ui.body.value[imported.end] === '\n' ? imported.end + 1 : imported.end;
+    const end = body.value[imported.end] === '\n' ? imported.end + 1 : imported.end;
     replaceText(imported.start, end, '');
   }
   await parseComponents();
@@ -738,52 +743,136 @@ async function ensureImport(name, from) {
   if (importsEnd !== null) {
     replaceText(importsEnd, importsEnd, `\n${line}`);
   } else {
-    const at = ui.body.value.match(/^\s*/)?.[0].length ?? 0;
+    const at = body.value.match(/^\s*/)?.[0].length ?? 0;
     replaceText(at, at, `${line}\n\n`);
   }
   await parseComponents();
 }
 
 /**
- * Remplace un passage du texte en passant par l'historique du champ :
- * Ctrl+Z annule la modification d'un quiz comme une frappe.
+ * Remplace un passage du texte. Annulable par Ctrl+Z, comme une frappe,
+ * quel que soit l'éditeur affiché.
  *
  * @param {number} start
  * @param {number} end
  * @param {string} text
  */
 function replaceText(start, end, text) {
-  ui.body.focus();
-  ui.body.setSelectionRange(start, end);
-  if (!document.execCommand('insertText', false, text)) {
-    ui.body.setRangeText(text, start, end, 'end');
-    ui.body.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-  selectRange(start, start + text.length);
+  body.replace(start, end, text);
+  highlightCurrent();
 }
 
 /**
- * Sélectionne un passage et le fait défiler à l'écran. La position
- * verticale se mesure sur un double invisible du champ : un <textarea>
- * ne dit pas où se trouve une ligne une fois le texte replié.
+ * Retire un composant du texte, avec la ligne vide qui le séparait du
+ * paragraphe suivant - et l'import d'image qui ne sert plus.
  *
- * @param {number} start
- * @param {number} end
- * @param {HTMLTextAreaElement} [field] Le texte de la page, ou celui des slides.
+ * @param {number} index
  */
-function selectRange(start, end, field = ui.body) {
-  const style = getComputedStyle(field);
-  const mirror = h('div', {
-    style: `position:absolute;visibility:hidden;white-space:pre-wrap;overflow-wrap:break-word;box-sizing:border-box;width:${field.clientWidth}px;font:${style.font};line-height:${style.lineHeight};padding:${style.padding};letter-spacing:${style.letterSpacing};tab-size:${style.tabSize}`,
-  }, field.value.slice(0, start));
-  document.body.append(mirror);
-  const top = mirror.offsetHeight;
-  mirror.remove();
-  field.focus();
-  field.setSelectionRange(start, end);
-  field.scrollTop = Math.max(0, top - field.clientHeight / 3);
-  if (field === ui.body) highlightCurrent();
+async function deleteComponent(index) {
+  const component = state.parsed.components[index];
+  if (!component || state.parsed.source !== body.value) return;
+  if (!confirm(`Supprimer ce composant (${component.name}) ?`)) return;
+  const text = body.value;
+  let end = component.end;
+  while (text[end] === '\n' && end - component.end < 2) end++;
+  replaceText(component.start, end, '');
+  await dropUnusedImports(refsOf(component.props ?? {}));
 }
+
+// -------------------------------------------------------------
+// L'éditeur du texte : riche (CodeMirror) ou brut
+//
+// Le choix est mémorisé dans le navigateur : c'est une préférence de
+// qui écrit, pas un réglage du cours.
+// -------------------------------------------------------------
+
+const PLAIN_KEY = 'socle-admin:texte-brut';
+
+/** Ce qu'une carte montre d'un composant, à la place de son code. */
+const CARDS = {
+  canEdit: (/** @type {any} */ component) => component.editable && Boolean(EDITORS[component.name]),
+  card: (/** @type {any} */ component) => describe(component),
+  onEdit: (/** @type {number} */ index) => editComponent(index),
+  onDelete: (/** @type {number} */ index) => deleteComponent(index),
+};
+
+/** @param {any} component */
+function describe(component) {
+  const props = component.props ?? {};
+  if (component.name === 'Quiz') {
+    const questions = Array.isArray(props.questions) ? props.questions : [];
+    return h(
+      'div',
+      { class: 'card-widget__summary' },
+      h('span', { class: 'card-widget__icon', 'aria-hidden': 'true' }, '📝'),
+      h(
+        'div',
+        {},
+        h('strong', {}, props.title || 'Quiz'),
+        h('span', {}, `${questions.length} question${questions.length > 1 ? 's' : ''} · ${questions[0]?.question ?? ''}`)
+      )
+    );
+  }
+  if (component.name === 'Figure') {
+    const from = state.parsed.imports.find((i) => i.name === props.src?.__ref)?.from ?? '';
+    const asset = from.match(ASSET_IMPORT)?.[1];
+    return h(
+      'div',
+      { class: 'card-widget__summary' },
+      asset ? thumbnail({ path: asset, name: asset }) : h('span', { class: 'card-widget__icon', 'aria-hidden': 'true' }, '🖼'),
+      h(
+        'div',
+        {},
+        h('strong', {}, props.caption || asset || 'Image'),
+        h('span', {}, props.alt ? `Description : ${props.alt}` : 'Image décorative (sans description)')
+      )
+    );
+  }
+  return h('strong', {}, component.name);
+}
+
+/** @type {ReturnType<typeof createPlainEditor> | ReturnType<typeof createRichEditor>} */
+let body = createBodyEditor(readPlain());
+
+function readPlain() {
+  try {
+    return localStorage.getItem(PLAIN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** @param {boolean} plain */
+function createBodyEditor(plain) {
+  ui.plainMode.checked = plain;
+  ui.formatBar.classList.toggle('format--plain', plain);
+  return plain
+    ? createPlainEditor(ui.bodyField)
+    : createRichEditor(ui.bodyHost, { cards: CARDS, label: 'Texte de la leçon' });
+}
+
+ui.plainMode.addEventListener('change', () => {
+  const plain = ui.plainMode.checked;
+  try {
+    localStorage.setItem(PLAIN_KEY, plain ? '1' : '0');
+  } catch {}
+  // Le texte passe d'un éditeur à l'autre tel quel : modifications non
+  // enregistrées comprises. Seul l'historique d'annulation est perdu.
+  const text = body.value;
+  body.destroy();
+  body = createBodyEditor(plain);
+  body.value = text;
+  state.parsed.source = '';
+  parseComponents();
+});
+
+ui.formatBar.addEventListener('click', (/** @type {MouseEvent} */ event) => {
+  const button = /** @type {HTMLElement} */ (event.target).closest('[data-command]');
+  if (!button || !('commands' in body)) return;
+  const command = /** @type {HTMLElement} */ (button).dataset.command;
+  if (command === 'heading') body.commands.heading(Number(/** @type {HTMLElement} */ (button).dataset.level));
+  else body.commands[/** @type {'bold'} */ (command)]();
+});
 
 // -------------------------------------------------------------
 // La boîte de dialogue des éditeurs
@@ -1151,7 +1240,7 @@ async function addSlide(template) {
   // Le curseur se pose sur le titre de la nouvelle slide, prêt à le
   // réécrire - et le texte comme l'aperçu défilent jusqu'à elle.
   const title = field.value.indexOf('## ', at);
-  if (title !== -1) selectRange(title + 3, field.value.indexOf('\n', title + 3), field);
+  if (title !== -1) selectInTextarea(field, title + 3, field.value.indexOf('\n', title + 3));
   updateDirty();
   updateSlidesCount();
   await previewNow();
