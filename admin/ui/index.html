@@ -103,8 +103,10 @@
             <div class="toolbar">
               <h2 class="panel__title" id="text-title">Texte</h2>
               <div class="chips" id="components" aria-label="Composants de la leçon"></div>
-              <button type="button" class="button button--small" id="insert-figure">+ Image</button>
-              <button type="button" class="button button--small" id="insert-quiz">+ Quiz</button>
+              <div class="menu" id="insert-menu">
+                <button type="button" class="button button--small" id="insert-add" aria-expanded="false" aria-controls="insert-list">+ Insérer</button>
+                <ul class="menu__list" id="insert-list" hidden></ul>
+              </div>
             </div>
             <div class="format" id="format-bar" role="toolbar" aria-label="Mise en forme" aria-controls="body-host">
               <button type="button" class="format__button" data-command="bold" title="Gras (⌘B)"><strong>G</strong></button>

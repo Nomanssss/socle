@@ -972,3 +972,29 @@ button.media:hover { border-color: var(--brand); }
   align-items: center;
   gap: 4px;
 }
+
+/* --- Éditeurs de liste (frise, cartes, association) ---------- */
+
+.list-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card__fields {
+  display: grid;
+  gap: 10px;
+}
+
+/* Recto et verso, élément et étiquette : côte à côte, on les lit
+   comme une paire. */
+.card--inline .card__fields { grid-template-columns: 1fr 1fr; }
+
+@media (max-width: 700px) {
+  .card--inline .card__fields { grid-template-columns: 1fr; }
+}
+
+.card--inline .card__fields .field--wide { grid-column: auto; }

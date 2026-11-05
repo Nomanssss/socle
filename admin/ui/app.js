@@ -609,8 +609,58 @@ async function editComponent(index) {
   await dropUnusedImports(refsOf(component.props));
 }
 
-$('#insert-quiz').addEventListener('click', () => insertComponent('Quiz'));
-$('#insert-figure').addEventListener('click', () => insertComponent('Figure'));
+// Ce qu'on peut insérer dans le texte, dans l'ordre où on en a besoin :
+// l'image d'abord, le plus courant.
+const INSERTABLE = [
+  { name: 'Figure', label: 'Image', hint: 'Une image de la médiathèque, avec sa description' },
+  { name: 'Quiz', label: 'Quiz', hint: 'Un QCM auto-corrigé, relié à la progression' },
+  { name: 'Timeline', label: 'Frise', hint: 'Des étapes qui se déplient' },
+  { name: 'Flashcards', label: 'Cartes de révision', hint: 'Recto, verso : on retourne la carte' },
+  { name: 'DragMatch', label: 'Association', hint: 'Relier deux colonnes par glisser-déposer' },
+];
+
+const insertList = $('#insert-list');
+const insertAdd = $('#insert-add');
+insertList.replaceChildren(
+  ...INSERTABLE.map(({ name, label, hint }) =>
+    h(
+      'li',
+      {},
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'menu__item',
+          'data-insert': name,
+          onclick: () => {
+            toggleInsertMenu(false);
+            insertComponent(name);
+          },
+        },
+        h('strong', {}, label),
+        h('span', {}, hint)
+      )
+    )
+  )
+);
+
+/** @param {boolean} open */
+function toggleInsertMenu(open) {
+  insertList.hidden = !open;
+  insertAdd.setAttribute('aria-expanded', String(open));
+  if (open) insertList.querySelector('button')?.focus();
+}
+
+insertAdd.addEventListener('click', () => toggleInsertMenu(insertList.hidden));
+document.addEventListener('click', (event) => {
+  if (!$('#insert-menu').contains(event.target)) toggleInsertMenu(false);
+});
+insertList.addEventListener('keydown', (/** @type {KeyboardEvent} */ event) => {
+  if (event.key === 'Escape') {
+    toggleInsertMenu(false);
+    insertAdd.focus();
+  }
+});
 
 /** @param {string} name */
 async function insertComponent(name) {
@@ -621,9 +671,11 @@ async function insertComponent(name) {
   const { source } = await request('/component/print', { method: 'POST', json: { name, props, indent: 0 } });
 
   // Le composant prend sa place dans son propre paragraphe : au bout de
-  // la ligne du curseur, entouré de lignes vides.
+  // la ligne du curseur, entouré de lignes vides - et jamais au-dessus
+  // des imports, qui ouvrent le fichier.
+  const { importsEnd } = await parseComponents();
   const text = body.value;
-  const lineEnd = text.indexOf('\n', body.selectionStart);
+  const lineEnd = text.indexOf('\n', Math.max(body.selectionStart, importsEnd ?? 0));
   const at = lineEnd === -1 ? text.length : lineEnd;
   const before = text.slice(0, at);
   const after = text.slice(at);
@@ -828,6 +880,28 @@ function describe(component) {
       )
     );
   }
+  // Les composants en liste : leur nombre d'éléments, et le début du
+  // premier - de quoi reconnaître celui qu'on cherche.
+  const LISTS = {
+    Timeline: { icon: '🧭', label: 'Frise', prop: 'steps', noun: 'étape', first: (/** @type {any} */ s) => s.title },
+    Flashcards: { icon: '🃏', label: 'Cartes de révision', prop: 'cards', noun: 'carte', first: (/** @type {any} */ c) => c.front },
+    DragMatch: { icon: '🔗', label: 'Association', prop: 'pairs', noun: 'paire', first: (/** @type {any} */ p) => `${p.left} → ${p.right}` },
+  };
+  const list = LISTS[/** @type {keyof typeof LISTS} */ (component.name)];
+  if (list) {
+    const items = Array.isArray(props[list.prop]) ? props[list.prop] : [];
+    return h(
+      'div',
+      { class: 'card-widget__summary' },
+      h('span', { class: 'card-widget__icon', 'aria-hidden': 'true' }, list.icon),
+      h(
+        'div',
+        {},
+        h('strong', {}, props.title || list.label),
+        h('span', {}, `${items.length} ${list.noun}${items.length > 1 ? 's' : ''}${items[0] ? ` · ${list.first(items[0])}` : ''}`)
+      )
+    );
+  }
   return h('strong', {}, component.name);
 }
 
@@ -877,6 +951,13 @@ ui.formatBar.addEventListener('click', (/** @type {MouseEvent} */ event) => {
 // -------------------------------------------------------------
 // La boîte de dialogue des éditeurs
 // -------------------------------------------------------------
+
+// Un refus (« champ vide ») s'efface dès qu'on reprend le formulaire :
+// il décrivait l'état d'avant, pas celui qu'on est en train de corriger.
+ui.dialogBody.addEventListener('input', () => (ui.dialogError.hidden = true));
+ui.dialogBody.addEventListener('click', (/** @type {MouseEvent} */ event) => {
+  if (/** @type {HTMLElement} */ (event.target).closest('button')) ui.dialogError.hidden = true;
+});
 
 /**
  * Ouvre l'éditeur et rend les propriétés validées, ou null si l'on

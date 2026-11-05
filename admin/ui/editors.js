@@ -350,5 +350,268 @@ export const imagePicker = {
   },
 };
 
+// -------------------------------------------------------------
+// Les éditeurs de liste : Timeline, Flashcards, DragMatch
+//
+// Trois composants, une même forme : une liste d'éléments qu'on
+// ajoute, réordonne et supprime, chacun fait de quelques champs texte.
+// `mountList` s'occupe de la liste ; chaque composant ne décrit que ses
+// champs.
+// -------------------------------------------------------------
+
+/**
+ * @typedef {{
+ *   key: string,
+ *   label: string,
+ *   required?: boolean,
+ *   multiline?: boolean,
+ *   help?: string,
+ *   placeholder?: string,
+ * }} Field
+ */
+
+/**
+ * Un champ de texte, branché sur une propriété d'un objet.
+ *
+ * @param {Record<string, any>} target
+ * @param {Field} field
+ * @param {string} [dataKey] Un repère pour retrouver le champ (focus, tests).
+ */
+function textField(target, field, dataKey) {
+  const attrs = {
+    value: target[field.key] ?? '',
+    placeholder: field.placeholder ?? '',
+    'data-field': dataKey ?? field.key,
+    oninput: (/** @type {any} */ e) => (target[field.key] = e.target.value),
+  };
+  return h(
+    'label',
+    { class: 'field field--wide' },
+    h('span', { class: 'field__label' }, field.label, field.required ? h('abbr', { title: 'obligatoire' }, ' *') : ''),
+    field.multiline ? h('textarea', { rows: 2, ...attrs }) : h('input', attrs),
+    field.help ? h('span', { class: 'field__help' }, field.help) : null
+  );
+}
+
+/**
+ * @param {HTMLElement} root
+ * @param {{
+ *   items: Record<string, any>[],
+ *   fields: Field[],
+ *   noun: string,
+ *   feminine?: boolean,
+ *   inline?: boolean,
+ *   blank: () => Record<string, any>,
+ *   min: number,
+ * }} options
+ */
+function mountList(root, { items, fields, noun, feminine = false, inline = false, blank, min }) {
+  const list = h('ol', { class: 'list-editor' });
+  const one = feminine ? 'une' : 'un';
+
+  function render(focus = '') {
+    list.replaceChildren(
+      ...items.map((item, i) => {
+        const move = (/** @type {number} */ to) => {
+          items.splice(to, 0, items.splice(i, 1)[0]);
+          render(`[data-field="${to}-${fields[0].key}"]`);
+        };
+        const label = `${noun} ${i + 1}`;
+        return h(
+          'li',
+          { class: `card${inline ? ' card--inline' : ''}` },
+          h(
+            'div',
+            { class: 'card__header' },
+            h('h3', { class: 'card__title' }, label[0].toUpperCase() + label.slice(1)),
+            h('button', { type: 'button', class: 'icon', title: 'Monter', 'aria-label': `Monter : ${label}`, disabled: i === 0, onclick: () => move(i - 1) }, '↑'),
+            h('button', { type: 'button', class: 'icon', title: 'Descendre', 'aria-label': `Descendre : ${label}`, disabled: i === items.length - 1, onclick: () => move(i + 1) }, '↓'),
+            h('button', {
+              type: 'button',
+              class: 'icon icon--danger',
+              title: 'Supprimer',
+              'aria-label': `Supprimer : ${label}`,
+              disabled: items.length <= min,
+              onclick: () => {
+                items.splice(i, 1);
+                render();
+              },
+            }, '✕')
+          ),
+          h('div', { class: 'card__fields' }, ...fields.map((field) => textField(item, field, `${i}-${field.key}`)))
+        );
+      })
+    );
+    if (focus) /** @type {HTMLElement | null} */ (list.querySelector(focus))?.focus();
+  }
+
+  const add = h('button', {
+    type: 'button',
+    class: 'button',
+    onclick: () => {
+      items.push(blank());
+      render(`[data-field="${items.length - 1}-${fields[0].key}"]`);
+    },
+  }, `+ Ajouter ${one} ${noun}`);
+
+  render();
+  return { list, add };
+}
+
+/**
+ * Rend un élément nettoyé : les champs connus dans leur ordre d'écriture
+ * habituel, vides retirés, puis les clés inconnues, conservées telles
+ * quelles.
+ *
+ * @param {Record<string, any>} item
+ * @param {Field[]} fields
+ */
+function cleanItem(item, fields) {
+  /** @type {Record<string, any>} */
+  const out = {};
+  for (const { key } of fields) {
+    const value = typeof item[key] === 'string' ? item[key].trim() : item[key];
+    if (value !== '' && value !== undefined && value !== null) out[key] = value;
+  }
+  for (const [key, value] of Object.entries(item)) if (!(key in out) && !fields.some((f) => f.key === key)) out[key] = value;
+  return out;
+}
+
+/**
+ * Vérifie les champs obligatoires de chaque élément.
+ *
+ * @param {Record<string, any>[]} items
+ * @param {Field[]} fields
+ * @param {string} noun
+ * @param {number} min
+ */
+function checkItems(items, fields, noun, min) {
+  if (items.length < min) {
+    throw new EditorError(`Il faut au moins ${min} ${noun}${min > 1 ? 's' : ''}.`);
+  }
+  items.forEach((item, i) => {
+    for (const field of fields) {
+      if (field.required && !String(item[field.key] ?? '').trim()) {
+        throw new EditorError(`${field.label} : champ vide (${noun} ${i + 1}).`);
+      }
+    }
+  });
+}
+
+/**
+ * Un éditeur de liste complet : une propriété-liste, éventuellement un
+ * titre, et des règles en plus.
+ *
+ * @param {{
+ *   label: string,
+ *   prop: string,
+ *   noun: string,
+ *   feminine?: boolean,
+ *   fields: Field[],
+ *   min: number,
+ *   title?: Field,
+ *   inline?: boolean,
+ *   check?: (items: Record<string, any>[]) => void,
+ * }} spec
+ */
+function listEditor(spec) {
+  const blank = () => Object.fromEntries(spec.fields.map((f) => [f.key, '']));
+  return {
+    label: spec.label,
+    create: () => ({ ...(spec.title ? { [spec.title.key]: '' } : {}), [spec.prop]: Array.from({ length: spec.min }, blank) }),
+
+    /**
+     * @param {HTMLElement} root
+     * @param {Record<string, any>} props
+     */
+    mount(root, props) {
+      const items = structuredClone(Array.isArray(props[spec.prop]) ? props[spec.prop] : []).map(
+        (/** @type {any} */ item) => (item && typeof item === 'object' ? item : {})
+      );
+      /** @type {Record<string, any>} */
+      const head = { [spec.title?.key ?? '']: props[spec.title?.key ?? ''] ?? '' };
+      const { list, add } = mountList(root, { ...spec, items, blank });
+
+      root.replaceChildren(...(spec.title ? [textField(head, spec.title, 'title')] : []), list, add);
+      /** @type {HTMLElement | null} */ (root.querySelector('[data-field="0-' + spec.fields[0].key + '"]'))?.focus();
+
+      return {
+        read() {
+          checkItems(items, spec.fields, spec.noun, spec.min);
+          const cleaned = items.map((item) => cleanItem(item, spec.fields));
+          spec.check?.(cleaned);
+
+          // Le titre garde sa place s'il existait ; nouveau, il passe en
+          // tête, comme dans les leçons écrites à la main.
+          if (!spec.title) return { ...props, [spec.prop]: cleaned };
+          const key = spec.title.key;
+          const title = String(head[key] ?? '').trim();
+          const { [key]: _previous, ...rest } = props;
+          const next = key in props ? { ...props } : { [key]: '', ...rest };
+          next[key] = title;
+          next[spec.prop] = cleaned;
+          if (!title) delete next[key];
+          return next;
+        },
+      };
+    },
+  };
+}
+
+const timeline = listEditor({
+  label: 'Frise',
+  prop: 'steps',
+  noun: 'étape',
+  feminine: true,
+  min: 1,
+  title: { key: 'title', label: 'Titre de la frise', placeholder: 'Facultatif' },
+  fields: [
+    {
+      key: 'heading',
+      label: 'Intertitre',
+      placeholder: 'Facultatif',
+      help: 'Ouvre un nouveau groupe juste avant cette étape - pour séparer des périodes, des parties.',
+    },
+    { key: 'title', label: 'Étape', required: true },
+    { key: 'description', label: 'Description', multiline: true, help: 'Se déplie au clic sur l’étape.' },
+  ],
+});
+
+const flashcards = listEditor({
+  label: 'Cartes de révision',
+  prop: 'cards',
+  noun: 'carte',
+  feminine: true,
+  min: 1,
+  inline: true,
+  fields: [
+    { key: 'front', label: 'Recto', required: true, help: 'Un terme, une question : ce qu’on voit d’abord.' },
+    { key: 'back', label: 'Verso', required: true, multiline: true, help: 'La réponse. Gardez-la courte : la carte ne défile pas.' },
+  ],
+});
+
+const dragMatch = listEditor({
+  label: 'Association',
+  prop: 'pairs',
+  noun: 'paire',
+  feminine: true,
+  min: 2,
+  inline: true,
+  fields: [
+    { key: 'left', label: 'Élément fixe', required: true, help: 'Reste en place, à gauche.' },
+    { key: 'right', label: 'Étiquette à déposer', required: true, help: 'Mélangée, l’apprenant la glisse en face.' },
+  ],
+  check(pairs) {
+    // Deux étiquettes identiques : l'apprenant ne pourrait pas savoir
+    // laquelle va où, et l'une des deux serait comptée fausse.
+    const seen = new Set();
+    for (const { right } of pairs) {
+      const key = right.toLowerCase();
+      if (seen.has(key)) throw new EditorError(`L’étiquette « ${right} » apparaît deux fois : l’apprenant ne pourrait pas les distinguer.`);
+      seen.add(key);
+    }
+  },
+});
+
 /** Les éditeurs disponibles, par nom de composant. */
-export const EDITORS = { Quiz: quiz, Figure: figure };
+export const EDITORS = { Quiz: quiz, Figure: figure, Timeline: timeline, Flashcards: flashcards, DragMatch: dragMatch };

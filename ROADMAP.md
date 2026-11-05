@@ -51,7 +51,7 @@ Une case cochée = fait, vérifié, commité sur `feat/admin`.
 - [x] Tests de l'aller-retour (lecture → écriture → relecture identique)
 - [x] Éditeur du **Quiz** : questions, options, bonne réponse, explication, ordre
 - [x] Insérer un nouveau quiz, avec son `import` ajouté s'il manque
-- [ ] Éditeurs de la **Timeline**, des **Flashcards**, du **DragMatch**
+- [x] Éditeurs de la **Timeline**, des **Flashcards**, du **DragMatch**
 - [ ] Éditeurs des embeds : **YouTubeEmbed**, **PodcastEmbed**, **CodepenEmbed**
 
 ## Phase 3 - La médiathèque
