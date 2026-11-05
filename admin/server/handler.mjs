@@ -153,8 +153,8 @@ async function serveUi(res, entry) {
     const config = readConfig();
     const primary = /^#[0-9a-f]{3,8}$/i.test(config.colors?.primary ?? '') ? config.colors.primary : '#4647AE';
     content = content
-      .replace('{{PRIMARY}}', primary)
-      .replace('{{TITLE}}', escapeHtml(config.site?.title || 'Socle'));
+      .replaceAll('{{PRIMARY}}', primary)
+      .replaceAll('{{TITLE}}', escapeHtml(config.site?.title || 'Socle'));
   }
   res.writeHead(200, { 'Content-Type': entry.type, 'Cache-Control': 'no-store' });
   res.end(content);

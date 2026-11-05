@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Admin · {{TITLE}}</title>
+    <!-- La couleur principale du cours, injectée par le serveur de l'admin. -->
+    <style>:root { --brand: {{PRIMARY}}; }</style>
+    <link rel="stylesheet" href="admin.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <header class="bar">
+      <a class="bar__brand" href="/" target="_blank" rel="noopener">{{TITLE}} <span>admin</span></a>
+      <p class="bar__lesson" id="lesson-heading"></p>
+      <p class="bar__status" id="status" role="status" aria-live="polite"></p>
+      <button type="button" class="button" id="toggle-preview" aria-pressed="true">Aperçu</button>
+      <button type="button" class="button button--primary" id="save" disabled>
+        Enregistrer <kbd id="save-shortcut">Ctrl S</kbd>
+      </button>
+    </header>
+
+    <div class="layout" id="layout">
+      <nav class="toc" id="toc" aria-label="Leçons du cours"></nav>
+
+      <main class="editor" id="editor">
+        <p class="empty" id="empty">Choisissez une leçon dans le sommaire.</p>
+
+        <form class="lesson" id="lesson-form" hidden>
+          <details class="panel" id="frontmatter-panel" open>
+            <summary class="panel__title">En-tête</summary>
+            <div class="fields">
+              <label class="field field--wide">
+                <span class="field__label">Titre <abbr title="obligatoire">*</abbr></span>
+                <input name="title" required />
+              </label>
+              <label class="field field--wide">
+                <span class="field__label">Module <abbr title="obligatoire">*</abbr></span>
+                <input name="module" list="modules" required />
+                <datalist id="modules"></datalist>
+              </label>
+              <label class="field">
+                <span class="field__label">Ordre dans le module <abbr title="obligatoire">*</abbr></span>
+                <input name="order" type="number" step="1" required />
+              </label>
+              <label class="field">
+                <span class="field__label">Ordre du module</span>
+                <input name="moduleOrder" type="number" step="1" />
+              </label>
+              <label class="field field--wide">
+                <span class="field__label">Description</span>
+                <textarea name="description" rows="2"></textarea>
+                <span class="field__help">Le résumé affiché sous le titre, sur la page d'accueil.</span>
+              </label>
+              <label class="field">
+                <span class="field__label">Couverture</span>
+                <input name="cover" placeholder="../../../assets/ma-cover.jpg" />
+                <span class="field__help">Chemin relatif au fichier de la leçon.</span>
+              </label>
+              <label class="field">
+                <span class="field__label">Texte alternatif de la couverture</span>
+                <input name="coverAlt" />
+                <span class="field__help">Vide si l'image est purement décorative.</span>
+              </label>
+              <label class="field field--wide">
+                <span class="field__label">Points-clés des slides</span>
+                <textarea name="slidePoints" rows="4"></textarea>
+                <span class="field__help">Un point par ligne. Ignorés si la leçon a son propre deck.</span>
+              </label>
+              <fieldset class="field field--wide">
+                <legend class="field__label">Sources</legend>
+                <ol class="sources" id="sources"></ol>
+                <button type="button" class="button button--small" id="add-source">+ Ajouter une source</button>
+              </fieldset>
+            </div>
+          </details>
+
+          <section class="panel panel--text" aria-labelledby="text-title">
+            <div class="toolbar">
+              <h2 class="panel__title" id="text-title">Texte</h2>
+              <div class="chips" id="components" aria-label="Composants de la leçon"></div>
+              <button type="button" class="button button--small" id="insert-quiz">+ Quiz</button>
+            </div>
+            <p class="notice notice--error" id="mdx-error" hidden></p>
+            <textarea class="body" id="body" name="body" spellcheck="true" aria-labelledby="text-title"></textarea>
+          </section>
+        </form>
+      </main>
+
+      <aside class="preview" id="preview" aria-label="Aperçu">
+        <div class="preview__bar">
+          <span>Aperçu <small>· version enregistrée</small></span>
+          <a id="preview-open" target="_blank" rel="noopener">Ouvrir ↗</a>
+        </div>
+        <iframe class="preview__frame" id="preview-frame" title="Aperçu de la leçon"></iframe>
+        <p class="preview__locked" id="preview-locked" hidden>
+          Cette leçon est verrouillée : sa page n'est pas générée, il n'y a donc rien à prévisualiser.
+          Retirez-la de « locked » dans socle.config.json pour la voir.
+        </p>
+      </aside>
+    </div>
+
+    <dialog class="dialog" id="component-dialog" aria-labelledby="dialog-title">
+      <form method="dialog" class="dialog__form" id="component-form" novalidate>
+        <header class="dialog__header">
+          <h2 id="dialog-title"></h2>
+        </header>
+        <div class="dialog__body" id="dialog-body"></div>
+        <footer class="dialog__footer">
+          <p class="notice notice--error" id="dialog-error" hidden></p>
+          <button type="button" class="button" id="dialog-cancel">Annuler</button>
+          <button type="submit" class="button button--primary">Appliquer</button>
+        </footer>
+      </form>
+    </dialog>
+  </body>
+</html>

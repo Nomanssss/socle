@@ -36,24 +36,25 @@ Une case cochée = fait, vérifié, commité sur `feat/admin`.
 - [x] API : lister les leçons, rangées par module, avec leur verrou
 - [x] API : lire et enregistrer une leçon (en-tête + texte)
 - [x] En-tête réécrit dans le style des fichiers existants, et seulement s'il a changé
-- [ ] Interface : le sommaire des leçons
-- [ ] Interface : l'en-tête en formulaire (titre, module, ordres, description, points-clés, sources, couverture)
-- [ ] Interface : l'éditeur de texte, `Ctrl+S`, alerte avant de quitter sans enregistrer
-- [ ] Interface : l'aperçu de la vraie page, rechargé à l'enregistrement
+- [x] Interface : le sommaire des leçons
+- [x] Interface : l'en-tête en formulaire (titre, module, ordres, description, points-clés, sources, couverture)
+- [x] Interface : l'éditeur de texte, `Ctrl+S`, alerte avant de quitter sans enregistrer
+- [x] Interface : l'aperçu de la vraie page, rechargé à l'enregistrement
 
 ## Phase 2 - Les composants
 
 - [x] Analyse du MDX : chaque composant repéré, avec sa position exacte et ses propriétés lues comme des valeurs
-- [ ] Réécriture ciblée : seul le texte du composant modifié est remplacé
+- [x] Réécriture ciblée : seul le texte du composant modifié est remplacé
 - [x] Tests de l'aller-retour (lecture → écriture → relecture identique)
-- [ ] Éditeur du **Quiz** : questions, options, bonne réponse, explication, ordre
-- [ ] Insérer un nouveau quiz, avec son `import` ajouté s'il manque
+- [x] Éditeur du **Quiz** : questions, options, bonne réponse, explication, ordre
+- [x] Insérer un nouveau quiz, avec son `import` ajouté s'il manque
 - [ ] Éditeurs de la **Timeline**, des **Flashcards**, du **DragMatch**
 - [ ] Éditeurs des médias : **Figure**, **YouTubeEmbed**, **PodcastEmbed**, **CodepenEmbed**
 
 ## Phase 3 - Organiser le cours
 
 - [ ] Créer une leçon (dossier de module, nom de fichier, en-tête minimal)
+  - ⚠ Constaté : une leçon créée pendant `npm run dev` n'a pas de page tant que le serveur n'a pas redémarré (`getStaticPaths` n'est pas relu). L'admin devra le redémarrer, ou le dire.
 - [ ] Renommer, déplacer, supprimer une leçon
 - [ ] Réordonner leçons et modules par glisser-déposer (réécrit `order` et `moduleOrder`)
 - [ ] Verrouiller / déverrouiller une leçon depuis le sommaire
