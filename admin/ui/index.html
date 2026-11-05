@@ -13,6 +13,10 @@
   <body>
     <header class="bar">
       <a class="bar__brand" href="/" target="_blank" rel="noopener">{{TITLE}} <span>admin</span></a>
+      <nav class="bar__nav" aria-label="Sections de l'admin">
+        <a class="bar__tab" id="tab-lessons" href="#">Leçons</a>
+        <a class="bar__tab" id="tab-media" href="#medias">Médiathèque</a>
+      </nav>
       <p class="bar__lesson" id="lesson-heading"></p>
       <p class="bar__status" id="status" role="status" aria-live="polite"></p>
       <a class="button" id="view-page" target="_blank" rel="noopener" hidden>Voir la page ↗</a>
@@ -26,6 +30,15 @@
 
       <main class="editor" id="editor">
         <p class="empty" id="empty">Choisissez une leçon dans le sommaire.</p>
+
+        <section class="media-view" id="media-view" aria-labelledby="media-title" hidden>
+          <h1 class="media-view__title" id="media-title">Médiathèque</h1>
+          <p class="media-view__intro">
+            Les images du cours. Ajoutez-en en les glissant ci-dessous, puis insérez-les dans une leçon avec
+            le bouton « + Image ». Une image ne peut être supprimée que si plus rien ne l'utilise.
+          </p>
+          <div id="media-library"></div>
+        </section>
 
         <form class="lesson" id="lesson-form" hidden>
           <details class="panel" id="frontmatter-panel" open>
@@ -53,11 +66,18 @@
                 <textarea name="description" rows="2"></textarea>
                 <span class="field__help">Le résumé affiché sous le titre, sur la page d'accueil.</span>
               </label>
-              <label class="field">
-                <span class="field__label">Couverture</span>
-                <input name="cover" placeholder="../../../assets/ma-cover.jpg" />
-                <span class="field__help">Chemin relatif au fichier de la leçon.</span>
-              </label>
+              <div class="field">
+                <span class="field__label" id="cover-label">Couverture</span>
+                <input name="cover" type="hidden" />
+                <div class="cover" aria-labelledby="cover-label">
+                  <div class="cover__thumb" id="cover-thumb"></div>
+                  <div class="cover__actions">
+                    <button type="button" class="button button--small" id="cover-pick">Choisir une image</button>
+                    <button type="button" class="link link--danger" id="cover-remove" hidden>Retirer</button>
+                  </div>
+                </div>
+                <span class="field__help">Le bandeau en haut de la page, et de la première slide.</span>
+              </div>
               <label class="field">
                 <span class="field__label">Texte alternatif de la couverture</span>
                 <input name="coverAlt" />
@@ -80,6 +100,7 @@
             <div class="toolbar">
               <h2 class="panel__title" id="text-title">Texte</h2>
               <div class="chips" id="components" aria-label="Composants de la leçon"></div>
+              <button type="button" class="button button--small" id="insert-figure">+ Image</button>
               <button type="button" class="button button--small" id="insert-quiz">+ Quiz</button>
             </div>
             <p class="notice notice--error" id="mdx-error" hidden></p>

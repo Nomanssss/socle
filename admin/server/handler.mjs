@@ -14,10 +14,11 @@
 //      quelconque ouverte dans le même navigateur : un site malveillant
 //      peut très bien envoyer une requête vers localhost. On exige donc
 //      que l'origine de la requête soit le serveur lui-même, et un corps
-//      JSON - qu'un simple formulaire HTML ne sait pas produire.
+//      JSON (ou une image, pour la médiathèque) - ce qu'un simple
+//      formulaire HTML ne sait pas produire.
 //   3. Aucun chemin reçu n'est utilisé tel quel : lessons.mjs ramène
-//      chaque identifiant à un fichier de src/content/lecons/, ou le
-//      refuse.
+//      chaque identifiant à un fichier de src/content/lecons/, media.mjs
+//      à une image de src/assets/ - ou le refuse.
 // =============================================================
 
 import { readFile } from 'node:fs/promises';
@@ -25,6 +26,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listLessons, readLesson, writeLesson, AdminError } from './lessons.mjs';
 import { findComponents, printComponent } from './mdx.mjs';
+import { listMedia, readMedia, uploadMedia, deleteMedia, MAX_UPLOAD } from './media.mjs';
 import { readConfig } from '../../scripts/config.mjs';
 
 const UI_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'ui');
@@ -35,6 +37,8 @@ const UI_FILES = {
   '/': { file: 'index.html', type: 'text/html; charset=utf-8' },
   '/app.js': { file: 'app.js', type: 'text/javascript; charset=utf-8' },
   '/editors.js': { file: 'editors.js', type: 'text/javascript; charset=utf-8' },
+  '/media.js': { file: 'media.js', type: 'text/javascript; charset=utf-8' },
+  '/dom.js': { file: 'dom.js', type: 'text/javascript; charset=utf-8' },
   '/admin.css': { file: 'admin.css', type: 'text/css; charset=utf-8' },
 };
 
@@ -70,7 +74,9 @@ export function createHandler(base) {
     try {
       if (path.startsWith('/api/')) {
         if (req.method !== 'GET') assertSameOrigin(req);
-        const result = await api(req, path.slice('/api'.length), url.searchParams);
+        const route = path.slice('/api'.length);
+        if (req.method === 'GET' && route === '/media/file') return await serveMedia(res, url.searchParams.get('path'));
+        const result = await api(req, route, url.searchParams);
         return send(res, 200, result);
       }
       if (req.method === 'GET' && UI_FILES[path]) return await serveUi(res, UI_FILES[path]);
@@ -107,6 +113,12 @@ async function api(req, route, params) {
       const { name, props, indent } = await readJson(req);
       return { source: printComponent(name, props, indent) };
     }
+    case 'GET /media':
+      return { media: await listMedia() };
+    case 'POST /media':
+      return { media: await uploadMedia(params.get('name'), await readBody(req, MAX_UPLOAD)) };
+    case 'DELETE /media':
+      return await deleteMedia(params.get('path'));
     default:
       throw new AdminError(404, `Route inconnue : ${key}`);
   }
@@ -119,25 +131,58 @@ function assertSameOrigin(req) {
   if (!origin || !host || new URL(origin).host !== host) {
     throw new AdminError(403, 'Requête refusée : elle ne vient pas de l’admin.');
   }
-  if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) {
+  // Une suppression n'a pas de corps : son verbe suffit à imposer au
+  // navigateur une vérification préalable qu'une page étrangère ne passe pas.
+  if (req.method === 'DELETE') return;
+  const type = String(req.headers['content-type'] ?? '');
+  if (!type.startsWith('application/json') && !type.startsWith('image/')) {
     throw new AdminError(415, 'Requête refusée : un corps JSON est attendu.');
   }
 }
 
-/** @param {import('node:http').IncomingMessage} req */
-async function readJson(req) {
+/**
+ * @param {import('node:http').IncomingMessage} req
+ * @param {number} limit
+ */
+async function readBody(req, limit) {
   let size = 0;
   const chunks = [];
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > MAX_BODY) throw new AdminError(413, 'Requête trop volumineuse.');
+    if (size > limit) throw new AdminError(413, `Fichier trop volumineux (${Math.round(limit / 1024 / 1024)} Mo au plus).`);
     chunks.push(chunk);
   }
+  return Buffer.concat(chunks);
+}
+
+/** @param {import('node:http').IncomingMessage} req */
+async function readJson(req) {
+  const body = await readBody(req, MAX_BODY);
   try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+    return JSON.parse(body.toString('utf8') || '{}');
   } catch {
     throw new AdminError(400, 'Corps de requête illisible (JSON attendu).');
   }
+}
+
+/**
+ * Une image de la médiathèque, pour les vignettes. Un SVG peut contenir
+ * du script : servi depuis l'origine de l'admin, il pourrait appeler
+ * l'API. La politique de sécurité l'en empêche, même ouvert seul dans
+ * un onglet.
+ *
+ * @param {import('node:http').ServerResponse} res
+ * @param {string | null} path
+ */
+async function serveMedia(res, path) {
+  const { content, type } = await readMedia(path);
+  res.writeHead(200, {
+    'Content-Type': type,
+    'Content-Security-Policy': "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox",
+    'X-Content-Type-Options': 'nosniff',
+    'Cache-Control': 'no-cache',
+  });
+  res.end(content);
 }
 
 /**

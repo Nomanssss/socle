@@ -57,13 +57,13 @@ Une case cochée = fait, vérifié, commité sur `feat/admin`.
 *Pour qu'une image s'ajoute sans savoir ce qu'est un `import`. Les images
 vivent dans `src/assets/` : c'est là qu'Astro sait les optimiser.*
 
-- [ ] API : lister les images, avec les leçons et les slides qui les utilisent
-- [ ] Envoyer une image par glisser-déposer : nom de fichier nettoyé, jamais d'écrasement
-- [ ] Supprimer une image, seulement si rien ne l'utilise
-- [ ] Une page « Médiathèque » : vignettes, recherche, utilisations
-- [ ] Insérer une image dans une leçon : choix dans la médiathèque, texte alternatif guidé, légende - les `import` s'écrivent tout seuls
-- [ ] Modifier une **Figure** existante (image, texte alternatif, légende), l'`import` devenu inutile est retiré
-- [ ] Choisir la couverture d'une leçon dans la médiathèque, plutôt que d'écrire un chemin
+- [x] API : lister les images, avec les leçons et les slides qui les utilisent
+- [x] Envoyer une image par glisser-déposer : nom de fichier nettoyé, jamais d'écrasement
+- [x] Supprimer une image, seulement si rien ne l'utilise
+- [x] Une page « Médiathèque » : vignettes, recherche, utilisations
+- [x] Insérer une image dans une leçon : choix dans la médiathèque, texte alternatif guidé, légende - les `import` s'écrivent tout seuls
+- [x] Modifier une **Figure** existante (image, texte alternatif, légende), l'`import` devenu inutile est retiré
+- [x] Choisir la couverture d'une leçon dans la médiathèque, plutôt que d'écrire un chemin
 
 ## Phase 4 - Les slides
 

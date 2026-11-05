@@ -11,30 +11,10 @@
 // disparaître au premier passage dans l'admin.
 // =============================================================
 
-/**
- * Fabrique un élément. Les textes passent par des nœuds texte, jamais
- * par innerHTML : le contenu d'une leçon n'est pas du HTML de confiance.
- *
- * @param {string} tag
- * @param {Record<string, any>} [attrs]
- * @param {...(Node | string | null | false | undefined)} children
- */
-export function h(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [key, value] of Object.entries(attrs)) {
-    if (value === false || value === null || value === undefined) continue;
-    if (key.startsWith('on')) el.addEventListener(key.slice(2), value);
-    // La valeur d'un champ est une propriété, pas un attribut : posé en
-    // attribut, le texte d'un <textarea> resterait vide.
-    else if (key === 'value' || key === 'checked') el[key] = value;
-    else el.setAttribute(key, value === true ? '' : value);
-  }
-  for (const child of children) {
-    if (child === null || child === false || child === undefined) continue;
-    el.append(child);
-  }
-  return el;
-}
+import { h } from './dom.js';
+import { mountLibrary, thumbnail } from './media.js';
+
+export { h };
 
 export class EditorError extends Error {}
 
@@ -230,5 +210,145 @@ const quiz = {
   },
 };
 
+// -------------------------------------------------------------
+// Figure
+//
+// L'image n'arrive pas ici comme un import : app.js l'a déjà traduite
+// en { __asset: "couverture.jpg" }, un fichier de la médiathèque. Les
+// imports à écrire ou à retirer, c'est son affaire, pas celle de
+// l'éditeur.
+// -------------------------------------------------------------
+
+const figure = {
+  label: 'Image',
+  create: () => ({ src: null, alt: '', caption: '' }),
+
+  /**
+   * @param {HTMLElement} root
+   * @param {{ src?: any, alt?: string, caption?: string, [key: string]: unknown }} props
+   */
+  mount(root, props) {
+    const original = props.src?.__asset ?? null;
+    let asset = original;
+    // Une figure existante dont l'alt est vide a été déclarée décorative ;
+    // une nouvelle figure, elle, doit d'abord être décrite.
+    let decorative = 'alt' in props && props.alt === '' && Boolean(original);
+
+    const preview = h('div', { class: 'figure-editor__preview' });
+    const library = h('div', { class: 'figure-editor__library' });
+    const alt = h('textarea', { rows: 2, value: props.alt ?? '', disabled: decorative });
+    const caption = h('input', { value: props.caption ?? '' });
+
+    function showPreview() {
+      if (!asset) {
+        preview.replaceChildren();
+        preview.hidden = true;
+        return;
+      }
+      preview.hidden = false;
+      preview.replaceChildren(
+        thumbnail({ path: asset, name: asset }),
+        h(
+          'div',
+          {},
+          h('strong', {}, asset),
+          h('button', { type: 'button', class: 'button button--small', onclick: () => toggleLibrary(true) }, 'Changer d’image')
+        )
+      );
+    }
+
+    /** @param {boolean} open */
+    function toggleLibrary(open) {
+      library.hidden = !open;
+      if (open && !library.childElementCount) {
+        mountLibrary(library, {
+          pick: true,
+          selected: asset,
+          onSelect: (media) => {
+            asset = media.path;
+            showPreview();
+            library.hidden = true;
+          },
+        });
+      }
+    }
+
+    root.replaceChildren(
+      h('div', { class: 'field field--wide' }, h('span', { class: 'field__label' }, 'Image'), preview, library),
+      h(
+        'label',
+        { class: 'field field--wide' },
+        h('span', { class: 'field__label' }, 'Description de l’image'),
+        alt,
+        h('span', { class: 'field__help' }, 'Ce que dirait quelqu’un qui décrit l’image à une personne qui ne la voit pas. Un lecteur d’écran la lira à voix haute.')
+      ),
+      h(
+        'label',
+        { class: 'check' },
+        h('input', {
+          type: 'checkbox',
+          checked: decorative,
+          onchange: (/** @type {any} */ e) => {
+            decorative = e.target.checked;
+            alt.disabled = decorative;
+          },
+        }),
+        h('span', {}, 'Image purement décorative : elle n’apporte rien que le texte ne dise déjà.')
+      ),
+      h(
+        'label',
+        { class: 'field field--wide' },
+        h('span', { class: 'field__label' }, 'Légende'),
+        caption,
+        h('span', { class: 'field__help' }, 'Facultative. Affichée sous l’image, pour tout le monde.')
+      )
+    );
+    showPreview();
+    toggleLibrary(!asset);
+
+    return {
+      read() {
+        if (!asset) throw new EditorError('Choisissez une image, ou glissez-en une dans la médiathèque.');
+        const description = alt.value.trim();
+        if (!decorative && !description) {
+          throw new EditorError('Décrivez l’image, ou cochez « Image purement décorative ».');
+        }
+        const next = { ...props, src: { __asset: asset }, alt: decorative ? '' : description };
+        if (caption.value.trim()) next.caption = caption.value.trim();
+        else delete next.caption;
+        // Des dimensions écrites pour l'ancienne image déformeraient la
+        // nouvelle : sans elles, Astro lit celles du fichier.
+        if (asset !== original) {
+          delete next.width;
+          delete next.height;
+        }
+        return next;
+      },
+    };
+  },
+};
+
+/**
+ * Choisir une image, sans composant autour : la couverture d'une leçon.
+ * `read()` rend { path }.
+ */
+export const imagePicker = {
+  label: 'Choisir une image',
+  /**
+   * @param {HTMLElement} root
+   * @param {{ path?: string | null }} props
+   */
+  mount(root, { path = null }) {
+    let selected = path;
+    mountLibrary(root, { pick: true, selected, onSelect: (media) => (selected = media.path) });
+    return {
+      read() {
+        if (!selected) throw new EditorError('Cliquez sur une image pour la choisir.');
+        return { path: selected };
+      },
+    };
+  },
+};
+
 /** Les éditeurs disponibles, par nom de composant. */
-export const EDITORS = { Quiz: quiz };
+export const EDITORS = { Quiz: quiz, Figure: figure };

@@ -50,12 +50,21 @@ test('une valeur réécrite se relit à l’identique', () => {
 });
 
 test('un composant écrit avec du code reste du texte', () => {
-  const { components } = findComponents('<Figure src={image} alt="x" />\n\n<Quiz questions={liste.map((q) => q)} />\n');
+  const { components } = findComponents('<Quiz questions={liste.map((q) => q)} />\n\n<Figure src={[image]} alt="x" />\n');
   assert.deepEqual(
     components.map((c) => c.editable),
     [false, false]
   );
-  assert.match(components[0].reason, /Identifier/);
+  assert.match(components[0].reason, /CallExpression/);
+});
+
+test('un import passé en propriété est lu comme une référence', () => {
+  const source = '<Figure\n  src={illustration}\n  alt=""\n/>';
+  const [figure] = findComponents(source).components;
+  assert.equal(figure.editable, true);
+  assert.deepEqual(figure.props.src, { __ref: 'illustration' });
+  assert.equal(printComponent('Figure', figure.props, 0), source);
+  assert.throws(() => printComponent('Figure', { src: { __ref: 'a; alert(1)' } }), /invalide/);
 });
 
 test('un MDX invalide est signalé, pas levé', () => {
@@ -90,4 +99,33 @@ test('un identifiant ne sort jamais du dossier des leçons', () => {
     assert.ok(lessonPath(id).file.startsWith(`${LESSONS_DIR}/`), id);
   }
   assert.equal(lessonPath('module-1/lecon-1').id, 'module-1/lecon-1');
+});
+
+test('un import d’exemple, dans un bloc de code, n’est pas un import', () => {
+  const source = [
+    '',
+    "import illustration from '@assets/couverture.jpg';",
+    '',
+    '```mdx',
+    "import autre from '@assets/x.png';",
+    '<Figure src={exemple} />',
+    '```',
+    '',
+    '<Figure src={illustration} alt="" />',
+    '',
+  ].join('\n');
+  const { imports, importsEnd, references } = findComponents(source);
+  assert.deepEqual(imports.map((i) => i.name), ['illustration']);
+  assert.equal(source.slice(0, importsEnd).endsWith("couverture.jpg';"), true);
+  assert.deepEqual(references, ['illustration']);
+});
+
+test('un nom d’image envoyé devient un nom de fichier sûr', async () => {
+  const { cleanName, mediaPath } = await import('../server/media.mjs');
+  assert.equal(cleanName('Schéma n°2 (v3)'), 'schema-n-2-v3');
+  assert.equal(cleanName('   '), 'image');
+  for (const path of ['../package.json', '../../etc/passwd.png', 'x.exe', '']) {
+    assert.throws(() => mediaPath(path), /invalide/, path);
+  }
+  assert.equal(mediaPath('couverture.jpg').rel, 'couverture.jpg');
 });

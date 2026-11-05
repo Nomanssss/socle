@@ -12,9 +12,13 @@
 // dans le fichier et l'arbre de ses expressions (estree).
 //
 // Une expression n'est éditable que si elle est une valeur littérale :
-// textes, nombres, booléens, tableaux et objets de ceux-ci. Dès qu'il y
-// a une variable, un appel ou un calcul, le composant reste du texte -
-// l'admin le signale, et ne prétend pas savoir le réécrire.
+// textes, nombres, booléens, tableaux et objets de ceux-ci. Seule
+// exception, un nom seul en valeur de propriété - « src={illustration} »
+// - qui désigne un import : il est lu comme une RÉFÉRENCE,
+// { __ref: "illustration" }, et réécrit tel quel. C'est ce qui rend la
+// Figure éditable. Dès qu'il y a un appel ou un calcul, le composant
+// reste du texte - l'admin le signale, et ne prétend pas savoir le
+// réécrire.
 //
 // La réécriture est ciblée : printComponent() produit le texte d'UN
 // composant, que l'interface substitue à l'emplacement d'origine. Le
@@ -56,15 +60,29 @@ export function findComponents(body) {
     return { components: [], error: `Le MDX ne se lit pas${place} : ${error.reason ?? error.message}` };
   }
 
+  // Les imports, avec leur position : c'est le parseur qui sait qu'une
+  // ligne « import … » est un vrai import, et non l'exemple d'un bloc de
+  // code. `importsEnd` marque la fin du dernier, là où en ajouter un.
   const imports = [];
+  let importsEnd = null;
+  // Les noms que le texte utilise vraiment, dans une propriété ou une
+  // expression : un import absent de cette liste ne sert plus à rien.
+  const references = new Set();
   const components = [];
 
   visit(tree, (node) => {
     if (node.type === 'mdxjsEsm') {
-      for (const match of node.value.matchAll(/^import\s+(\w+)\s+from\s+['"]([^'"]+)['"]/gm)) {
-        imports.push({ name: match[1], from: match[2] });
+      const offset = node.position.start.offset;
+      for (const match of node.value.matchAll(/^import\s+(\w+)\s+from\s+['"]([^'"]+)['"];?/gm)) {
+        const start = offset + /** @type {number} */ (match.index);
+        imports.push({ name: match[1], from: match[2], start, end: start + match[0].length });
       }
+      importsEnd = node.position.end.offset;
       return;
+    }
+    if (node.type === 'mdxFlowExpression' || node.type === 'mdxTextExpression') collectIdentifiers(node.data?.estree, references);
+    if (node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement') {
+      for (const attribute of node.attributes ?? []) collectIdentifiers(attribute.data?.estree ?? attribute.value?.data?.estree, references);
     }
     if (node.type !== 'mdxJsxFlowElement' || !node.name || !/^[A-Z]/.test(node.name)) return;
 
@@ -94,7 +112,21 @@ export function findComponents(body) {
     components.push(component);
   });
 
-  return { components, imports, error: null };
+  return { components, imports, importsEnd, references: [...references], error: null };
+}
+
+/**
+ * @param {any} node Un arbre estree, ou rien.
+ * @param {Set<string>} names
+ */
+function collectIdentifiers(node, names) {
+  if (!node || typeof node !== 'object') return;
+  if (node.type === 'Identifier') names.add(node.name);
+  for (const [key, value] of Object.entries(node)) {
+    if (key === 'loc' || key === 'range' || key === 'position') continue;
+    if (Array.isArray(value)) value.forEach((child) => collectIdentifiers(child, names));
+    else if (value && typeof value === 'object' && value.type) collectIdentifiers(value, names);
+  }
 }
 
 /** @param {any[]} attributes */
@@ -111,7 +143,8 @@ function readProps(attributes) {
       if (program?.comments?.length) throw new NotLiteral(`la propriété « ${name} » contient des commentaires`);
       const statement = program?.body?.[0];
       if (statement?.type !== 'ExpressionStatement') throw new NotLiteral(`la propriété « ${name} » est vide`);
-      props[name] = literal(statement.expression, name);
+      const expression = statement.expression;
+      props[name] = expression.type === 'Identifier' ? { __ref: expression.name } : literal(expression, name);
     }
   }
   return props;
@@ -203,6 +236,7 @@ export function printComponent(name, props, indent = 0) {
  */
 function attribute([key, value], indent, style) {
   if (value === true) return key;
+  if (isRef(value)) return `${key}={${value.__ref}}`;
   // Une chaîne JSX entre guillemets n'a pas d'échappement : un guillemet
   // ou un saut de ligne l'obligerait à passer en expression.
   if (typeof value === 'string' && !/["\n{}<>]/.test(value)) return `${key}="${value}"`;
@@ -239,6 +273,18 @@ function print(value, indent, style) {
   }
 
   throw new AdminError(400, `Valeur impossible à écrire : ${typeof value}.`);
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is { __ref: string }}
+ */
+function isRef(value) {
+  if (!value || typeof value !== 'object' || !('__ref' in value)) return false;
+  if (typeof value.__ref !== 'string' || !/^[A-Za-z_$][\w$]*$/.test(value.__ref)) {
+    throw new AdminError(400, 'Référence d’import invalide.');
+  }
+  return true;
 }
 
 /** @param {string} name */

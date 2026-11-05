@@ -6,11 +6,13 @@
 // c'est le serveur de dev qui la rend, avec les vrais composants et la
 // vraie charte, et il la recharge seul à chaque enregistrement.
 //
-// La leçon ouverte est désignée par l'ancre de l'adresse
-// (/admin/#module-1/lecon-1) : un rechargement la rouvre.
+// Ce qui est affiché est désigné par l'ancre de l'adresse : une leçon
+// (/admin/#module-1/lecon-1) ou la médiathèque (/admin/#medias). Un
+// rechargement rouvre la même chose.
 // =============================================================
 
-import { h, EDITORS, EditorError } from './editors.js';
+import { h, EDITORS, EditorError, imagePicker } from './editors.js';
+import { mountLibrary, thumbnail } from './media.js';
 
 const API = './api';
 
@@ -29,6 +31,11 @@ const ui = {
   chips: $('#components'),
   mdxError: $('#mdx-error'),
   viewPage: $('#view-page'),
+  mediaView: $('#media-view'),
+  tabLessons: $('#tab-lessons'),
+  tabMedia: $('#tab-media'),
+  coverThumb: $('#cover-thumb'),
+  coverRemove: $('#cover-remove'),
   dialog: $('#component-dialog'),
   dialogTitle: $('#dialog-title'),
   dialogBody: $('#dialog-body'),
@@ -40,7 +47,7 @@ const ui = {
  *   lessons: any[],
  *   lesson: null | { id: string, data: Record<string, any>, body: string, hash: string, locked: boolean },
  *   saved: string,
- *   parsed: { source: string, components: any[], imports: { name: string, from: string }[] },
+ *   parsed: { source: string, components: any[], imports: { name: string, from: string, start: number, end: number }[], importsEnd: number | null, references: string[] },
  *   saving: boolean,
  * }}
  */
@@ -48,7 +55,7 @@ const state = {
   lessons: [],
   lesson: null,
   saved: '',
-  parsed: { source: '', components: [], imports: [] },
+  parsed: { source: '', components: [], imports: [], importsEnd: null, references: [] },
   saving: false,
 };
 
@@ -133,7 +140,42 @@ ui.toc.addEventListener('click', (/** @type {MouseEvent} */ event) => {
   }
 });
 
-window.addEventListener('hashchange', () => openLesson(location.hash.slice(1)));
+window.addEventListener('hashchange', route);
+
+// La médiathèque a sa propre ancre ; toute autre ancre est une leçon.
+// Quitter une leçon pour la médiathèque ne la ferme pas : ses
+// modifications attendent, intactes, qu'on y revienne.
+const MEDIA = 'medias';
+
+function route() {
+  const target = location.hash.slice(1);
+  if (target === MEDIA) return showMedia();
+  if (target) return openLesson(target);
+  if (state.lesson) location.hash = state.lesson.id;
+  else if (state.lessons[0]) location.hash = state.lessons[0].id;
+}
+
+/** @param {'lesson' | 'media'} view */
+function showView(view) {
+  const lesson = view === 'lesson';
+  ui.mediaView.hidden = lesson;
+  ui.form.hidden = !lesson || !state.lesson;
+  ui.empty.hidden = !lesson || Boolean(state.lesson);
+  ui.heading.hidden = !lesson;
+  ui.viewPage.hidden = !lesson || !state.lesson;
+  ui.tabLessons.setAttribute('aria-current', lesson ? 'page' : 'false');
+  ui.tabMedia.setAttribute('aria-current', lesson ? 'false' : 'page');
+  ui.tabLessons.href = state.lesson ? `#${state.lesson.id}` : '#';
+}
+
+let library = /** @type {null | { refresh: () => void }} */ (null);
+
+function showMedia() {
+  showView('media');
+  document.title = 'Médiathèque · Admin';
+  if (library) library.refresh();
+  else library = mountLibrary($('#media-library'));
+}
 
 // -------------------------------------------------------------
 // Ouvrir une leçon
@@ -142,15 +184,17 @@ window.addEventListener('hashchange', () => openLesson(location.hash.slice(1)));
 /** @param {string} id */
 async function openLesson(id) {
   if (!id) return;
-  if (id === state.lesson?.id) return;
+  if (id === state.lesson?.id) {
+    showView('lesson');
+    return;
+  }
   try {
     const lesson = await request(`/lesson?id=${encodeURIComponent(id)}`);
     state.lesson = lesson;
     fillForm(lesson.data);
     ui.body.value = lesson.body;
     state.saved = snapshot();
-    ui.empty.hidden = true;
-    ui.form.hidden = false;
+    showView('lesson');
     ui.heading.textContent = lesson.data.title ?? id;
     document.title = `${lesson.data.title ?? id} · Admin`;
     renderToc();
@@ -174,6 +218,7 @@ function fillForm(data) {
     elements[name].value = data[name] ?? '';
   }
   elements.slidePoints.value = (data.slidePoints ?? []).join('\n');
+  renderCover();
   ui.sources.replaceChildren(...(data.sources ?? []).map(sourceRow));
 }
 
@@ -197,6 +242,47 @@ function sourceRow(source = {}) {
   );
   return row;
 }
+
+// -------------------------------------------------------------
+// La couverture, choisie dans la médiathèque
+//
+// Le frontmatter attend un chemin RELATIF au fichier de la leçon
+// (« ../../../assets/couverture.jpg ») : on le calcule, personne n'a
+// à compter les « ../ ».
+// -------------------------------------------------------------
+
+/** Le fichier de la médiathèque désigné par un chemin de couverture. */
+function coverAsset(/** @type {string} */ cover) {
+  const at = cover.lastIndexOf('assets/');
+  return at === -1 ? null : cover.slice(at + 'assets/'.length);
+}
+
+function renderCover() {
+  const cover = ui.form.elements.cover.value;
+  const asset = cover && coverAsset(cover);
+  ui.coverRemove.hidden = !cover;
+  $('#cover-pick').textContent = cover ? 'Changer' : 'Choisir une image';
+  ui.coverThumb.replaceChildren(
+    asset ? thumbnail({ path: asset, name: asset }) : cover ? h('code', {}, cover) : h('span', { class: 'cover__none' }, 'Aucune')
+  );
+}
+
+$('#cover-pick').addEventListener('click', async () => {
+  if (!state.lesson) return;
+  const current = coverAsset(ui.form.elements.cover.value);
+  const picked = await openDialog(imagePicker, { path: current });
+  if (!picked) return;
+  const depth = state.lesson.id.split('/').length + 1;
+  ui.form.elements.cover.value = `${'../'.repeat(depth)}assets/${picked.path}`;
+  renderCover();
+  updateDirty();
+});
+
+ui.coverRemove.addEventListener('click', () => {
+  ui.form.elements.cover.value = '';
+  renderCover();
+  updateDirty();
+});
 
 $('#add-source').addEventListener('click', () => {
   const row = sourceRow();
@@ -383,7 +469,13 @@ async function parseComponents() {
     const result = await request('/components', { method: 'POST', json: { body: source } });
     // Le texte a pu changer pendant l'analyse : seule la dernière compte.
     if (ui.body.value !== source) return parseComponents();
-    state.parsed = { source, components: result.components, imports: result.imports ?? [] };
+    state.parsed = {
+      source,
+      components: result.components,
+      imports: result.imports ?? [],
+      importsEnd: result.importsEnd ?? null,
+      references: result.references ?? [],
+    };
     ui.mdxError.hidden = !result.error;
     ui.mdxError.textContent = result.error ?? '';
     renderChips();
@@ -441,23 +533,28 @@ async function editComponent(index) {
     return;
   }
 
-  const props = await openDialog(editor, component.props);
-  if (!props) return;
+  const edited = await openDialog(editor, toEditor(component.props));
+  if (!edited) return;
+  const { props, imports } = fromEditor(edited);
   if (JSON.stringify(props) === JSON.stringify(component.props)) return;
   const { source } = await request('/component/print', {
     method: 'POST',
     json: { name: component.name, props, indent: component.indent },
   });
   replaceText(component.start, component.end, source);
+  for (const { name, from } of imports) await ensureImport(name, from);
+  await dropUnusedImports(refsOf(component.props));
 }
 
 $('#insert-quiz').addEventListener('click', () => insertComponent('Quiz'));
+$('#insert-figure').addEventListener('click', () => insertComponent('Figure'));
 
 /** @param {string} name */
 async function insertComponent(name) {
   const editor = EDITORS[name];
-  const props = await openDialog(editor, editor.create());
-  if (!props) return;
+  const edited = await openDialog(editor, editor.create());
+  if (!edited) return;
+  const { props, imports } = fromEditor(edited);
   const { source } = await request('/component/print', { method: 'POST', json: { name, props, indent: 0 } });
 
   // Le composant prend sa place dans son propre paragraphe : au bout de
@@ -471,26 +568,119 @@ async function insertComponent(name) {
   const tail = after.startsWith('\n\n') ? '' : after.startsWith('\n') ? '\n' : '\n\n';
   replaceText(at, at, `${lead}${source}${tail}`);
 
-  await ensureImport(name);
+  await ensureImport(name, `@components/${name}.astro`);
+  for (const imported of imports) await ensureImport(imported.name, imported.from);
+}
+
+// -------------------------------------------------------------
+// Des imports aux images, et retour
+//
+// Dans le fichier, une figure désigne son image par un import :
+//
+//   import illustration from '@assets/couverture.jpg';
+//   <Figure src={illustration} … />
+//
+// Un éditeur, lui, ne manipule que des fichiers de la médiathèque :
+// { __asset: "couverture.jpg" }. toEditor() traduit dans un sens,
+// fromEditor() dans l'autre - en réutilisant l'import qui existe déjà
+// pour ce fichier, ou en en préparant un nouveau.
+// -------------------------------------------------------------
+
+const ASSET_IMPORT = /(?:^@assets\/|\/assets\/)(.+)$/;
+
+/** @param {Record<string, any>} props */
+function toEditor(props) {
+  return Object.fromEntries(
+    Object.entries(props).map(([key, value]) => {
+      if (!value?.__ref) return [key, value];
+      const from = state.parsed.imports.find((i) => i.name === value.__ref)?.from ?? '';
+      const asset = from.match(ASSET_IMPORT)?.[1];
+      return [key, asset ? { __asset: asset } : value];
+    })
+  );
 }
 
 /**
- * Ajoute « import Quiz from '@components/Quiz.astro'; » s'il manque :
- * après le dernier import du fichier, ou en tête du texte.
+ * @param {Record<string, any>} props
+ * @returns {{ props: Record<string, any>, imports: { name: string, from: string }[] }}
+ */
+function fromEditor(props) {
+  /** @type {{ name: string, from: string }[]} */
+  const imports = [];
+  const entries = Object.entries(props).map(([key, value]) => {
+    if (!value?.__asset) return [key, value];
+    const from = `@assets/${value.__asset}`;
+    const known = [...state.parsed.imports, ...imports].find((i) => i.from === from);
+    if (known) return [key, { __ref: known.name }];
+    const name = variableName(value.__asset, imports);
+    imports.push({ name, from });
+    return [key, { __ref: name }];
+  });
+  return { props: Object.fromEntries(entries), imports };
+}
+
+const RESERVED = new Set(['import', 'export', 'default', 'class', 'function', 'const', 'let', 'var', 'new', 'delete', 'this', 'true', 'false', 'null']);
+
+/**
+ * Un nom d'import tiré du nom du fichier : « schema-du-cycle.png »
+ * devient « schemaDuCycle ». Il doit rester libre dans la leçon.
+ *
+ * @param {string} path
+ * @param {{ name: string }[]} pending
+ */
+function variableName(path, pending) {
+  const words = (path.split('/').pop() ?? 'image').replace(/\.[^.]+$/, '').split(/[^A-Za-z0-9]+/).filter(Boolean);
+  let base = words.map((w, i) => (i ? w[0].toUpperCase() + w.slice(1) : w.toLowerCase())).join('') || 'image';
+  if (/^\d/.test(base) || RESERVED.has(base)) base = `image${base[0].toUpperCase()}${base.slice(1)}`;
+  const taken = new Set([...state.parsed.imports, ...pending].map((i) => i.name));
+  let name = base;
+  for (const used of state.parsed.references) taken.add(used);
+  for (let n = 2; taken.has(name); n++) name = `${base}${n}`;
+  return name;
+}
+
+/** @param {Record<string, any>} props */
+function refsOf(props) {
+  return Object.values(props)
+    .filter((value) => value?.__ref)
+    .map((value) => value.__ref);
+}
+
+/**
+ * Retire l'import d'une image que plus rien n'utilise - après un
+ * changement d'image, l'ancien import resterait sinon en tête du
+ * fichier, sans raison d'être. Seuls les imports d'images sont
+ * concernés, et seulement si leur nom n'apparaît plus nulle part.
+ *
+ * @param {string[]} names
+ */
+async function dropUnusedImports(names) {
+  for (const name of names) {
+    const { imports, references } = await parseComponents();
+    const imported = imports.find((i) => i.name === name);
+    if (!imported || !ASSET_IMPORT.test(imported.from) || references.includes(name)) continue;
+    // La ligne entière part, saut de ligne compris.
+    const end = ui.body.value[imported.end] === '\n' ? imported.end + 1 : imported.end;
+    replaceText(imported.start, end, '');
+  }
+  await parseComponents();
+}
+
+/**
+ * Ajoute un import s'il manque : après le dernier import du fichier, ou
+ * en tête du texte.
  *
  * @param {string} name
+ * @param {string} from
  */
-async function ensureImport(name) {
-  const { imports } = await parseComponents();
+async function ensureImport(name, from) {
+  const { imports, importsEnd } = await parseComponents();
   if (imports.some((i) => i.name === name)) return;
-  const line = `import ${name} from '@components/${name}.astro';`;
-  const text = ui.body.value;
-  const last = [...text.matchAll(/^import\s.+$/gm)].pop();
-  if (last?.index !== undefined) {
-    const at = last.index + last[0].length;
-    replaceText(at, at, `\n${line}`);
+  const line = `import ${name} from '${from}';`;
+  if (importsEnd !== null) {
+    replaceText(importsEnd, importsEnd, `\n${line}`);
   } else {
-    const at = text.match(/^\s*/)?.[0].length ?? 0;
+    const at = ui.body.value.match(/^\s*/)?.[0].length ?? 0;
     replaceText(at, at, `${line}\n\n`);
   }
   await parseComponents();
@@ -593,5 +783,4 @@ function openDialog(editor, props) {
 // -------------------------------------------------------------
 
 await loadToc();
-if (location.hash.length > 1) openLesson(location.hash.slice(1));
-else if (state.lessons[0]) location.hash = state.lessons[0].id;
+route();
