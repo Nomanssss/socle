@@ -84,20 +84,3 @@
     // socle.config.json : on respecte les retours à la ligne saisis.
     white-space: pre-line;
   }
-
-/*******************************************************************************
- * États
-*******************************************************************************/
-
-/**
- * Aucune mention renseignée : la page reste en ligne mais le dit, ici et au
- * build. Le ton est celui d'un rappel au propriétaire du site, pas d'une
- * erreur adressée au visiteur.
-**/
-.c-page__todo {
-  padding: spacing.get("md");
-  color: colors.get("text-muted");
-  background: colors.get("surface-muted");
-  border: rem.convert(1px) dashed colors.get("border");
-  border-radius: spacing.radius();
-}

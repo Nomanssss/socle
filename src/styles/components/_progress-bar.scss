@@ -6,8 +6,11 @@
  * Name: Progress bar
  * Type: Component
  * Description:
- *   Jauge segmentée : un segment par leçon du module. Le nombre de segments
- *   dit combien il reste d'étapes, ce qu'un pourcentage ne dit pas.
+ *   Jauge de progression, en deux allures :
+ *     - segmentée (par défaut) : un segment par leçon. Le nombre de segments
+ *       dit combien il reste d'étapes, ce qu'un pourcentage ne dit pas ;
+ *     - continue (`.c-progress--bar`) : pour le cours entier, dont le nombre
+ *       de leçons n'a pas de plafond, et les cartes de module.
 **/
 
 /*******************************************************************************
