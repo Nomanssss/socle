@@ -1179,3 +1179,60 @@ button.media:hover { border-color: var(--brand); }
 .slide-hidden { display: block; height: 0; }
 
 .format--slides { align-self: stretch; }
+
+/* --- Réglages ------------------------------------------------ */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 900px;
+}
+
+/* L'explication « _… » du fichier, sous le titre de la section. */
+.settings__help {
+  max-width: 75ch;
+  margin: 6px 0 0;
+}
+
+.settings__color {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings__swatch {
+  flex: none;
+  width: 44px;
+  height: 36px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.settings__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.settings__locked {
+  margin: 12px 0 0;
+  padding-left: 18px;
+}
+
+.settings__actions {
+  position: sticky;
+  bottom: 0;
+  padding: 12px 0;
+  background: linear-gradient(transparent, var(--bg) 30%);
+}
+
+.settings__log pre {
+  max-height: 320px;
+  overflow: auto;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 0.8125rem;
+  white-space: pre-wrap;
+}

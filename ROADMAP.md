@@ -111,9 +111,9 @@ de code, et l'on n'a plus à connaître la syntaxe Markdown.*
 
 ## Phase 7 - Régler le site
 
-- [ ] Éditer `socle.config.json` en **conservant** les clés `_…`, affichées comme aide sous chaque champ
-- [ ] Couleurs et polices, avec `npm run brand` relancé à l'enregistrement
-- [ ] La photo de l'auteur choisie dans la médiathèque
+- [x] Éditer `socle.config.json` en **conservant** les clés `_…`, affichées comme aide sous chaque champ (fichier réécrit dans son propre style : relu et réécrit sans changement, il ressort identique)
+- [x] Couleurs et polices, avec `npm run brand` relancé à l'enregistrement (refusée par lui, la configuration est remise en l'état)
+- [x] La photo de l'auteur choisie dans la médiathèque (copiée dans `public/photos/`)
 
 ## Phase 8 - En ligne (plus tard, si le besoin se confirme)
 

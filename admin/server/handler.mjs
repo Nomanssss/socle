@@ -19,7 +19,8 @@
 //   3. Aucun chemin reçu n'est utilisé tel quel : lessons.mjs ramène
 //      chaque identifiant à un fichier de src/content/lecons/, media.mjs
 //      à une image de src/assets/ - ou le refuse. Hors de ces dossiers,
-//      un seul fichier s'écrit : socle.config.json, par settings.mjs.
+//      settings.mjs écrit socle.config.json, et copie dans public/photos/
+//      la photo de l'auteur choisie dans la médiathèque.
 // =============================================================
 
 import { readFile } from 'node:fs/promises';
@@ -29,7 +30,7 @@ import { listLessons, readLesson, writeLesson, AdminError } from './lessons.mjs'
 import { findComponents, printComponent, printTable } from './mdx.mjs';
 import { listMedia, readMedia, uploadMedia, deleteMedia, MAX_UPLOAD } from './media.mjs';
 import { readSlides, writeSlides, previewSlides, readSlideImage } from './slides.mjs';
-import { setLocked } from './settings.mjs';
+import { setLocked, readSettings, writeSettings, pickPhoto } from './settings.mjs';
 import { codemirrorBundle } from './vendor.mjs';
 import { readConfig } from '../../scripts/config.mjs';
 
@@ -45,6 +46,7 @@ const UI_FILES = {
   '/dom.js': { file: 'dom.js', type: 'text/javascript; charset=utf-8' },
   '/text-editor.js': { file: 'text-editor.js', type: 'text/javascript; charset=utf-8' },
   '/slides-editor.js': { file: 'slides-editor.js', type: 'text/javascript; charset=utf-8' },
+  '/settings.js': { file: 'settings.js', type: 'text/javascript; charset=utf-8' },
   '/admin.css': { file: 'admin.css', type: 'text/css; charset=utf-8' },
 };
 
@@ -132,6 +134,16 @@ async function api(req, route, params) {
     case 'PUT /lock': {
       const { id, locked } = await readJson(req);
       return await setLocked({ id, locked });
+    }
+    case 'GET /settings':
+      return await readSettings();
+    case 'PUT /settings': {
+      const { config, hash, force } = await readJson(req);
+      return await writeSettings({ config, hash, force });
+    }
+    case 'POST /settings/photo': {
+      const { path } = await readJson(req);
+      return await pickPhoto({ path });
     }
     case 'GET /media':
       return { media: await listMedia() };

@@ -194,3 +194,36 @@ test('socle.config.json : seule la clé visée change, le reste à l’octet pr�
     '{\n  "site": { "title": "Cours" },\n\n  "locked": ["a/b"]\n}\n'
   );
 });
+
+test('socle.config.json réécrit en entier ressort identique', async () => {
+  const { printConfig } = await import('../server/settings.mjs');
+  const { readFileSync } = await import('node:fs');
+  const text = readFileSync(new URL('../../socle.config.json', import.meta.url), 'utf8');
+  assert.equal(printConfig(JSON.parse(text)), text);
+});
+
+test('réglages : seuls les champs prévus changent, les erreurs sont nommées', async () => {
+  const { mergeSettings } = await import('../server/settings.mjs');
+  const current = {
+    _site: 'aide',
+    site: { title: 'Cours', tagline: '', lang: 'fr-FR', url: '', legal: { editor: '' } },
+    colors: { primary: '#4647AE', text: '#112E81', page: '#ffffff' },
+    fonts: { heading: 'A', body: 'B' },
+    locked: ['m/l'],
+    slides: { band: 'x.png' },
+  };
+  const { next, errors } = mergeSettings(current, {
+    site: { title: '  Nouveau  ', legal: { editor: 'Moi' } },
+    locked: [],
+    _site: 'écrasé ?',
+  });
+  assert.deepEqual(errors, []);
+  assert.equal(next.site.title, 'Nouveau');
+  assert.equal(next.site.legal.editor, 'Moi');
+  assert.deepEqual(next.locked, ['m/l']);
+  assert.equal(next._site, 'aide');
+  assert.deepEqual(next.slides, { band: 'x.png' });
+
+  const bad = mergeSettings(current, { site: { url: 'mon-cours.fr' }, colors: { primary: 'bleu' } });
+  assert.equal(bad.errors.length, 2);
+});

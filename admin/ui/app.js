@@ -13,6 +13,7 @@
 
 import { h, EDITORS, EditorError, imagePicker, tableEditor } from './editors.js';
 import { mountLibrary, thumbnail } from './media.js';
+import { mountSettings } from './settings.js';
 import { createPlainEditor, createRichEditor } from './text-editor.js';
 
 const API = './api';
@@ -38,6 +39,8 @@ const ui = {
   mediaView: $('#media-view'),
   tabLessons: $('#tab-lessons'),
   tabMedia: $('#tab-media'),
+  tabSettings: $('#tab-settings'),
+  settingsView: $('#settings-view'),
   coverThumb: $('#cover-thumb'),
   tabPage: $('#tab-page'),
   tabSlides: $('#tab-slides'),
@@ -72,9 +75,11 @@ const ui = {
  *   css: { hash: string | null, text: string },
  *   parsed: { source: string, components: any[], imports: { name: string, from: string, start: number, end: number }[], importsEnd: number | null, references: string[], tables: { start: number, end: number, line: number, rows: string[][], align: (string | null)[] }[] },
  *   saving: boolean,
+ *   view: 'lesson' | 'media' | 'settings',
  * }}
  */
 const state = {
+  view: 'lesson',
   lessons: [],
   lesson: null,
   saved: '',
@@ -222,26 +227,49 @@ window.addEventListener('hashchange', route);
 // Quitter une leçon pour la médiathèque ne la ferme pas : ses
 // modifications attendent, intactes, qu'on y revienne.
 const MEDIA = 'medias';
+const SETTINGS = 'reglages';
 
 function route() {
   const target = location.hash.slice(1);
   if (target === MEDIA) return showMedia();
+  if (target === SETTINGS) return showSettings();
   if (target) return openLesson(target);
   if (state.lesson) location.hash = state.lesson.id;
   else if (state.lessons[0]) location.hash = state.lessons[0].id;
 }
 
-/** @param {'lesson' | 'media'} view */
+/** @param {'lesson' | 'media' | 'settings'} view */
 function showView(view) {
   const lesson = view === 'lesson';
-  ui.mediaView.hidden = lesson;
+  state.view = view;
+  ui.mediaView.hidden = view !== 'media';
+  ui.settingsView.hidden = view !== 'settings';
   ui.form.hidden = !lesson || !state.lesson;
   ui.empty.hidden = !lesson || Boolean(state.lesson);
   ui.heading.hidden = !lesson;
   ui.viewPage.hidden = !lesson || !state.lesson;
+  // Les réglages ont leur propre bouton : celui de la barre enregistre la leçon.
+  ui.save.hidden = view === 'settings';
   ui.tabLessons.setAttribute('aria-current', lesson ? 'page' : 'false');
-  ui.tabMedia.setAttribute('aria-current', lesson ? 'false' : 'page');
+  ui.tabMedia.setAttribute('aria-current', view === 'media' ? 'page' : 'false');
+  ui.tabSettings.setAttribute('aria-current', view === 'settings' ? 'page' : 'false');
   ui.tabLessons.href = state.lesson ? `#${state.lesson.id}` : '#';
+}
+
+let settings = /** @type {null | ReturnType<typeof mountSettings>} */ (null);
+
+// Les réglages se relisent à chaque visite - le cadenas d'une leçon a pu
+// changer « locked » entre-temps - sauf si des modifications attendent.
+async function showSettings() {
+  showView('settings');
+  document.title = 'Réglages · Admin';
+  settings ??= mountSettings(ui.settingsView, { request, openDialog, imagePicker, setStatus });
+  if (settings.isDirty()) return;
+  try {
+    await settings.render();
+  } catch (error) {
+    setStatus(/** @type {Error} */ (error).message, 'error');
+  }
 }
 
 let library = /** @type {null | { refresh: () => void }} */ (null);
@@ -531,12 +559,14 @@ $('#save-shortcut').textContent = isMac ? '⌘S' : 'Ctrl S';
 document.addEventListener('keydown', (event) => {
   if ((isMac ? event.metaKey : event.ctrlKey) && event.key.toLowerCase() === 's') {
     event.preventDefault();
-    if (!ui.dialog.open) save();
+    if (ui.dialog.open) return;
+    if (state.view === 'settings') settings?.save();
+    else save();
   }
 });
 
 window.addEventListener('beforeunload', (event) => {
-  if (isDirty()) event.preventDefault();
+  if (isDirty() || settings?.isDirty()) event.preventDefault();
 });
 
 /**
