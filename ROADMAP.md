@@ -116,7 +116,13 @@ de code, et l'on n'a plus à connaître la syntaxe Markdown.*
 - [x] Couleurs et polices, avec `npm run brand` relancé à l'enregistrement (refusée par lui, la configuration est remise en l'état)
 - [x] La photo de l'auteur choisie dans la médiathèque (copiée dans `public/photos/`)
 
-## Phase 8 - En ligne (plus tard, si le besoin se confirme)
+## Phase 8 - En ligne, sur Vercel
+
+*Un mot de passe par cours ; les enregistrements partent sur une branche
+de brouillon, que Vercel construit en aperçu ; « Publier » la verse dans
+`main`. Branche `feat/admin-en-ligne`.*
+
+- [x] L'admin ne touche plus le disque : un « stockage » (`admin/server/store.mjs`), le disque en local, une branche GitHub en ligne - commits tout-ou-rien dans les deux cas
 
 - [ ] Connexion sans base : empreinte du mot de passe en variable d'environnement, session en cookie signé
 - [ ] Enregistrement par commit via l'API GitHub, la CI reconstruit le site

@@ -17,8 +17,6 @@
 //     que vérifie le test, et ce qui garde les diffs lisibles.
 // =============================================================
 
-import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import { resolve, join, basename } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { execFile } from 'node:child_process';
@@ -26,8 +24,18 @@ import { createHash } from 'node:crypto';
 import { normalizeId } from '../../scripts/config.mjs';
 import { AdminError, lessonPath } from './lessons.mjs';
 import { mediaPath } from './media.mjs';
+import { store, CONFIG } from './store.mjs';
 
-export const CONFIG_FILE = resolve(process.cwd(), 'socle.config.json');
+// Le fichier sur le disque : c'est lui que le serveur de dev surveille
+// (integration.mjs). Lire et écrire passent par le stockage.
+export const CONFIG_FILE = resolve(process.cwd(), CONFIG);
+
+/** Le texte de socle.config.json, tel que le stockage le donne. */
+async function configText() {
+  const text = await store().read(CONFIG);
+  if (text === null) throw new AdminError(500, 'socle.config.json est introuvable.');
+  return text;
+}
 
 /**
  * Réécrit la valeur d'UNE clé de premier niveau, sur une ligne.
@@ -86,12 +94,12 @@ export function replaceTopLevel(text, key, value) {
  */
 export async function setLocked({ id: rawId, locked }) {
   if (typeof locked !== 'boolean') throw new AdminError(400, 'État de verrou manquant.');
-  const { id, file } = lessonPath(rawId);
+  const { id, path } = lessonPath(rawId);
   // On ne verrouille que ce qui existe : une entrée sans leçon ne
   // verrouille rien, et le build s'en plaindrait.
-  if (!existsSync(file)) throw new AdminError(404, `Aucune leçon « ${id} ».`);
+  if ((await store().read(path)) === null) throw new AdminError(404, `Aucune leçon « ${id} ».`);
 
-  const text = await readFile(CONFIG_FILE, 'utf8');
+  const text = await configText();
   const config = JSON.parse(text);
   const current = Array.isArray(config.locked) ? config.locked.map(String) : [];
   const has = current.some((entry) => normalizeId(entry) === id);
@@ -99,7 +107,10 @@ export async function setLocked({ id: rawId, locked }) {
   if (has === locked) return { id, locked };
 
   const next = locked ? [...current, id] : current.filter((entry) => normalizeId(entry) !== id);
-  await writeFile(CONFIG_FILE, replaceTopLevel(text, 'locked', next));
+  await store().commit(
+    [{ path: CONFIG, content: replaceTopLevel(text, 'locked', next) }],
+    `Admin : « ${id} » ${locked ? 'verrouillée' : 'rouverte'}`
+  );
   return { id, locked };
 }
 
@@ -108,7 +119,7 @@ export async function setLocked({ id: rawId, locked }) {
 // =============================================================
 
 const ROOT = process.cwd();
-const PHOTOS_DIR = resolve(ROOT, 'public/photos');
+const PHOTOS = 'public/photos';
 
 /**
  * Une valeur, écrite comme dans socle.config.json. Les objets s'étalent
@@ -172,7 +183,7 @@ const fingerprint = (text) => createHash('sha256').update(text).digest('hex').sl
  * entre-temps dans un éditeur de code.
  */
 export async function readSettings() {
-  const text = await readFile(CONFIG_FILE, 'utf8');
+  const text = await configText();
   return { config: JSON.parse(text), hash: fingerprint(text) };
 }
 
@@ -291,7 +302,7 @@ function runBrand() {
 export async function writeSettings({ config: incoming, hash, force }) {
   if (!incoming || typeof incoming !== 'object') throw new AdminError(400, 'Réglages manquants.');
 
-  const text = await readFile(CONFIG_FILE, 'utf8');
+  const text = await configText();
   if (!force && hash !== fingerprint(text)) {
     throw new AdminError(409, 'socle.config.json a changé depuis son ouverture (dans un éditeur, ou par le cadenas d’une leçon).', {
       conflict: 'settings',
@@ -305,15 +316,20 @@ export async function writeSettings({ config: incoming, hash, force }) {
   if (isDeepStrictEqual(current, next)) return { hash: fingerprint(text), brand: null };
 
   const printed = printConfig(next);
-  await writeFile(CONFIG_FILE, printed);
+  await store().commit([{ path: CONFIG, content: printed }], 'Admin : réglages du cours');
 
   const brandChanged =
     !isDeepStrictEqual(current.colors, next.colors) || !isDeepStrictEqual(current.fonts, next.fonts);
   if (!brandChanged) return { hash: fingerprint(printed), brand: null };
 
+  // `npm run brand` écrit des fichiers sur le disque : il ne tourne qu'en
+  // local. En ligne, c'est la construction du site qui le relance
+  // (prebuild), à partir de la configuration enregistrée.
+  if (store().kind !== 'local') return { hash: fingerprint(printed), brand: null };
+
   const brand = await runBrand();
   if (!brand.ok) {
-    await writeFile(CONFIG_FILE, text);
+    await store().commit([{ path: CONFIG, content: text }], 'Admin : réglages remis en l’état');
     throw new AdminError(422, 'La charte n’a pas pu être appliquée : rien n’a été enregistré.', { brand });
   }
   return { hash: fingerprint(printed), brand };
@@ -328,10 +344,10 @@ export async function writeSettings({ config: incoming, hash, force }) {
  * @param {{ path: unknown }} input
  */
 export async function pickPhoto({ path }) {
-  const { file } = mediaPath(path);
-  if (!existsSync(file)) throw new AdminError(404, 'Image introuvable dans la médiathèque.');
-  await mkdir(PHOTOS_DIR, { recursive: true });
+  const { file, path: source } = mediaPath(path);
+  const content = await store().readBytes(source);
+  if (content === null) throw new AdminError(404, 'Image introuvable dans la médiathèque.');
   const name = basename(file);
-  await copyFile(file, join(PHOTOS_DIR, name));
+  await store().commit([{ path: `${PHOTOS}/${name}`, content }], `Admin : photo de l’auteur « ${name} »`);
   return { photo: `/photos/${name}` };
 }

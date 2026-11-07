@@ -1,5 +1,5 @@
 // =============================================================
-// lessons.mjs - lire et écrire les leçons sur le disque
+// lessons.mjs - lire et écrire les leçons
 //
 // Une leçon, pour l'admin, c'est trois choses : son en-tête (les
 // données du frontmatter), son texte (tout ce qui suit), et l'empreinte
@@ -14,13 +14,16 @@
 // ne doit pas produire un diff que personne n'a demandé.
 // =============================================================
 
-import { readFile, writeFile, readdir, rename, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { join, resolve, relative, sep } from 'node:path';
+import { resolve, sep } from 'node:path';
 import matter from 'gray-matter';
-import { isLocked, normalizeId } from '../../scripts/config.mjs';
+import { normalizeId } from '../../scripts/config.mjs';
+import { store, readConfig, LESSONS } from './store.mjs';
 
-export const LESSONS_DIR = resolve(process.cwd(), 'src/content/lecons');
+// Le dossier des leçons sur le disque, pour ce qui a besoin d'un chemin
+// absolu (l'assemblage des slides). Tout ce qui lit ou écrit passe par
+// le stockage (store.mjs), avec le chemin relatif « src/content/lecons/… ».
+export const LESSONS_DIR = resolve(process.cwd(), LESSONS);
 
 // L'en-tête d'un fichier : deux lignes de trois tirets, et ce qu'il y a
 // entre. Le texte commence juste après le saut de ligne qui ferme.
@@ -71,25 +74,34 @@ export function lessonPath(raw) {
   if (!file.startsWith(LESSONS_DIR + sep)) {
     throw new AdminError(400, `Identifiant de leçon invalide : « ${raw} ».`);
   }
-  return { id, file };
+  return { id, file, path: `${LESSONS}/${id}.mdx` };
+}
+
+/**
+ * Les identifiants verrouillés, lus dans « locked » de socle.config.json -
+ * celui du stockage, qui en ligne est celui du brouillon.
+ */
+export async function lockedIds() {
+  const { locked } = await readConfig();
+  return new Set(Array.isArray(locked) ? locked.map((entry) => normalizeId(entry)).filter(Boolean) : []);
 }
 
 /** Toutes les leçons, triées comme sur l'accueil : modules, puis ordre. */
 export async function listLessons() {
-  const entries = await readdir(LESSONS_DIR, { recursive: true });
-  const files = entries.filter((entry) => entry.endsWith('.mdx'));
+  const files = (await store().list(LESSONS)).filter((entry) => entry.path.endsWith('.mdx'));
+  const locked = await lockedIds();
 
   const lessons = await Promise.all(
     files.map(async (entry) => {
-      const id = normalizeId(relative(LESSONS_DIR, join(LESSONS_DIR, entry)));
-      const { data } = matter(await readFile(join(LESSONS_DIR, entry), 'utf8'), {});
+      const id = normalizeId(entry.path.slice(LESSONS.length + 1));
+      const { data } = matter((await store().read(entry.path)) ?? '', {});
       return {
         id,
         title: String(data.title ?? id),
         module: String(data.module ?? 'Sans module'),
         moduleOrder: typeof data.moduleOrder === 'number' ? data.moduleOrder : null,
         order: typeof data.order === 'number' ? data.order : null,
-        locked: isLocked(id),
+        locked: locked.has(id),
       };
     })
   );
@@ -107,15 +119,15 @@ export async function listLessons() {
 
 /** @param {unknown} rawId */
 export async function readLesson(rawId) {
-  const { id, file } = lessonPath(rawId);
-  const source = await readSource(file, id);
+  const { id, path } = lessonPath(rawId);
+  const source = await readSource(path, id);
   const { frontmatter, body } = split(source);
   return {
     id,
     data: parseFrontmatter(frontmatter, id),
     body,
     hash: hash(source),
-    locked: isLocked(id),
+    locked: (await lockedIds()).has(id),
   };
 }
 
@@ -123,8 +135,8 @@ export async function readLesson(rawId) {
  * @param {{ id: unknown, data: unknown, body: unknown, hash?: unknown, force?: unknown }} input
  */
 export async function writeLesson({ id: rawId, data, body, hash: expected, force }) {
-  const { id, file } = lessonPath(rawId);
-  const source = await readSource(file, id);
+  const { id, path } = lessonPath(rawId);
+  const source = await readSource(path, id);
 
   if (!force && expected !== hash(source)) {
     throw new AdminError(409, 'Ce fichier a été modifié en dehors de l’admin depuis son ouverture.', {
@@ -141,7 +153,7 @@ export async function writeLesson({ id: rawId, data, body, hash: expected, force
   const text = typeof body === 'string' ? body : current.body;
 
   const next = `---\n${frontmatter}\n---\n${text}`;
-  if (next !== source) await writeFile(file, next, 'utf8');
+  if (next !== source) await store().commit([{ path, content: next }], `Admin : « ${clean.title} »`);
 
   return {
     id,
@@ -168,7 +180,7 @@ export async function writeLesson({ id: rawId, data, body, hash: expected, force
  * (« Annexes ») n'est jamais touché.
  *
  * Toutes les leçons concernées sont lues et vérifiées avant la première
- * écriture, puis écrites ensemble par writeAll() : toutes, ou aucune. Le
+ * écriture, puis écrites ensemble par le stockage : toutes, ou aucune. Le
  * dossier du module ne change pas : seul l'affichage suit.
  *
  * @param {{ from: unknown, name: unknown, position: unknown }} input
@@ -212,8 +224,8 @@ export async function updateModule({ from, name, position }) {
   // Ce que chaque leçon doit devenir, calculé pour toutes avant d'écrire.
   const plans = [];
   for (const lesson of lessons) {
-    const { file } = lessonPath(lesson.id);
-    const source = await readSource(file, lesson.id);
+    const { path } = lessonPath(lesson.id);
+    const source = await readSource(path, lesson.id);
     const parts = split(source);
     const before = parseFrontmatter(parts.frontmatter, lesson.id);
     const after = {
@@ -223,63 +235,27 @@ export async function updateModule({ from, name, position }) {
     };
     if (sameValue(before, after)) continue;
     const frontmatter = printFrontmatter(after, Object.keys(before));
-    plans.push({ id: lesson.id, file, source, text: `---\n${frontmatter}\n---\n${parts.body}` });
+    plans.push({ id: lesson.id, path, content: `---\n${frontmatter}\n---\n${parts.body}` });
   }
 
-  await writeAll(plans);
+  // Toutes les leçons d'un coup : le stockage garantit tout-ou-rien.
+  if (plans.length) {
+    await store().commit(
+      plans.map(({ path, content }) => ({ path, content })),
+      `Admin : module « ${renamed} », place ${rank}`
+    );
+  }
   return { module: renamed, position: rank, changed: plans.map((plan) => plan.id) };
 }
 
 /**
- * Écrit plusieurs leçons comme une seule opération : toutes, ou aucune.
- *
- * 1. chaque nouveau texte est d'abord écrit À CÔTÉ de sa leçon, dans un
- *    fichier temporaire - un échec ici n'a encore rien touché ;
- * 2. puis chaque temporaire remplace sa leçon (un renommage, que le
- *    système fait d'un bloc) ;
- * 3. si un remplacement échoue, celles déjà remplacées retrouvent leur
- *    texte d'origine, gardé en mémoire.
- *
- * Sans cela, un module renommé à moitié - une interruption au milieu de
- * la boucle - se couperait en deux sur l'accueil.
- *
- * @param {{ file: string, source: string, text: string }[]} plans
- */
-async function writeAll(plans) {
-  const temps = plans.map((plan) => `${plan.file}.admin-${process.pid}.tmp`);
-  try {
-    for (const [i, plan] of plans.entries()) await writeFile(temps[i], plan.text, 'utf8');
-  } catch (error) {
-    await Promise.all(temps.map((temp) => unlink(temp).catch(() => {})));
-    throw error;
-  }
-
-  const done = [];
-  try {
-    for (const [i, plan] of plans.entries()) {
-      await rename(temps[i], plan.file);
-      done.push(plan);
-    }
-  } catch (error) {
-    for (const plan of done) await writeFile(plan.file, plan.source, 'utf8').catch(() => {});
-    await Promise.all(temps.map((temp) => unlink(temp).catch(() => {})));
-    throw new AdminError(500, `Le réglage n’a pas pu être appliqué à toutes les leçons : rien n’a été changé (${error.message}).`);
-  }
-}
-
-/**
- * @param {string} file
+ * @param {string} path
  * @param {string} id
  */
-async function readSource(file, id) {
-  try {
-    return await readFile(file, 'utf8');
-  } catch (error) {
-    if (/** @type {NodeJS.ErrnoException} */ (error).code === 'ENOENT') {
-      throw new AdminError(404, `La leçon « ${id} » n’existe pas.`);
-    }
-    throw error;
-  }
+async function readSource(path, id) {
+  const source = await store().read(path);
+  if (source === null) throw new AdminError(404, `La leçon « ${id} » n’existe pas.`);
+  return source;
 }
 
 /** @param {string} source */

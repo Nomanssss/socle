@@ -276,3 +276,44 @@ test('régler un module : nom et rang réécrits dans toutes ses leçons, rien d
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('stockage local : un commit écrit tout, ou rien', async () => {
+  const { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const { localStore } = await import('../server/store.mjs');
+  const root = mkdtempSync(join(tmpdir(), 'socle-store-'));
+  const cwd = process.cwd();
+  process.chdir(root);
+  try {
+    const store = localStore();
+    writeFileSync(join(root, 'a.txt'), 'A');
+    writeFileSync(join(root, 'bloque'), 'un fichier, pas un dossier');
+
+    // Le second changement ne peut pas s'écrire (« bloque » n'est pas un
+    // dossier) : le premier ne doit pas avoir eu lieu non plus.
+    await assert.rejects(
+      store.commit([
+        { path: 'a.txt', content: 'A modifié' },
+        { path: 'bloque/b.txt', content: 'B' },
+      ])
+    );
+    assert.equal(readFileSync(join(root, 'a.txt'), 'utf8'), 'A');
+    assert.deepEqual(readdirSync(root).filter((f) => f.endsWith('.tmp')), []);
+
+    // Création dans un dossier neuf, suppression, lecture, liste.
+    await store.commit([
+      { path: 'neuf/c.txt', content: 'C' },
+      { path: 'a.txt', content: null },
+    ]);
+    assert.equal(await store.read('neuf/c.txt'), 'C');
+    assert.equal(existsSync(join(root, 'a.txt')), false);
+    assert.equal(await store.read('a.txt'), null);
+    assert.deepEqual((await store.list('neuf')).map((e) => e.path), ['neuf/c.txt']);
+    assert.deepEqual(await store.list('absent'), []);
+    await assert.rejects(store.read('../dehors'), /refusé/);
+  } finally {
+    process.chdir(cwd);
+    rmSync(root, { recursive: true, force: true });
+  }
+});

@@ -32,7 +32,7 @@ import { listMedia, readMedia, uploadMedia, deleteMedia, MAX_UPLOAD } from './me
 import { readSlides, writeSlides, previewSlides, readSlideImage } from './slides.mjs';
 import { setLocked, readSettings, writeSettings, pickPhoto } from './settings.mjs';
 import { codemirrorBundle } from './vendor.mjs';
-import { readConfig } from '../../scripts/config.mjs';
+import { readConfig } from './store.mjs';
 
 const UI_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'ui');
 
@@ -240,7 +240,7 @@ function serveImage(res, { content, type }) {
 async function serveUi(res, entry) {
   let content = await readFile(join(UI_DIR, entry.file), 'utf8');
   if (entry.file === 'index.html') {
-    const config = readConfig();
+    const config = await readConfig();
     const primary = /^#[0-9a-f]{3,8}$/i.test(config.colors?.primary ?? '') ? config.colors.primary : '#4647AE';
     content = content
       .replaceAll('{{PRIMARY}}', primary)

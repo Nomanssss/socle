@@ -12,13 +12,13 @@
 // la cite, ni leçon, ni deck de slides, ni config.
 // =============================================================
 
-import { readFile, writeFile, readdir, stat, unlink } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { join, resolve, relative, extname, basename, sep } from 'node:path';
-import { AdminError, LESSONS_DIR } from './lessons.mjs';
+import { resolve, relative, extname, basename, sep } from 'node:path';
+import { AdminError } from './lessons.mjs';
+import { store, ASSETS, LESSONS, CONFIG } from './store.mjs';
 
-export const ASSETS_DIR = resolve(process.cwd(), 'src/assets');
-const CONFIG = resolve(process.cwd(), 'socle.config.json');
+// Le dossier sur le disque, pour valider un chemin reçu. Lire, écrire et
+// supprimer passent par le stockage (store.mjs).
+export const ASSETS_DIR = resolve(process.cwd(), ASSETS);
 
 export const MAX_UPLOAD = 20 * 1024 * 1024;
 
@@ -46,34 +46,29 @@ export function mediaPath(raw) {
   if (!rel || !file.startsWith(ASSETS_DIR + sep) || !(extname(file).toLowerCase() in TYPES)) {
     throw new AdminError(400, `Image invalide : « ${raw} ».`);
   }
-  return { rel: relative(ASSETS_DIR, file).split(sep).join('/'), file };
+  const clean = relative(ASSETS_DIR, file).split(sep).join('/');
+  return { rel: clean, file, path: `${ASSETS}/${clean}` };
 }
 
 /** Toutes les images, les plus récentes d'abord, avec leurs utilisations. */
 export async function listMedia() {
-  if (!existsSync(ASSETS_DIR)) return [];
+  const entries = (await store().list(ASSETS)).filter((entry) => extname(entry.path).toLowerCase() in TYPES);
+  if (!entries.length) return [];
   const texts = await citingTexts();
-  const entries = (await readdir(ASSETS_DIR, { recursive: true }))
-    .map((entry) => String(entry).split(sep).join('/'))
-    .filter((entry) => extname(entry).toLowerCase() in TYPES);
 
-  const media = await Promise.all(
-    entries.map(async (rel) => {
-      const info = await stat(join(ASSETS_DIR, rel));
-      return { path: rel, name: basename(rel), size: info.size, modified: info.mtimeMs, usages: usagesOf(rel, texts) };
-    })
-  );
+  const media = entries.map((entry) => {
+    const rel = entry.path.slice(ASSETS.length + 1);
+    return { path: rel, name: basename(rel), size: entry.size, modified: entry.modified, usages: usagesOf(rel, texts) };
+  });
   return media.sort((a, b) => b.modified - a.modified);
 }
 
 /** @param {unknown} raw */
 export async function readMedia(raw) {
-  const { file } = mediaPath(raw);
-  try {
-    return { content: await readFile(file), type: TYPES[extname(file).toLowerCase()] };
-  } catch {
-    throw new AdminError(404, `Image introuvable : « ${raw} ».`);
-  }
+  const { file, path } = mediaPath(raw);
+  const content = await store().readBytes(path);
+  if (content === null) throw new AdminError(404, `Image introuvable : « ${raw} ».`);
+  return { content, type: TYPES[extname(file).toLowerCase()] };
 }
 
 /**
@@ -90,19 +85,21 @@ export async function uploadMedia(rawName, content) {
     throw new AdminError(415, `Ce fichier ne contient pas une image ${ext} valide.`);
   }
 
-  const name = uniqueName(cleanName(basename(String(rawName), extname(String(rawName)))), ext === '.jpeg' ? '.jpg' : ext);
-  await writeFile(join(ASSETS_DIR, name), content, { flag: 'wx' });
+  const taken = new Set((await store().list(ASSETS)).map((entry) => entry.path.slice(ASSETS.length + 1)));
+  const name = uniqueName(cleanName(basename(String(rawName), extname(String(rawName)))), ext === '.jpeg' ? '.jpg' : ext, taken);
+  await store().commit([{ path: `${ASSETS}/${name}`, content }], `Admin : image « ${name} »`);
   return (await listMedia()).find((m) => m.path === name);
 }
 
 /** @param {unknown} raw */
 export async function deleteMedia(raw) {
-  const { rel, file } = mediaPath(raw);
+  const { rel, path } = mediaPath(raw);
   const usages = usagesOf(rel, await citingTexts());
   if (usages.length) {
     throw new AdminError(409, `« ${rel} » est encore utilisée (${usages.map((u) => u.label).join(', ')}).`, { usages });
   }
-  await unlink(file);
+  if ((await store().readBytes(path)) === null) throw new AdminError(404, `Image introuvable : « ${rel} ».`);
+  await store().commit([{ path, content: null }], `Admin : suppression de l’image « ${rel} »`);
   return { deleted: rel };
 }
 
@@ -127,10 +124,11 @@ export function cleanName(base) {
 /**
  * @param {string} base
  * @param {string} ext
+ * @param {Set<string>} taken Les noms déjà présents dans la médiathèque.
  */
-function uniqueName(base, ext) {
+function uniqueName(base, ext, taken) {
   let name = `${base}${ext}`;
-  for (let n = 2; existsSync(join(ASSETS_DIR, name)); n++) name = `${base}-${n}${ext}`;
+  for (let n = 2; taken.has(name); n++) name = `${base}-${n}${ext}`;
   return name;
 }
 
@@ -169,13 +167,13 @@ function looksLike(ext, b) {
  * @returns {Promise<{ label: string, kind: string, id: string | null, text: string }[]>}
  */
 async function citingTexts() {
-  const files = (await readdir(LESSONS_DIR, { recursive: true }))
-    .map((entry) => String(entry).split(sep).join('/'))
+  const files = (await store().list(LESSONS))
+    .map((entry) => entry.path.slice(LESSONS.length + 1))
     .filter((entry) => entry.endsWith('.mdx') || entry.endsWith('.slides.md'));
 
   const texts = await Promise.all(
     files.map(async (entry) => {
-      const text = await readFile(join(LESSONS_DIR, entry), 'utf8');
+      const text = (await store().read(`${LESSONS}/${entry}`)) ?? '';
       const slides = entry.endsWith('.slides.md');
       const id = entry.replace(/\.slides\.md$|\.mdx$/, '');
       const title = text.match(/^title:\s*["']?(.+?)["']?\s*$/m)?.[1] ?? id;
@@ -187,7 +185,8 @@ async function citingTexts() {
     const lesson = texts.find((t) => t.kind === 'lesson' && t.id === deck.id);
     if (lesson) deck.label = `slides de ${lesson.label}`;
   }
-  if (existsSync(CONFIG)) texts.push({ kind: 'config', id: null, label: 'socle.config.json', text: await readFile(CONFIG, 'utf8') });
+  const config = await store().read(CONFIG);
+  if (config !== null) texts.push({ kind: 'config', id: null, label: 'socle.config.json', text: config });
   return texts;
 }
 
