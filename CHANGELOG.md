@@ -31,6 +31,13 @@ rien casser, un *correctif* répare.
   régénérée à l'enregistrement. L'admin écrit les fichiers du cours eux-mêmes,
   ne réécrit que ce qui change, n'écoute que la machine locale, et n'arrive
   jamais dans le site publié.
+- **L'admin en ligne, sur Vercel** : le site reste statique, `/admin` passe
+  par une fonction (`api/admin.mjs`). Connexion par mot de passe (empreinte
+  scrypt en variable d'environnement, `npm run admin:password`), session en
+  cookie signé. Les enregistrements sont des commits sur une branche de
+  **brouillon**, dont Vercel construit l'aperçu ; un bandeau dit ce qui
+  attend, ouvre l'aperçu, **publie** dans `main` ou **abandonne**. Mise en
+  ligne pas à pas dans le guide.
 - **Une slide de fin** à chaque deck : un remerciement, le logo, le nom et les
   liens de l'auteur (`author.name`, `author.links`).
 

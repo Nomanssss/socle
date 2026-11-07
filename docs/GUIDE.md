@@ -88,7 +88,7 @@ Avec `npm run dev`, une interface d'écriture est disponible sur **<http://local
 
 ### Ce qu'elle n'est pas
 
-- **Un site en ligne.** L'admin n'existe qu'avec `npm run dev` : c'est un intermédiaire posé devant le serveur de développement, que ni `astro build` ni `astro preview` n'activent. Rien d'elle n'arrive dans `dist/`, et `/admin` répond 404 sur le site publié.
+- **Une page du site.** L'admin n'est jamais construite avec le site : rien d'elle n'arrive dans `dist/`. En local, elle n'existe qu'avec `npm run dev` ; en ligne, seulement si vous la déployez sur Vercel avec ses variables d'environnement (voir « L'admin en ligne », plus bas). Sur un autre hébergeur, `/admin` répond 404.
 - **Une base de données.** Ce qu'elle enregistre, ce sont les fichiers du cours eux-mêmes : les `.mdx`, les `.slides.md`, `socle.config.json`, les images de `src/assets/`. Git reste la seule mémoire du cours.
 - **Un éditeur WYSIWYG.** Le texte reste du Markdown, lisible et diffable. Ce sont les composants - là où le MDX devient du JavaScript - qui ont droit à un formulaire.
 
@@ -121,12 +121,62 @@ La place est un rang : les modules sont renumérotés de 1 à N, sans doublon. U
 
 > ⚠️ **L'admin écrit dans les fichiers du dépôt.** Un essai - une leçon verrouillée pour voir, une couleur changée - fait donc partie du prochain commit si vous ne relisez pas le diff. C'est le prix d'un cours sans base de données : `git diff` avant chaque commit, et `git restore <fichier>` pour annuler un essai.
 
+### L'admin en ligne, sur Vercel
+
+En local, l'admin écrit sur le disque. En ligne, elle permet d'éditer le cours **sans avoir le projet sur sa machine** : depuis n'importe quel navigateur, avec un mot de passe.
+
+**Comment ça marche.** Le site reste statique : Vercel le construit depuis `main` et le sert tel quel. Seul `/admin` passe par une fonction (`api/admin.mjs`), qui fait tourner la même admin qu'en local, avec deux différences :
+
+- **les enregistrements sont des commits sur une branche `brouillon`**, par l'API de GitHub - pas sur un disque, qu'une fonction n'a pas. Chaque commit déclenche chez Vercel la construction d'un **aperçu** de cette branche, à sa propre adresse ;
+- **la porte est un mot de passe.**
+
+Un bandeau sous la barre de l'admin dit ce qui attend d'être publié et où en est l'aperçu. **Voir le brouillon** ouvre l'aperçu, **Voir la page** y ouvre la leçon en cours. **Publier** verse le brouillon dans `main` : le site en ligne se met à jour en une à deux minutes. **Abandonner** ramène le brouillon à la version en ligne - définitivement.
+
+#### Mettre en ligne, pas à pas
+
+1. **Le projet Vercel.** Sur <https://vercel.com/new>, importez le dépôt GitHub du cours. Rien à régler : `vercel.json` donne la commande de construction (`npm run vercel-build`), le dossier publié (`dist`) et la fonction de l'admin. La branche de production est `main`.
+2. **Le jeton GitHub.** Sur GitHub → *Settings* → *Developer settings* → *Personal access tokens* → **Fine-grained tokens** → *Generate new token* :
+   - *Repository access* : **Only select repositories**, et seulement le dépôt du cours ;
+   - *Permissions* → *Repository permissions* : **Contents : Read and write**, **Deployments : Read-only** (pour lire l'état des aperçus) ;
+   - une date d'expiration : un an au plus, et un rappel pour le renouveler.
+3. **Le mot de passe.** En local : `npm run admin:password`. La commande demande un mot de passe (12 caractères au moins, sans l'afficher) et donne les deux valeurs à recopier dans Vercel. Le mot de passe lui-même n'est écrit nulle part.
+4. **Les variables d'environnement**, dans Vercel → *Settings* → *Environment Variables*, pour les environnements **Production** et **Preview** :
+
+   | Variable | Valeur |
+   | --- | --- |
+   | `ADMIN_PASSWORD_HASH` | donnée par `npm run admin:password` |
+   | `ADMIN_SESSION_SECRET` | donnée par `npm run admin:password` |
+   | `GITHUB_TOKEN` | le jeton de l'étape 2 |
+   | `GITHUB_REPO` | facultatif : `propriétaire/dépôt`. Par défaut, celui que Vercel déploie |
+   | `ADMIN_DRAFT_BRANCH` | facultatif : le nom du brouillon, `brouillon` par défaut |
+   | `ADMIN_BASE_BRANCH` | facultatif : la branche publiée, `main` par défaut |
+
+5. **Redéployez** (*Deployments* → *Redeploy*) : les variables ne sont lues qu'au déploiement. L'admin répond alors sur `https://votre-cours.fr/admin/`. Une variable manque, et la page le dit - sans jamais afficher leur valeur.
+
+#### Ce qui change en ligne
+
+- **La charte n'est pas régénérée à l'enregistrement** : `npm run brand` ne tourne pas dans une fonction. C'est la construction de l'aperçu qui le relance. Une police inexistante est tout de même refusée à l'enregistrement : l'admin la vérifie auprès de Google Fonts.
+- **Une image envoyée ne dépasse pas 4 Mo**, plafond d'une requête vers une fonction Vercel.
+- **La médiathèque est classée par nom**, et non par date : l'API de GitHub ne donne pas la date d'un fichier sans une requête de plus par image.
+- **L'aperçu des slides** compile le thème dans la fonction. S'il n'y parvient pas, l'onglet *Slides* reste éditable, avec un message à la place de l'aperçu.
+- **Une modification ne part pas tout de suite en ligne** : elle attend dans le brouillon jusqu'à **Publier**. Si quelqu'un pousse du code sur `main` entre-temps, le brouillon le reprend tout seul ; si le même passage d'un fichier a changé des deux côtés, le bandeau le signale, et la fusion se règle dans le dépôt.
+
+#### Sécurité
+
+- **Le jeton GitHub donne le droit d'écrire dans le dépôt** : limitez-le à ce seul dépôt et à ces deux permissions, ne le collez nulle part ailleurs que dans Vercel, et révoquez-le sur GitHub au moindre doute.
+- **Le mot de passe** n'existe qu'en empreinte scrypt. La session tient dans un cookie signé, invisible au JavaScript, envoyé en HTTPS seulement et à `/admin` seulement ; elle dure 12 heures. Changer de mot de passe (`npm run admin:password`, puis remplacer `ADMIN_PASSWORD_HASH`) déconnecte toutes les sessions.
+- **Après cinq mots de passe faux**, une adresse attend quinze minutes. Ce compte vit dans la mémoire de la fonction, que Vercel peut dédoubler : c'est un frein, pas un mur - le mur, c'est un mot de passe long.
+- Les commits de l'admin sont signés au nom du propriétaire du jeton. Leur message dit ce qu'ils font (« Admin : « Les commandes » », « Admin : réglages du cours »).
+
 ### Où ça vit dans le code
 
 | Fichier | Rôle |
 | --- | --- |
 | `admin/integration.mjs` | branche l'admin sur le serveur de dev (`astro:server:setup`), et lui fait relire `socle.config.json` à chaque changement |
 | `admin/server/` | l'API : leçons, composants, médiathèque, slides, réglages |
+| `admin/server/store.mjs` | le stockage : le disque en local, une branche GitHub en ligne (`github-store.mjs`) |
+| `admin/server/auth.mjs` | le mot de passe et la session de l'admin en ligne |
+| `api/admin.mjs`, `vercel.json` | l'admin en ligne : la fonction Vercel et ses réécritures |
 | `admin/ui/` | l'interface, en JavaScript natif - seul l'éditeur de texte (CodeMirror) est une dépendance |
 | `admin/test/` | les tests : `npm run test:admin` |
 | `ROADMAP.md` | ce qui est fait, et ce qui reste (créer, déplacer, supprimer une leçon…) |

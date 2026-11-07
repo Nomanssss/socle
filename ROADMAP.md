@@ -131,6 +131,8 @@ de brouillon, que Vercel construit en aperçu ; « Publier » la verse dans
 - [x] Deux éditions simultanées : détecter le conflit plutôt qu'écraser (empreinte de chaque fichier lu, commits posés sans forcer)
 - [x] Le brouillon dans l'interface : un bandeau « N fichiers modifiés », l'état de l'aperçu Vercel (lu dans les déploiements GitHub), « Voir le brouillon », « Publier », « Abandonner » ; « Voir la page » ouvre l'aperçu ; un conflit avec `main` est expliqué
 
+- [x] Documentation de la mise en ligne : projet Vercel, jeton GitHub, mot de passe, variables d'environnement, limites et sécurité (guide, « L'admin en ligne »)
+
 ## Phase 9 - Documenter
 
 - [x] Une leçon du cours de démonstration consacrée à l'admin (module 2, leçon 4)
