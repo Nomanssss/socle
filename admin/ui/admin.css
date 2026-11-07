@@ -334,7 +334,8 @@ textarea { resize: vertical; }
   gap: 6px;
 }
 
-.source__label { flex: 1; }
+.source__title { flex: 1.4; }
+.source__author { flex: 1; }
 .source__url { flex: 1.4; }
 
 /* --- Texte et composants ------------------------------------- */

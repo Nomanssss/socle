@@ -215,15 +215,31 @@ function validate(data) {
   if ('slidePoints' in clean && !isStringArray(clean.slidePoints)) {
     errors.push('Les points-clés doivent être une liste de textes.');
   }
-  if (
-    'sources' in clean &&
-    !(Array.isArray(clean.sources) && clean.sources.every((s) => s && typeof s.label === 'string' && s.label.trim()))
-  ) {
-    errors.push('Chaque source doit avoir un libellé.');
+  if ('sources' in clean) {
+    const sources = Array.isArray(clean.sources) ? clean.sources : null;
+    if (!sources || !sources.every((s) => s && typeof s.title === 'string' && s.title.trim())) {
+      errors.push('Chaque source doit avoir un titre.');
+    } else if (!sources.every((s) => s.author === undefined || typeof s.author === 'string')) {
+      errors.push('L’auteur d’une source doit être un texte.');
+    } else if (!sources.every((s) => s.url === undefined || isWebUrl(s.url))) {
+      // Le schéma de la collection (z.url()) refuserait l'adresse au build :
+      // mieux vaut le dire ici, au moment d'enregistrer.
+      errors.push('L’adresse d’une source doit commencer par http:// ou https://.');
+    }
   }
 
   if (errors.length) throw new AdminError(422, errors.join(' '), { errors });
   return clean;
+}
+
+/** Une adresse web complète, telle que la collection l'accepte. */
+function isWebUrl(/** @type {unknown} */ value) {
+  if (typeof value !== 'string') return false;
+  try {
+    return ['http:', 'https:'].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
 }
 
 /**

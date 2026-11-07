@@ -83,7 +83,10 @@ test('un en-tête réécrit se relit à l’identique', () => {
     cover: '../../../assets/couverture.jpg',
     coverAlt: '',
     slidePoints: ['yes', '123', 'null'],
-    sources: [{ label: 'Une source', url: 'https://exemple.fr/?a=1#b' }],
+    sources: [
+      { title: 'Une source', author: 'Son « auteur »', url: 'https://exemple.fr/?a=1#b' },
+      { title: 'Un livre sans adresse' },
+    ],
   };
   const parsed = matter(`---\n${printFrontmatter(data)}\n---\n`, {}).data;
   assert.deepEqual(parsed, data);

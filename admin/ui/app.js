@@ -257,12 +257,18 @@ function fillForm(data) {
   ui.sources.replaceChildren(...(data.sources ?? []).map(sourceRow));
 }
 
-/** @param {{ label?: string, url?: string }} [source] */
+/**
+ * Une source : son titre (seul requis), son auteur et son adresse, tous deux
+ * facultatifs - un livre n'a pas toujours d'adresse.
+ *
+ * @param {{ title?: string, author?: string, url?: string }} [source]
+ */
 function sourceRow(source = {}) {
   const row = h(
     'li',
     { class: 'source' },
-    h('input', { class: 'source__label', value: source.label ?? '', placeholder: 'Libellé', 'aria-label': 'Libellé de la source' }),
+    h('input', { class: 'source__title', value: source.title ?? '', placeholder: 'Titre', 'aria-label': 'Titre de la source' }),
+    h('input', { class: 'source__author', value: source.author ?? '', placeholder: 'Auteur (facultatif)', 'aria-label': 'Auteur de la source' }),
     h('input', { class: 'source__url', value: source.url ?? '', placeholder: 'https://…', type: 'url', 'aria-label': 'Adresse de la source' }),
     h('button', {
       type: 'button',
@@ -370,11 +376,14 @@ function collectData() {
     'sources',
     [...ui.sources.children]
       .map((row) => ({
-        label: row.querySelector('.source__label').value.trim(),
+        title: row.querySelector('.source__title').value.trim(),
+        author: row.querySelector('.source__author').value.trim(),
         url: row.querySelector('.source__url').value.trim(),
       }))
-      .filter((source) => source.label || source.url)
-      .map((source) => (source.url ? source : { label: source.label }))
+      .filter((source) => source.title || source.author || source.url)
+      // Les champs vides ne sont pas écrits : « author: "" » dans l'en-tête
+      // serait du bruit, et le schéma veut un titre ou rien.
+      .map(({ title, author, url }) => ({ title, ...(author && { author }), ...(url && { url }) }))
   );
   return data;
 }
