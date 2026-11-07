@@ -168,3 +168,29 @@ test('une cellule garde son texte, « | » compris', async () => {
   assert.deepEqual(table.align, ['left', 'right']);
   assert.equal(printTable(table.rows, table.align), source);
 });
+
+test('socle.config.json : seule la clé visée change, le reste à l’octet près', async () => {
+  const { replaceTopLevel } = await import('../server/settings.mjs');
+  const text = [
+    '{',
+    '  "_locked": "Une explication qui cite \\"locked\\": [\\"x\\"] sans être la clé.",',
+    '  "site": { "title": "Cours" },',
+    '',
+    '  "locked": ["module-4/lecon-4"]',
+    '}',
+    '',
+  ].join('\n');
+
+  const added = replaceTopLevel(text, 'locked', ['module-4/lecon-4', 'module-1/lecon-2']);
+  assert.equal(added, text.replace('["module-4/lecon-4"]', '["module-4/lecon-4", "module-1/lecon-2"]'));
+
+  const emptied = replaceTopLevel(text, 'locked', []);
+  assert.equal(emptied, text.replace('["module-4/lecon-4"]', '[]'));
+
+  // Clé absente : ajoutée en fin de fichier, après une ligne vide.
+  const without = '{\n  "site": { "title": "Cours" }\n}\n';
+  assert.equal(
+    replaceTopLevel(without, 'locked', ['a/b']),
+    '{\n  "site": { "title": "Cours" },\n\n  "locked": ["a/b"]\n}\n'
+  );
+});

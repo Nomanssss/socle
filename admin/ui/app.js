@@ -141,19 +141,68 @@ function renderToc() {
           ...lessons.map((lesson) =>
             h(
               'li',
-              {},
+              { class: lesson.locked ? 'toc__item is-locked' : 'toc__item' },
               h(
                 'a',
                 { class: 'toc__link', href: `#${lesson.id}`, 'aria-current': lesson.id === current ? 'page' : false },
                 h('span', { class: 'toc__order' }, lesson.order ?? '·'),
                 h('span', { class: 'toc__label' }, lesson.title),
-                lesson.locked && h('span', { class: 'toc__lock', title: 'Verrouillée', 'aria-label': '(verrouillée)' }, '🔒')
+                lesson.locked && h('span', { class: 'visually-hidden' }, ' (verrouillée)')
+              ),
+              // Le verrou est un bouton à part, à côté du lien : un bouton
+              // dans un lien n'est ni valide ni atteignable au clavier.
+              h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'toc__lock',
+                  'aria-pressed': String(lesson.locked),
+                  'aria-label': `${lesson.locked ? 'Déverrouiller' : 'Verrouiller'} « ${lesson.title} »`,
+                  title: lesson.locked
+                    ? 'Verrouillée : sa page et ses slides ne sont pas générées. Cliquer pour la rouvrir.'
+                    : 'Verrouiller : la leçon reste annoncée au sommaire, mais sa page et ses slides ne sont plus générées.',
+                  onclick: () => toggleLock(lesson),
+                },
+                lesson.locked ? '🔒' : '🔓'
               )
             )
           )
         )
       )
     )
+  );
+}
+
+/**
+ * Verrouille ou déverrouille une leçon : l'admin écrit « locked » dans
+ * socle.config.json, et le serveur de dev en tient compte aussitôt - la
+ * page passe en 404, ou revient.
+ *
+ * @param {{ id: string, title: string, locked: boolean }} lesson
+ */
+async function toggleLock(lesson) {
+  const locked = !lesson.locked;
+  try {
+    await request('/lock', { method: 'PUT', json: { id: lesson.id, locked } });
+  } catch (error) {
+    setStatus(/** @type {Error} */ (error).message, 'error');
+    return;
+  }
+  lesson.locked = locked;
+  if (state.lesson?.id === lesson.id) {
+    state.lesson.locked = locked;
+    updateViewLink();
+  }
+  renderToc();
+  // Le focus suit le bouton redessiné : sans ça, il retombe en haut de page.
+  [...ui.toc.querySelectorAll('.toc__lock')]
+    .find((button) => button.getAttribute('aria-label')?.endsWith(`« ${lesson.title} »`))
+    ?.focus();
+  setStatus(
+    locked
+      ? `« ${lesson.title} » est verrouillée : sa page n’est plus générée.`
+      : `« ${lesson.title} » est rouverte.`,
+    'ok'
   );
 }
 
@@ -512,7 +561,7 @@ function updateViewLink() {
   if (lesson.locked) {
     ui.viewPage.removeAttribute('href');
     ui.viewPage.setAttribute('aria-disabled', 'true');
-    ui.viewPage.title = 'Leçon verrouillée : sa page n’est pas générée. Retirez-la de « locked » dans socle.config.json pour la voir.';
+    ui.viewPage.title = 'Leçon verrouillée : sa page n’est pas générée. Déverrouillez-la depuis le sommaire (🔒) pour la voir.';
   } else {
     ui.viewPage.href = `/lecons/${lesson.id}/`;
     ui.viewPage.removeAttribute('aria-disabled');

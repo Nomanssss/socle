@@ -107,7 +107,7 @@ de code, et l'on n'a plus à connaître la syntaxe Markdown.*
   - ⚠ Constaté : une leçon créée pendant `npm run dev` n'a pas de page tant que le serveur n'a pas redémarré (`getStaticPaths` n'est pas relu). L'admin devra le redémarrer, ou le dire.
 - [ ] Renommer, déplacer, supprimer une leçon
 - [ ] Réordonner leçons et modules par glisser-déposer (réécrit `order` et `moduleOrder`)
-- [ ] Verrouiller / déverrouiller une leçon depuis le sommaire
+- [x] Verrouiller / déverrouiller une leçon depuis le sommaire (réécrit la seule clé `locked` de `socle.config.json`, effet immédiat sur le serveur de dev)
 
 ## Phase 7 - Régler le site
 

@@ -18,7 +18,8 @@
 //      formulaire HTML ne sait pas produire.
 //   3. Aucun chemin reçu n'est utilisé tel quel : lessons.mjs ramène
 //      chaque identifiant à un fichier de src/content/lecons/, media.mjs
-//      à une image de src/assets/ - ou le refuse.
+//      à une image de src/assets/ - ou le refuse. Hors de ces dossiers,
+//      un seul fichier s'écrit : socle.config.json, par settings.mjs.
 // =============================================================
 
 import { readFile } from 'node:fs/promises';
@@ -28,6 +29,7 @@ import { listLessons, readLesson, writeLesson, AdminError } from './lessons.mjs'
 import { findComponents, printComponent, printTable } from './mdx.mjs';
 import { listMedia, readMedia, uploadMedia, deleteMedia, MAX_UPLOAD } from './media.mjs';
 import { readSlides, writeSlides, previewSlides, readSlideImage } from './slides.mjs';
+import { setLocked } from './settings.mjs';
 import { codemirrorBundle } from './vendor.mjs';
 import { readConfig } from '../../scripts/config.mjs';
 
@@ -126,6 +128,10 @@ async function api(req, route, params) {
     case 'POST /table/print': {
       const { rows, align } = await readJson(req);
       return { source: printTable(rows, align) };
+    }
+    case 'PUT /lock': {
+      const { id, locked } = await readJson(req);
+      return await setLocked({ id, locked });
     }
     case 'GET /media':
       return { media: await listMedia() };
