@@ -295,7 +295,7 @@ export function mountSettings(root, { request, openDialog, imagePicker, setStatu
       ),
       section(
         'Charte',
-        'Trois couleurs et deux polices : tout le reste en est déduit, sur le site comme dans les slides. À l’enregistrement, la charte est régénérée (npm run brand) - elle vérifie les contrastes et télécharge les polices, ce qui demande une connexion.',
+        'Trois couleurs et deux polices : tout le reste en est déduit, sur le site comme dans les slides. À l’enregistrement, la charte est régénérée (npm run brand) : elle vérifie les contrastes, et télécharge les polices quand elles changent - seul ce cas demande une connexion.',
         color('primary', 'Couleur principale', 'Liens, boutons, titres de slides.'),
         color('text', 'Texte', 'Le texte, et les aplats les plus foncés.'),
         color('page', 'Fond de page', 'En général blanc, ou presque.'),

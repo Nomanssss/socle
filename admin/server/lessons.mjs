@@ -14,7 +14,7 @@
 // ne doit pas produire un diff que personne n'a demandé.
 // =============================================================
 
-import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { readFile, writeFile, readdir, rename, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join, resolve, relative, sep } from 'node:path';
 import matter from 'gray-matter';
@@ -168,7 +168,8 @@ export async function writeLesson({ id: rawId, data, body, hash: expected, force
  * (« Annexes ») n'est jamais touché.
  *
  * Toutes les leçons concernées sont lues et vérifiées avant la première
- * écriture. Le dossier du module ne change pas : seul l'affichage suit.
+ * écriture, puis écrites ensemble par writeAll() : toutes, ou aucune. Le
+ * dossier du module ne change pas : seul l'affichage suit.
  *
  * @param {{ from: unknown, name: unknown, position: unknown }} input
  */
@@ -222,11 +223,48 @@ export async function updateModule({ from, name, position }) {
     };
     if (sameValue(before, after)) continue;
     const frontmatter = printFrontmatter(after, Object.keys(before));
-    plans.push({ id: lesson.id, file, text: `---\n${frontmatter}\n---\n${parts.body}` });
+    plans.push({ id: lesson.id, file, source, text: `---\n${frontmatter}\n---\n${parts.body}` });
   }
 
-  for (const plan of plans) await writeFile(plan.file, plan.text, 'utf8');
+  await writeAll(plans);
   return { module: renamed, position: rank, changed: plans.map((plan) => plan.id) };
+}
+
+/**
+ * Écrit plusieurs leçons comme une seule opération : toutes, ou aucune.
+ *
+ * 1. chaque nouveau texte est d'abord écrit À CÔTÉ de sa leçon, dans un
+ *    fichier temporaire - un échec ici n'a encore rien touché ;
+ * 2. puis chaque temporaire remplace sa leçon (un renommage, que le
+ *    système fait d'un bloc) ;
+ * 3. si un remplacement échoue, celles déjà remplacées retrouvent leur
+ *    texte d'origine, gardé en mémoire.
+ *
+ * Sans cela, un module renommé à moitié - une interruption au milieu de
+ * la boucle - se couperait en deux sur l'accueil.
+ *
+ * @param {{ file: string, source: string, text: string }[]} plans
+ */
+async function writeAll(plans) {
+  const temps = plans.map((plan) => `${plan.file}.admin-${process.pid}.tmp`);
+  try {
+    for (const [i, plan] of plans.entries()) await writeFile(temps[i], plan.text, 'utf8');
+  } catch (error) {
+    await Promise.all(temps.map((temp) => unlink(temp).catch(() => {})));
+    throw error;
+  }
+
+  const done = [];
+  try {
+    for (const [i, plan] of plans.entries()) {
+      await rename(temps[i], plan.file);
+      done.push(plan);
+    }
+  } catch (error) {
+    for (const plan of done) await writeFile(plan.file, plan.source, 'utf8').catch(() => {});
+    await Promise.all(temps.map((temp) => unlink(temp).catch(() => {})));
+    throw new AdminError(500, `Le réglage n’a pas pu être appliqué à toutes les leçons : rien n’a été changé (${error.message}).`);
+  }
 }
 
 /**
