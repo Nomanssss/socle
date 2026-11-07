@@ -1265,3 +1265,41 @@ button.media:hover { border-color: var(--brand); }
 }
 
 .module-ref__name { font-weight: 600; }
+
+/* --- Connexion (admin en ligne) ------------------------------ */
+
+.login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.login__card {
+  width: min(100%, 380px);
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.login__title {
+  margin: 0 0 20px;
+  font-size: 1.25rem;
+}
+
+.login__title span {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--brand);
+  vertical-align: middle;
+}
+
+.login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}

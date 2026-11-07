@@ -432,3 +432,103 @@ test('GitHub : les modules de l’admin écrivent sur le brouillon sans le savoi
     useStore(localStore());
   }
 });
+
+// -------------------------------------------------------------
+// La connexion de l'admin en ligne
+// -------------------------------------------------------------
+
+test('mot de passe : empreinte salée, vérification, longueur minimale', async () => {
+  const { hashPassword, verifyPassword } = await import('../server/auth.mjs');
+  const hash = hashPassword('un mot de passe solide');
+  assert.match(hash, /^scrypt\$\d+\$\d+\$\d+\$[\w+/=]+\$[\w+/=]+$/);
+  assert.notEqual(hash, hashPassword('un mot de passe solide'), 'salé : deux empreintes différentes');
+  assert.equal(verifyPassword('un mot de passe solide', hash), true);
+  assert.equal(verifyPassword('un mot de passe solidE', hash), false);
+  assert.equal(verifyPassword('un mot de passe solide', 'n’importe quoi'), false);
+  assert.throws(() => hashPassword('court'), /12 caractères/);
+});
+
+test('session : cookie signé, falsifié, expiré, mot de passe changé', async () => {
+  const { hashPassword, createAuth } = await import('../server/auth.mjs');
+  let now = 1_000_000;
+  const secret = 's'.repeat(40);
+  const passwordHash = hashPassword('un mot de passe solide');
+  const auth = createAuth({ passwordHash, secret, now: () => now });
+  const req = (/** @type {string} */ cookie) => /** @type {any} */ ({ headers: { cookie } });
+
+  const login = auth.login('un mot de passe solide', '1.2.3.4');
+  assert.equal(login.ok, true);
+  const cookie = /** @type {any} */ (login).cookie;
+  assert.match(cookie, /HttpOnly; Secure; SameSite=Strict/);
+  const value = cookie.split(';')[0];
+  assert.equal(auth.isAuthenticated(req(value)), true);
+
+  const [name, payload] = value.split('=');
+  const [expires, signature] = payload.split('.');
+  assert.equal(auth.isAuthenticated(req(`${name}=${Number(expires) + 1e9}.${signature}`)), false, 'date repoussée');
+  assert.equal(auth.isAuthenticated(req(`${name}=${expires}.${signature.slice(1)}x`)), false, 'signature altérée');
+  assert.equal(auth.isAuthenticated(req('')), false);
+
+  now += 13 * 3600 * 1000;
+  assert.equal(auth.isAuthenticated(req(value)), false, 'expiré après 12 h');
+
+  now = 1_000_000;
+  const other = createAuth({ passwordHash: hashPassword('un autre mot de passe'), secret, now: () => now });
+  assert.equal(other.isAuthenticated(req(value)), false, 'changer le mot de passe déconnecte');
+
+  assert.throws(() => createAuth({ passwordHash: 'clair', secret }), /admin:password/);
+  assert.throws(() => createAuth({ passwordHash, secret: 'court' }), /32 caractères/);
+});
+
+test('connexion : cinq essais, puis quinze minutes d’attente', async () => {
+  const { hashPassword, createAuth } = await import('../server/auth.mjs');
+  let now = 0;
+  const auth = createAuth({ passwordHash: hashPassword('un mot de passe solide'), secret: 's'.repeat(40), now: () => now });
+  for (let i = 0; i < 5; i++) assert.equal(auth.login('mauvais', '9.9.9.9').status, 401);
+  assert.equal(auth.login('un mot de passe solide', '9.9.9.9').status, 429, 'même le bon est refusé pendant l’attente');
+  assert.equal(auth.login('un mot de passe solide', '8.8.8.8').ok, true, 'une autre adresse n’est pas bloquée');
+  now += 16 * 60 * 1000;
+  assert.equal(auth.login('un mot de passe solide', '9.9.9.9').ok, true, 'débloqué après 15 minutes');
+});
+
+test('admin en ligne : rien sans connexion, tout avec', async () => {
+  const http = await import('node:http');
+  const { createHandler } = await import('../server/handler.mjs');
+  const { hashPassword, createAuth } = await import('../server/auth.mjs');
+  const auth = createAuth({ passwordHash: hashPassword('un mot de passe solide'), secret: 's'.repeat(40) });
+  const handler = createHandler('/admin', { auth });
+  const server = http.createServer((req, res) => handler(req, res, () => res.writeHead(404).end()));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${/** @type {any} */ (server.address()).port}`;
+  const go = (path, init = {}) => fetch(`${origin}${path}`, { redirect: 'manual', ...init });
+  const json = { 'Content-Type': 'application/json', Origin: origin };
+  try {
+    const page = await (await go('/admin/')).text();
+    assert.match(page, /Mot de passe/, 'la page de connexion');
+    assert.doesNotMatch(page, /lesson-form/, 'pas l’admin');
+    assert.equal((await go('/admin/api/lessons')).status, 401);
+    assert.equal((await go('/admin/app.js')).status, 302, 'le code de l’admin reste fermé');
+
+    assert.equal((await go('/admin/api/login', { method: 'POST', headers: json, body: '{"password":"mauvais"}' })).status, 401);
+    const foreign = await go('/admin/api/login', {
+      method: 'POST',
+      headers: { ...json, Origin: 'https://ailleurs.example' },
+      body: '{"password":"un mot de passe solide"}',
+    });
+    assert.equal(foreign.status, 403, 'une connexion venue d’un autre site est refusée');
+
+    const ok = await go('/admin/api/login', { method: 'POST', headers: json, body: '{"password":"un mot de passe solide"}' });
+    assert.equal(ok.status, 200);
+    const cookie = String(ok.headers.get('set-cookie')).split(';')[0];
+    const session = await go('/admin/api/session', { headers: { cookie } });
+    assert.deepEqual(await session.json(), { online: true });
+    assert.equal((await go('/admin/api/lessons', { headers: { cookie } })).status, 200);
+    assert.match(await (await go('/admin/', { headers: { cookie } })).text(), /lesson-form/, 'connecté : l’admin');
+    assert.equal((await go('/admin/', { headers: { cookie } })).headers.get('x-frame-options'), 'DENY');
+
+    const out = await go('/admin/api/logout', { method: 'POST', headers: { ...json, cookie }, body: '{}' });
+    assert.match(String(out.headers.get('set-cookie')), /Max-Age=0/);
+  } finally {
+    server.close();
+  }
+});

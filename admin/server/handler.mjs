@@ -47,16 +47,29 @@ const UI_FILES = {
   '/text-editor.js': { file: 'text-editor.js', type: 'text/javascript; charset=utf-8' },
   '/slides-editor.js': { file: 'slides-editor.js', type: 'text/javascript; charset=utf-8' },
   '/settings.js': { file: 'settings.js', type: 'text/javascript; charset=utf-8' },
+  '/login.js': { file: 'login.js', type: 'text/javascript; charset=utf-8' },
   '/admin.css': { file: 'admin.css', type: 'text/css; charset=utf-8' },
 };
+
+// La page de connexion, servie à la place de l'admin tant qu'on n'est pas connecté.
+const LOGIN_PAGE = { file: 'login.html', type: 'text/html; charset=utf-8' };
 
 // Un corps de requête plus gros qu'une leçon ne le sera jamais.
 const MAX_BODY = 2 * 1024 * 1024;
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
-/** @param {string} base Le préfixe d'URL de l'admin (« /admin »). */
-export function createHandler(base) {
+// Ce qui reste accessible sans être connecté, en ligne : la page de
+// connexion et de quoi l'afficher.
+const PUBLIC_UI = new Set(['/', '/admin.css', '/login.js']);
+
+/**
+ * @param {string} base Le préfixe d'URL de l'admin (« /admin »).
+ * @param {{ auth?: ReturnType<typeof import('./auth.mjs').createAuth> | null }} [options]
+ *   `auth` : la connexion de l'admin en ligne (auth.mjs). Absente, c'est
+ *   l'admin locale - réservée à la machine elle-même, sans mot de passe.
+ */
+export function createHandler(base, { auth = null } = {}) {
   /**
    * @param {import('node:http').IncomingMessage} req
    * @param {import('node:http').ServerResponse} res
@@ -66,7 +79,9 @@ export function createHandler(base) {
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname !== base && !url.pathname.startsWith(`${base}/`)) return next();
 
-    if (!LOOPBACK.has(req.socket.remoteAddress ?? '')) {
+    // En local : la machine elle-même, et personne d'autre. En ligne,
+    // tout le monde peut frapper à la porte - c'est la connexion qui trie.
+    if (!auth && !LOOPBACK.has(req.socket.remoteAddress ?? '')) {
       return send(res, 403, { error: 'L’admin n’est accessible que depuis cette machine.' });
     }
 
@@ -80,6 +95,34 @@ export function createHandler(base) {
     const path = url.pathname.slice(base.length);
 
     try {
+      if (auth) {
+        if (path === '/api/login' && req.method === 'POST') {
+          assertSameOrigin(req);
+          const { password } = await readJson(req);
+          const result = auth.login(password, clientAddress(req));
+          if (!result.ok) return send(res, result.status, { error: result.message });
+          res.setHeader('Set-Cookie', result.cookie);
+          return send(res, 200, { ok: true });
+        }
+        if (path === '/api/logout' && req.method === 'POST') {
+          assertSameOrigin(req);
+          res.setHeader('Set-Cookie', auth.logoutCookie());
+          return send(res, 200, { ok: true });
+        }
+        if (!auth.isAuthenticated(req)) {
+          if (path.startsWith('/api/')) return send(res, 401, { error: 'Session expirée : reconnectez-vous.', login: true });
+          if (req.method === 'GET' && PUBLIC_UI.has(path)) {
+            return await serveUi(res, path === '/' ? LOGIN_PAGE : UI_FILES[path]);
+          }
+          res.writeHead(302, { Location: `${base}/` }).end();
+          return;
+        }
+      }
+
+      if (path === '/api/session' && req.method === 'GET') {
+        return send(res, 200, { online: Boolean(auth) });
+      }
+
       if (path.startsWith('/api/')) {
         if (req.method !== 'GET') assertSameOrigin(req);
         const route = path.slice('/api'.length);
@@ -187,6 +230,17 @@ function assertSameOrigin(req) {
 }
 
 /**
+ * L'adresse du visiteur, pour limiter les essais de mot de passe. Derrière
+ * Vercel, c'est le premier maillon de X-Forwarded-For.
+ *
+ * @param {import('node:http').IncomingMessage} req
+ */
+function clientAddress(req) {
+  const forwarded = String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim();
+  return forwarded || req.socket.remoteAddress || 'inconnue';
+}
+
+/**
  * @param {import('node:http').IncomingMessage} req
  * @param {number} limit
  */
@@ -239,14 +293,21 @@ function serveImage(res, { content, type }) {
  */
 async function serveUi(res, entry) {
   let content = await readFile(join(UI_DIR, entry.file), 'utf8');
-  if (entry.file === 'index.html') {
+  if (entry.file === 'index.html' || entry.file === 'login.html') {
     const config = await readConfig();
     const primary = /^#[0-9a-f]{3,8}$/i.test(config.colors?.primary ?? '') ? config.colors.primary : '#4647AE';
     content = content
       .replaceAll('{{PRIMARY}}', primary)
       .replaceAll('{{TITLE}}', escapeHtml(config.site?.title || 'Socle'));
   }
-  res.writeHead(200, { 'Content-Type': entry.type, 'Cache-Control': 'no-store' });
+  res.writeHead(200, {
+    'Content-Type': entry.type,
+    'Cache-Control': 'no-store',
+    // L'admin ne s'affiche jamais dans le cadre d'une autre page : un site
+    // malveillant ne peut pas la superposer à ses boutons.
+    'X-Frame-Options': 'DENY',
+    'Content-Security-Policy': "frame-ancestors 'none'",
+  });
   res.end(content);
 }
 

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Connexion · {{TITLE}}</title>
+    <style>:root { --brand: {{PRIMARY}}; }</style>
+    <link rel="stylesheet" href="admin.css" />
+    <script type="module" src="login.js"></script>
+  </head>
+  <body class="login">
+    <main class="login__card">
+      <h1 class="login__title">{{TITLE}} <span>admin</span></h1>
+      <form class="login__form" id="login-form" novalidate>
+        <label class="field">
+          <span class="field__label">Mot de passe</span>
+          <input type="password" name="password" autocomplete="current-password" required autofocus />
+        </label>
+        <p class="notice notice--error" id="login-error" role="alert" hidden></p>
+        <button type="submit" class="button button--primary">Se connecter</button>
+      </form>
+    </main>
+  </body>
+</html>

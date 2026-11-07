@@ -106,6 +106,11 @@ async function request(path, { json, ...options } = {}) {
     body: json === undefined ? undefined : JSON.stringify(json),
   });
   const payload = await response.json().catch(() => ({}));
+  // En ligne, une session expirée : la page de connexion reprend la main.
+  if (response.status === 401 && payload.login) {
+    location.reload();
+    return new Promise(() => {});
+  }
   if (!response.ok) {
     const error = /** @type {any} */ (new Error(payload.error ?? `Erreur ${response.status}`));
     error.status = response.status;
@@ -118,6 +123,18 @@ async function request(path, { json, ...options } = {}) {
 // -------------------------------------------------------------
 // Sommaire
 // -------------------------------------------------------------
+
+// En ligne, la barre propose de se déconnecter.
+request('/session').then(({ online }) => {
+  if (!online) return;
+  const logout = h('button', { type: 'button', class: 'button', id: 'logout' }, 'Se déconnecter');
+  logout.addEventListener('click', async () => {
+    if ((isDirty() || settings?.isDirty()) && !confirm('Des modifications ne sont pas enregistrées. Se déconnecter quand même ?')) return;
+    await request('/logout', { method: 'POST', json: {} });
+    location.reload();
+  });
+  ui.save.after(logout);
+});
 
 async function loadToc() {
   const { lessons } = await request('/lessons');
