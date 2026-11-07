@@ -123,6 +123,7 @@ de brouillon, que Vercel construit en aperçu ; « Publier » la verse dans
 `main`. Branche `feat/admin-en-ligne`.*
 
 - [x] L'admin ne touche plus le disque : un « stockage » (`admin/server/store.mjs`), le disque en local, une branche GitHub en ligne - commits tout-ou-rien dans les deux cas
+- [x] Le stockage GitHub (`admin/server/github-store.mjs`) : le brouillon créé depuis `main`, un commit par opération posé sans forcer, synchroniser / publier / abandonner - testé contre une fausse API (`admin/test/fake-github.mjs`)
 
 - [ ] Connexion sans base : empreinte du mot de passe en variable d'environnement, session en cookie signé
 - [ ] Enregistrement par commit via l'API GitHub, la CI reconstruit le site

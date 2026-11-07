@@ -317,3 +317,118 @@ test('stockage local : un commit écrit tout, ou rien', async () => {
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// -------------------------------------------------------------
+// Le stockage GitHub (admin en ligne), contre une fausse API
+// -------------------------------------------------------------
+
+const LESSON = (title, module, moduleOrder, order) =>
+  `---\ntitle: "${title}"\nmodule: "${module}"\nmoduleOrder: ${moduleOrder}\norder: ${order}\n---\n\nCorps de ${title}.\n`;
+
+async function githubFixture() {
+  const { fakeGitHub } = await import('./fake-github.mjs');
+  const { githubStore } = await import('../server/github-store.mjs');
+  const github = fakeGitHub({
+    'socle.config.json': '{\n  "locked": []\n}\n',
+    'src/content/lecons/a/l1.mdx': LESSON('A1', 'Module 1 - A', 1, 1),
+    'src/content/lecons/a/l2.mdx': LESSON('A2', 'Module 1 - A', 1, 2),
+    'src/content/lecons/b/l1.mdx': LESSON('B1', 'Module 2 - B', 2, 1),
+    'README.md': 'Le dépôt.\n',
+  });
+  const store = githubStore({ token: 'jeton', repo: 'moi/cours', fetch: github.fetch });
+  return { github, store };
+}
+
+test('GitHub : le brouillon naît de main, et s’y lit comme un disque', async () => {
+  const { github, store } = await githubFixture();
+  assert.equal(await store.read('README.md'), 'Le dépôt.\n');
+  assert.equal(await store.read('absent.md'), null);
+  assert.deepEqual((await store.list('src/content/lecons/a')).map((e) => e.path).sort(), [
+    'src/content/lecons/a/l1.mdx',
+    'src/content/lecons/a/l2.mdx',
+  ]);
+  assert.ok(github.refs.has('brouillon'), 'le brouillon a été créé');
+  assert.equal(github.refs.get('brouillon'), github.refs.get('main'));
+});
+
+test('GitHub : plusieurs fichiers, un seul commit, sur le brouillon seulement', async () => {
+  const { github, store } = await githubFixture();
+  const before = github.commits.size;
+  await store.commit(
+    [
+      { path: 'src/content/lecons/a/l1.mdx', content: 'nouveau' },
+      { path: 'src/assets/image.png', content: Buffer.from([0x89, 0x50, 0x4e, 0x47]) },
+      { path: 'README.md', content: null },
+    ],
+    'Admin : essai'
+  );
+  assert.equal(github.commits.size, before + 1, 'un seul commit');
+  assert.equal(github.file('brouillon', 'src/content/lecons/a/l1.mdx'), 'nouveau');
+  assert.equal(github.file('brouillon', 'README.md'), null);
+  assert.deepEqual([...(await store.readBytes('src/assets/image.png'))], [0x89, 0x50, 0x4e, 0x47]);
+  assert.equal(github.file('main', 'src/content/lecons/a/l1.mdx'), LESSON('A1', 'Module 1 - A', 1, 1), 'main intact');
+  assert.deepEqual(await store.status().then((s) => [s.ahead, s.behind]), [1, 0]);
+});
+
+test('GitHub : un commit poussé entre-temps n’est jamais écrasé', async () => {
+  const { github, store } = await githubFixture();
+  await store.read('README.md'); // le stockage connaît l'état du brouillon
+  github.push('brouillon', { 'autre.md': 'écrit ailleurs' });
+  await store.commit([{ path: 'README.md', content: 'par l’admin' }], 'Admin : essai');
+  assert.equal(github.file('brouillon', 'autre.md'), 'écrit ailleurs');
+  assert.equal(github.file('brouillon', 'README.md'), 'par l’admin');
+});
+
+test('GitHub : synchroniser, publier, abandonner', async () => {
+  const { github, store } = await githubFixture();
+  await store.read('README.md');
+
+  // main avance sans que le brouillon ait rien : il la rejoint.
+  github.push('main', { 'code.js': 'v2' });
+  await store.sync();
+  assert.equal(github.refs.get('brouillon'), github.refs.get('main'));
+
+  // Une modification en attente, et main qui avance encore : fusion.
+  await store.commit([{ path: 'README.md', content: 'brouillon' }], 'Admin : essai');
+  github.push('main', { 'code.js': 'v3' });
+  await store.sync();
+  assert.equal(github.file('brouillon', 'code.js'), 'v3');
+  assert.equal(github.file('brouillon', 'README.md'), 'brouillon');
+
+  // Publier : main reçoit le brouillon.
+  assert.deepEqual(await store.publish(), { published: true });
+  assert.equal(github.file('main', 'README.md'), 'brouillon');
+  assert.equal((await store.status()).ahead, 0);
+
+  // Abandonner : le brouillon redevient main.
+  await store.commit([{ path: 'README.md', content: 'à jeter' }], 'Admin : essai');
+  await store.discard();
+  assert.equal(github.refs.get('brouillon'), github.refs.get('main'));
+  assert.equal(await store.read('README.md'), 'brouillon');
+});
+
+test('GitHub : les modules de l’admin écrivent sur le brouillon sans le savoir', async () => {
+  const { github, store } = await githubFixture();
+  const { useStore, localStore } = await import('../server/store.mjs');
+  const lessons = await import('../server/lessons.mjs');
+  const settings = await import('../server/settings.mjs');
+  useStore(store);
+  try {
+    const lesson = await lessons.readLesson('a/l1');
+    await lessons.writeLesson({ id: 'a/l1', data: { ...lesson.data, title: 'A1 renommée' }, body: lesson.body, hash: lesson.hash });
+    assert.match(github.file('brouillon', 'src/content/lecons/a/l1.mdx'), /title: "A1 renommée"/);
+
+    const before = github.commits.size;
+    await lessons.updateModule({ from: 'Module 1 - A', name: 'Module 1 - A', position: 2 });
+    assert.equal(github.commits.size, before + 1, 'tout le module en un commit');
+    assert.match(github.file('brouillon', 'src/content/lecons/b/l1.mdx'), /module: "Module 1 - B"\nmoduleOrder: 1/);
+    assert.match(github.file('brouillon', 'src/content/lecons/a/l2.mdx'), /module: "Module 2 - A"\nmoduleOrder: 2/);
+
+    await settings.setLocked({ id: 'b/l1', locked: true });
+    assert.deepEqual(JSON.parse(github.file('brouillon', 'socle.config.json')).locked, ['b/l1']);
+    assert.equal((await lessons.listLessons()).find((l) => l.id === 'b/l1').locked, true);
+    assert.equal(github.file('main', 'socle.config.json'), '{\n  "locked": []\n}\n', 'rien en ligne avant publication');
+  } finally {
+    useStore(localStore());
+  }
+});
