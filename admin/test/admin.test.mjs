@@ -607,3 +607,64 @@ test('fonction Vercel : variables manquantes, connexion, écriture sur le brouil
     useStore(localStore());
   }
 });
+
+test('brouillon : état, aperçu Vercel, publier, abandonner', async () => {
+  const http = await import('node:http');
+  const { createHandler } = await import('../server/handler.mjs');
+  const { hashPassword, createAuth } = await import('../server/auth.mjs');
+  const { useStore, localStore } = await import('../server/store.mjs');
+  const { github, store } = await githubFixture();
+  useStore(store);
+  const auth = createAuth({ passwordHash: hashPassword('un mot de passe solide'), secret: 's'.repeat(40) });
+  const handler = createHandler('/admin', { auth });
+  const server = http.createServer((req, res) => handler(req, res, () => res.writeHead(404).end()));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${/** @type {any} */ (server.address()).port}`;
+  const json = { 'Content-Type': 'application/json', Origin: origin };
+  try {
+    const login = await fetch(`${origin}/admin/api/login`, { method: 'POST', headers: json, body: '{"password":"un mot de passe solide"}' });
+    const cookie = String(login.headers.get('set-cookie')).split(';')[0];
+    const get = async (path) => (await fetch(`${origin}/admin/api${path}`, { headers: { cookie } })).json();
+    const post = (path) => fetch(`${origin}/admin/api${path}`, { method: 'POST', headers: { ...json, cookie }, body: '{}' });
+
+    let draft = await get('/draft');
+    assert.deepEqual([draft.ahead, draft.preview.state], [0, 'none'], 'rien à publier au départ');
+
+    await store.commit([{ path: 'README.md', content: 'modifié' }], 'Admin : essai');
+    draft = await get('/draft');
+    assert.deepEqual([draft.ahead, draft.files], [1, ['README.md']]);
+    assert.equal(draft.preview.state, 'none');
+
+    github.deploy('brouillon', 'pending', '');
+    assert.equal((await get('/draft')).preview.state, 'building');
+    github.deploy('brouillon', 'success', 'https://cours-git-brouillon.vercel.app');
+    assert.deepEqual((await get('/draft')).preview, { state: 'ready', url: 'https://cours-git-brouillon.vercel.app' });
+
+    assert.equal((await post('/draft/publish')).status, 200);
+    assert.equal(github.file('main', 'README.md'), 'modifié', 'publié sur main');
+    assert.equal((await get('/draft')).ahead, 0);
+
+    await store.commit([{ path: 'README.md', content: 'à jeter' }], 'Admin : essai');
+    assert.equal((await post('/draft/discard')).status, 200);
+    assert.equal(github.file('brouillon', 'README.md'), 'modifié', 'abandonné : retour à la version publiée');
+
+    // Un conflit à la publication est expliqué, pas masqué.
+    await store.commit([{ path: 'README.md', content: 'version du brouillon' }], 'Admin : essai');
+    github.push('main', { 'README.md': 'version poussée sur main' });
+    const conflict = await post('/draft/publish');
+    assert.equal(conflict.status, 409);
+    assert.match((await conflict.json()).error, /conflit/);
+    const diverged = await get('/draft');
+    assert.equal(diverged.conflict, true, 'le bandeau le signale, sans erreur');
+    assert.equal(github.file('brouillon', 'README.md'), 'version du brouillon', 'le brouillon n’est pas touché');
+  } finally {
+    server.close();
+    useStore(localStore());
+  }
+
+  // En local, pas de brouillon.
+  const local = createHandler('/admin');
+  const res = { statusCode: 0, writeHead(code) { this.statusCode = code; return this; }, setHeader() {}, end() {} };
+  await local(/** @type {any} */ ({ url: '/admin/api/draft', method: 'GET', headers: {}, socket: { remoteAddress: '127.0.0.1' } }), /** @type {any} */ (res), () => {});
+  assert.equal(res.statusCode, 404);
+});

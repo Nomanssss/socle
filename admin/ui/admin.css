@@ -1303,3 +1303,24 @@ button.media:hover { border-color: var(--brand); }
   flex-direction: column;
   gap: 14px;
 }
+
+/* --- Brouillon (admin en ligne) ------------------------------ */
+
+.draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 0.875rem;
+}
+
+/* Des modifications attendent : le bandeau se teinte de la couleur du cours. */
+.draft[data-pending='true'] {
+  background: color-mix(in srgb, var(--brand) 10%, var(--surface));
+}
+
+.draft__status { flex: 1; min-width: 200px; margin: 0; }
+.draft__preview { font-weight: 600; color: var(--brand); }

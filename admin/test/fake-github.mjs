@@ -22,6 +22,8 @@ export function fakeGitHub(files) {
   /** @type {Map<string, { tree: string, parents: string[], message: string }>} */ const commits = new Map();
   /** @type {Map<string, string>} */ const refs = new Map();
   const requests = [];
+  /** @type {{ id: number, sha: string, state: string, url: string }[]} */
+  const deployments = [];
 
   const putBlob = (/** @type {Buffer} */ content) => {
     const id = sha(['blob', content.toString('base64')]);
@@ -151,6 +153,14 @@ export function fakeGitHub(files) {
       refs.set(body.base, commit);
       return json(201, { sha: commit });
     }
+    if (method === 'GET' && path === '/deployments') {
+      const list = deployments.filter((d) => d.sha === url.searchParams.get('sha'));
+      return json(200, list.map((d) => ({ id: d.id, sha: d.sha })));
+    }
+    if (method === 'GET' && (m = path.match(/^\/deployments\/(\d+)\/statuses$/))) {
+      const found = deployments.find((d) => String(d.id) === m[1]);
+      return json(200, found ? [{ state: found.state, environment_url: found.url }] : []);
+    }
     return json(404, { message: `Route non simulée : ${method} ${path}` });
   }
 
@@ -173,5 +183,9 @@ export function fakeGitHub(files) {
     },
     refs,
     commits,
+    /** Simule Vercel : un aperçu pour le dernier commit d'une branche. */
+    deploy(/** @type {string} */ branch, /** @type {string} */ state, /** @type {string} */ url) {
+      deployments.unshift({ id: deployments.length + 1, sha: /** @type {string} */ (refs.get(branch)), state, url });
+    },
   };
 }

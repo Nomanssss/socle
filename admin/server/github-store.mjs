@@ -51,9 +51,10 @@ export class GitHubError extends Error {
  *   branch: string,
  *   base: string,
  *   status(): Promise<{ ahead: number, behind: number, files: string[] }>,
- *   sync(): Promise<void>,
+ *   sync(): Promise<{ conflict: boolean }>,
  *   publish(message?: string): Promise<{ published: boolean }>,
  *   discard(): Promise<void>,
+ *   preview(): Promise<{ state: 'building' | 'ready' | 'failed' | 'none', url: string | null }>,
  * }}
  */
 export function githubStore({
@@ -253,24 +254,52 @@ export function githubStore({
     async sync() {
       forget();
       const { ahead, behind } = await this.status();
-      if (!behind) return;
+      if (!behind) return { conflict: false };
       if (!ahead) {
         await call('PATCH', refsPath(branch), { sha: await head(base), force: false });
         forget();
-        return;
+        return { conflict: false };
       }
-      await call('POST', '/merges', {
-        base: branch,
-        head: base,
-        commit_message: `Admin : le brouillon reprend « ${base} »`,
-      });
+      try {
+        await call('POST', '/merges', {
+          base: branch,
+          head: base,
+          commit_message: `Admin : le brouillon reprend « ${base} »`,
+        });
+      } catch (error) {
+        // Le même passage d'un fichier a changé des deux côtés : la fusion
+        // demande un humain. Le brouillon reste tel quel, et on le dit.
+        if (error instanceof GitHubError && error.status === 409) return { conflict: true };
+        throw error;
+      }
       forget();
+      return { conflict: false };
     },
 
     /** Verse le brouillon dans la base : le site en ligne se met à jour. */
     async publish(message = 'Admin : publication du brouillon') {
       const result = await call('POST', '/merges', { base, head: branch, commit_message: message });
       return { published: result !== null };
+    },
+
+    /**
+     * L'aperçu du brouillon : Vercel déclare chaque construction à GitHub
+     * (« deployments »), avec son état et son adresse. On lit celle du
+     * dernier commit du brouillon.
+     *
+     * @returns {Promise<{ state: 'building' | 'ready' | 'failed' | 'none', url: string | null }>}
+     */
+    async preview() {
+      const sha = await draftHead();
+      const deployments = await call('GET', `/deployments?sha=${sha}&per_page=5`);
+      if (!Array.isArray(deployments) || !deployments.length) return { state: 'none', url: null };
+      const statuses = await call('GET', `/deployments/${deployments[0].id}/statuses?per_page=1`);
+      const latest = Array.isArray(statuses) ? statuses[0] : null;
+      const state =
+        latest?.state === 'success' ? 'ready'
+        : latest?.state === 'failure' || latest?.state === 'error' ? 'failed'
+        : 'building';
+      return { state, url: latest?.environment_url || latest?.target_url || null };
     },
 
     /** Abandonne le brouillon : il redevient la copie exacte de la base. */

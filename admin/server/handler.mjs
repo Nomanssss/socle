@@ -32,7 +32,7 @@ import { listMedia, readMedia, uploadMedia, deleteMedia, MAX_UPLOAD } from './me
 import { readSlides, writeSlides, previewSlides, readSlideImage } from './slides.mjs';
 import { setLocked, readSettings, writeSettings, pickPhoto } from './settings.mjs';
 import { codemirrorBundle } from './vendor.mjs';
-import { readConfig } from './store.mjs';
+import { readConfig, store } from './store.mjs';
 
 const UI_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'ui');
 
@@ -123,6 +123,35 @@ export function createHandler(base, { auth = null, uploadLimit = MAX_UPLOAD } = 
 
       if (path === '/api/session' && req.method === 'GET') {
         return send(res, 200, { online: Boolean(auth) });
+      }
+
+      // Le brouillon de l'admin en ligne : où il en est, le publier,
+      // l'abandonner. En local, il n'y a pas de brouillon - le disque est
+      // la seule version.
+      if (path.startsWith('/api/draft')) {
+        const draft = /** @type {any} */ (store());
+        if (draft.kind !== 'github') return send(res, 404, { error: 'Pas de brouillon en local.' });
+        if (req.method !== 'GET') assertSameOrigin(req);
+        if (path === '/api/draft' && req.method === 'GET') {
+          const { conflict } = await draft.sync();
+          const [status, preview] = await Promise.all([draft.status(), draft.preview().catch(() => ({ state: 'none', url: null }))]);
+          return send(res, 200, { branch: draft.branch, base: draft.base, ...status, preview, conflict });
+        }
+        if (path === '/api/draft/publish' && req.method === 'POST') {
+          try {
+            return send(res, 200, await draft.publish());
+          } catch (error) {
+            if (/** @type {any} */ (error).status === 409) {
+              throw new AdminError(409, `Le brouillon ne se fusionne pas sans conflit avec « ${draft.base} » : une même partie d’un fichier a changé des deux côtés. À régler dans le dépôt.`);
+            }
+            throw error;
+          }
+        }
+        if (path === '/api/draft/discard' && req.method === 'POST') {
+          await draft.discard();
+          return send(res, 200, { discarded: true });
+        }
+        return send(res, 404, { error: 'Rien à cette adresse.' });
       }
 
       if (path.startsWith('/api/')) {

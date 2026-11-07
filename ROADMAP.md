@@ -128,7 +128,8 @@ de brouillon, que Vercel construit en aperçu ; « Publier » la verse dans
 - [x] Connexion sans base : empreinte du mot de passe en variable d'environnement (`npm run admin:password`), session en cookie signé, 5 essais puis 15 minutes d'attente
 - [x] Enregistrement par commit via l'API GitHub, sur le brouillon ; Vercel en construit l'aperçu
 - [x] `/admin/` dans une fonction Vercel (`api/admin.mjs`, réécritures de `vercel.json`), le reste du site toujours statique ; CodeMirror empaqueté à la construction (`npm run vercel-build`), images limitées à 4 Mo, polices vérifiées auprès de Google Fonts avant d'enregistrer
-- [ ] Deux éditions simultanées : détecter le conflit plutôt qu'écraser
+- [x] Deux éditions simultanées : détecter le conflit plutôt qu'écraser (empreinte de chaque fichier lu, commits posés sans forcer)
+- [x] Le brouillon dans l'interface : un bandeau « N fichiers modifiés », l'état de l'aperçu Vercel (lu dans les déploiements GitHub), « Voir le brouillon », « Publier », « Abandonner » ; « Voir la page » ouvre l'aperçu ; un conflit avec `main` est expliqué
 
 ## Phase 9 - Documenter
 

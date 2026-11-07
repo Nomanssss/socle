@@ -26,6 +26,14 @@
       </button>
     </header>
 
+    <!-- Admin en ligne : le brouillon, ce qui n'est pas encore publié. -->
+    <div class="draft" id="draft" role="region" aria-label="Brouillon" hidden>
+      <p class="draft__status" id="draft-status" aria-live="polite"></p>
+      <a class="draft__preview" id="draft-preview" target="_blank" rel="noopener" hidden>Voir le brouillon ↗</a>
+      <button type="button" class="button button--small" id="draft-discard" hidden>Abandonner</button>
+      <button type="button" class="button button--small button--primary" id="draft-publish" hidden>Publier</button>
+    </div>
+
     <div class="layout" id="layout">
       <nav class="toc" id="toc" aria-label="Leçons du cours"></nav>
 
