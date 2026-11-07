@@ -43,5 +43,5 @@
   },
 
   "_locked": "Leçons verrouillées : leur page n'est pas générée (URL en 404, contenu absent de dist/), leurs slides ne sont pas produites, mais elles restent visibles au sommaire, grisées. Pour déverrouiller : retirez la ligne, puis npm run build - ou cliquez sur le cadenas de la leçon dans l'admin (/admin/, avec npm run dev).",
-  "locked": ["module-4/lecon-4"]
+  "locked": ["module-4/lecon-3", "module-4/lecon-4"]
 }

@@ -191,6 +191,22 @@ a.button { text-decoration: none; }
   letter-spacing: 0.04em;
 }
 
+/* Le titre d'un module est le bouton qui ouvre son réglage. */
+.toc__module-edit {
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.toc__module-edit:hover { color: var(--brand); text-decoration: underline; }
+
 .toc__list {
   margin: 0;
   padding: 0;
@@ -340,7 +356,8 @@ summary.panel__title { cursor: pointer; }
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   padding: 7px 10px;
   border: 1px solid var(--line);
@@ -1236,3 +1253,15 @@ button.media:hover { border-color: var(--brand); }
   font-size: 0.8125rem;
   white-space: pre-wrap;
 }
+
+/* --- Module de la leçon -------------------------------------- */
+
+.module-ref {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 38px;
+}
+
+.module-ref__name { font-weight: 600; }

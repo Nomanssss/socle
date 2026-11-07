@@ -151,6 +151,85 @@ export async function writeLesson({ id: rawId, data, body, hash: expected, force
 }
 
 /**
+ * Règle un MODULE : son nom et sa position dans le cours.
+ *
+ * Ces deux valeurs vivent dans l'en-tête de chacune de ses leçons
+ * (« module » et « moduleOrder ») : les modifier leçon par leçon, c'est
+ * risquer qu'une faute de frappe coupe le module en deux sur l'accueil.
+ * On les réécrit donc toutes d'un coup, et rien d'autre dans l'en-tête.
+ *
+ * La position est un rang, de 1 au nombre de modules : le module visé y
+ * est placé, et TOUS les modules sont renumérotés de 1 à N. Deux modules
+ * ne partagent ainsi jamais le même « moduleOrder ».
+ *
+ * Un nom qui suit la convention du cours, « Module 3 - Les présentations »,
+ * porte lui aussi le rang : il suit la renumérotation, sans quoi le module
+ * passé en tête s'annoncerait « Module 3 » sur ses slides. Un nom libre
+ * (« Annexes ») n'est jamais touché.
+ *
+ * Toutes les leçons concernées sont lues et vérifiées avant la première
+ * écriture. Le dossier du module ne change pas : seul l'affichage suit.
+ *
+ * @param {{ from: unknown, name: unknown, position: unknown }} input
+ */
+export async function updateModule({ from, name, position }) {
+  const current = String(from ?? '');
+  const label = typeof name === 'string' ? name.trim() : '';
+  if (!label) throw new AdminError(422, 'Le nom du module est obligatoire.');
+
+  const lessons = await listLessons();
+  // L'ordre des modules tel que l'accueil le montre : celui de listLessons.
+  const order = [...new Set(lessons.map((lesson) => lesson.module))];
+  if (!order.includes(current)) throw new AdminError(404, `Aucun module « ${current} ».`);
+  if (label !== current && order.includes(label)) {
+    throw new AdminError(422, `Un module s’appelle déjà « ${label} » : le renommer ainsi fusionnerait les deux.`);
+  }
+
+  const rank = Number(position);
+  if (!Number.isInteger(rank) || rank < 1 || rank > order.length) {
+    throw new AdminError(422, `La position doit aller de 1 à ${order.length}.`);
+  }
+
+  const moved = order.filter((module) => module !== current);
+  moved.splice(rank - 1, 0, current);
+
+  // Le nom de chaque module une fois renuméroté : le libellé choisi pour
+  // celui qu'on règle, puis le numéro de convention mis à son nouveau rang.
+  const NUMBERED = /^(module\s+)\d+(\s*[-–—:·]\s*)/i;
+  /** @type {Map<string, string>} */
+  const names = new Map(
+    moved.map((module, i) => {
+      const base = module === current ? label : module;
+      return [module, base.replace(NUMBERED, (_, word, sep) => `${word}${i + 1}${sep}`)];
+    })
+  );
+  const renamed = /** @type {string} */ (names.get(current));
+  if ([...names].some(([module, next]) => module !== current && next === renamed)) {
+    throw new AdminError(422, `Un module s’appellerait aussi « ${renamed} » : le renommer ainsi fusionnerait les deux.`);
+  }
+
+  // Ce que chaque leçon doit devenir, calculé pour toutes avant d'écrire.
+  const plans = [];
+  for (const lesson of lessons) {
+    const { file } = lessonPath(lesson.id);
+    const source = await readSource(file, lesson.id);
+    const parts = split(source);
+    const before = parseFrontmatter(parts.frontmatter, lesson.id);
+    const after = {
+      ...before,
+      module: names.get(lesson.module),
+      moduleOrder: moved.indexOf(lesson.module) + 1,
+    };
+    if (sameValue(before, after)) continue;
+    const frontmatter = printFrontmatter(after, Object.keys(before));
+    plans.push({ id: lesson.id, file, text: `---\n${frontmatter}\n---\n${parts.body}` });
+  }
+
+  for (const plan of plans) await writeFile(plan.file, plan.text, 'utf8');
+  return { module: renamed, position: rank, changed: plans.map((plan) => plan.id) };
+}
+
+/**
  * @param {string} file
  * @param {string} id
  */

@@ -227,3 +227,52 @@ test('réglages : seuls les champs prévus changent, les erreurs sont nommées',
   const bad = mergeSettings(current, { site: { url: 'mon-cours.fr' }, colors: { primary: 'bleu' } });
   assert.equal(bad.errors.length, 2);
 });
+
+test('régler un module : nom et rang réécrits dans toutes ses leçons, rien d’autre', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const root = mkdtempSync(join(tmpdir(), 'socle-module-'));
+  const lessons = join(root, 'src/content/lecons');
+  const write = (id, module, moduleOrder, order) => {
+    mkdirSync(join(lessons, id.split('/')[0]), { recursive: true });
+    writeFileSync(
+      join(lessons, `${id}.mdx`),
+      `---\ntitle: "${id}"\nmodule: "${module}"\nmoduleOrder: ${moduleOrder}\norder: ${order}\n---\n\nCorps de ${id}.\n`
+    );
+  };
+  write('a/l1', 'Module A', 1, 1);
+  write('a/l2', 'Module A', 1, 2);
+  write('b/l1', 'Module B', 2, 1);
+  write('c/l1', 'Module C', 3, 1);
+  writeFileSync(join(root, 'socle.config.json'), '{ "locked": [] }\n');
+
+  const cwd = process.cwd();
+  process.chdir(root);
+  try {
+    // Import neuf : LESSONS_DIR se résout sur le répertoire courant.
+    const { updateModule } = await import(`../server/lessons.mjs?module=${Date.now()}`);
+
+    // Renommer A et le passer en dernier : B et C remontent.
+    const result = await updateModule({ from: 'Module A', name: 'Les bases', position: 3 });
+    assert.deepEqual(result.changed.sort(), ['a/l1', 'a/l2', 'b/l1', 'c/l1']);
+    const l2 = readFileSync(join(lessons, 'a/l2.mdx'), 'utf8');
+    assert.equal(l2, '---\ntitle: "a/l2"\nmodule: "Les bases"\nmoduleOrder: 3\norder: 2\n---\n\nCorps de a/l2.\n');
+    assert.match(readFileSync(join(lessons, 'b/l1.mdx'), 'utf8'), /moduleOrder: 1\n/);
+
+    // Un nom déjà pris est refusé, et rien n'est écrit.
+    await assert.rejects(updateModule({ from: 'Les bases', name: 'Module B', position: 1 }), /fusionnerait/);
+    await assert.rejects(updateModule({ from: 'Les bases', name: 'X', position: 9 }), /de 1 à 3/);
+
+    // Les noms « Module N - … » suivent leur nouveau rang ; les autres non.
+    write('d/l1', 'Module 4 - Le dernier', 4, 1);
+    const moved = await updateModule({ from: 'Module 4 - Le dernier', name: 'Module 4 - Le premier', position: 1 });
+    assert.equal(moved.module, 'Module 1 - Le premier');
+    assert.match(readFileSync(join(lessons, 'd/l1.mdx'), 'utf8'), /module: "Module 1 - Le premier"\nmoduleOrder: 1\n/);
+    assert.match(readFileSync(join(lessons, 'b/l1.mdx'), 'utf8'), /module: "Module B"\nmoduleOrder: 2\n/);
+    assert.match(readFileSync(join(lessons, 'a/l1.mdx'), 'utf8'), /module: "Les bases"\nmoduleOrder: 4\n/);
+  } finally {
+    process.chdir(cwd);
+    rmSync(root, { recursive: true, force: true });
+  }
+});

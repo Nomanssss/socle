@@ -26,7 +26,7 @@
 import { readFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { listLessons, readLesson, writeLesson, AdminError } from './lessons.mjs';
+import { listLessons, readLesson, writeLesson, updateModule, AdminError } from './lessons.mjs';
 import { findComponents, printComponent, printTable } from './mdx.mjs';
 import { listMedia, readMedia, uploadMedia, deleteMedia, MAX_UPLOAD } from './media.mjs';
 import { readSlides, writeSlides, previewSlides, readSlideImage } from './slides.mjs';
@@ -130,6 +130,10 @@ async function api(req, route, params) {
     case 'POST /table/print': {
       const { rows, align } = await readJson(req);
       return { source: printTable(rows, align) };
+    }
+    case 'PUT /module': {
+      const { from, name, position } = await readJson(req);
+      return await updateModule({ from, name, position });
     }
     case 'PUT /lock': {
       const { id, locked } = await readJson(req);

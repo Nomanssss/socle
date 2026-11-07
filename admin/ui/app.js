@@ -27,7 +27,7 @@ const ui = {
   heading: $('#lesson-heading'),
   status: $('#status'),
   save: $('#save'),
-  modules: $('#modules'),
+  moduleName: $('#module-name'),
   sources: $('#sources'),
   bodyField: $('#body'),
   bodyHost: $('#body-host'),
@@ -123,7 +123,6 @@ async function loadToc() {
   const { lessons } = await request('/lessons');
   state.lessons = lessons;
   renderToc();
-  ui.modules.replaceChildren(...[...new Set(lessons.map((l) => l.module))].map((m) => h('option', { value: m })));
 }
 
 function renderToc() {
@@ -139,7 +138,20 @@ function renderToc() {
       h(
         'section',
         { class: 'toc__module' },
-        h('h2', { class: 'toc__title' }, module),
+        h(
+          'h2',
+          { class: 'toc__title' },
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'toc__module-edit',
+              title: 'Régler le module : son nom et sa place dans le cours',
+              onclick: () => editModule(module),
+            },
+            module
+          )
+        ),
         h(
           'ol',
           { class: 'toc__list' },
@@ -178,6 +190,81 @@ function renderToc() {
   );
 }
 
+// -------------------------------------------------------------
+// Régler un module
+//
+// Son nom et sa place dans le cours vivent dans l'en-tête de CHACUNE de
+// ses leçons : le serveur les réécrit toutes d'un coup (PUT /module).
+// -------------------------------------------------------------
+
+/** Le dialogue : le nom, et la position parmi les modules du cours. */
+const moduleEditor = {
+  label: 'Régler le module',
+  /**
+   * @param {HTMLElement} root
+   * @param {{ name: string, position: number, count: number, lessons: number }} props
+   */
+  mount(root, { name, position, count, lessons }) {
+    const input = h('input', { value: name, required: true });
+    const select = h(
+      'select',
+      {},
+      ...Array.from({ length: count }, (_, i) =>
+        h('option', { value: String(i + 1), selected: i + 1 === position }, `${i + 1}${i + 1 === position ? ' (actuelle)' : ''}`)
+      )
+    );
+    root.append(
+      h(
+        'div',
+        { class: 'fields' },
+        h('label', { class: 'field field--wide' }, h('span', { class: 'field__label' }, 'Nom du module'), input,
+          h('span', { class: 'field__help' }, `Réécrit dans ses ${lessons} leçon${lessons > 1 ? 's' : ''}.`)),
+        h('label', { class: 'field' }, h('span', { class: 'field__label' }, 'Place dans le cours'), select,
+          h('span', { class: 'field__help' }, 'Les autres modules se décalent.'))
+      )
+    );
+    return {
+      read() {
+        if (!input.value.trim()) throw new EditorError('Le nom du module est obligatoire.');
+        return { name: input.value.trim(), position: Number(select.value) };
+      },
+    };
+  },
+};
+
+/** @param {string} module */
+async function editModule(module) {
+  const modules = [...new Set(state.lessons.map((lesson) => lesson.module))];
+  const affectsOpenLesson = Boolean(state.lesson);
+  // Le réglage réécrit l'en-tête des leçons, celle ouverte comprise :
+  // des modifications en attente seraient alors en conflit avec le disque.
+  if (affectsOpenLesson && isDirty()) {
+    setStatus('Enregistrez d’abord la leçon ouverte : régler un module réécrit l’en-tête de ses leçons.', 'error');
+    return;
+  }
+  const result = await openDialog(moduleEditor, {
+    name: module,
+    position: modules.indexOf(module) + 1,
+    count: modules.length,
+    lessons: state.lessons.filter((lesson) => lesson.module === module).length,
+  });
+  if (!result) return;
+  try {
+    const { changed } = await request('/module', { method: 'PUT', json: { from: module, ...result } });
+    await loadToc();
+    // La leçon ouverte a pu être réécrite : on la relit, pour que sa
+    // prochaine sauvegarde parte de la version sur le disque.
+    if (state.lesson && changed.includes(state.lesson.id)) {
+      const id = state.lesson.id;
+      state.lesson = null;
+      await openLesson(id);
+    }
+    setStatus(changed.length ? `Module réglé : ${changed.length} leçon${changed.length > 1 ? 's' : ''} mise${changed.length > 1 ? 's' : ''} à jour.` : 'Rien à changer.', 'ok');
+  } catch (error) {
+    setStatus(/** @type {Error} */ (error).message, 'error');
+  }
+}
+
 /**
  * Verrouille ou déverrouille une leçon : l'admin écrit « locked » dans
  * socle.config.json, et le serveur de dev en tient compte aussitôt - la
@@ -210,6 +297,10 @@ async function toggleLock(lesson) {
     'ok'
   );
 }
+
+$('#module-edit').addEventListener('click', () => {
+  if (state.lesson) editModule(state.lesson.data.module);
+});
 
 // Changer de leçon avec des modifications en cours : on demande avant.
 // Le clic est intercepté plutôt que le changement d'ancre, qu'on ne
@@ -330,6 +421,7 @@ function fillForm(data) {
     elements[name].value = data[name] ?? '';
   }
   elements.slidePoints.value = (data.slidePoints ?? []).join('\n');
+  ui.moduleName.textContent = data.module ?? '';
   renderCover();
   ui.sources.replaceChildren(...(data.sources ?? []).map(sourceRow));
 }

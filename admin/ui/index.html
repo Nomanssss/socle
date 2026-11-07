@@ -59,18 +59,23 @@
                 <span class="field__label">Titre <abbr title="obligatoire">*</abbr></span>
                 <input name="title" required />
               </label>
-              <label class="field field--wide">
-                <span class="field__label">Module <abbr title="obligatoire">*</abbr></span>
-                <input name="module" list="modules" required />
-                <datalist id="modules"></datalist>
-              </label>
+              <!-- Le module n'appartient pas à la leçon : son nom et sa place se
+                   règlent pour toutes ses leçons à la fois. Les deux valeurs
+                   restent dans le formulaire, cachées, pour que l'en-tête
+                   enregistré les garde telles quelles. -->
+              <div class="field">
+                <span class="field__label" id="module-label">Module</span>
+                <div class="module-ref" aria-labelledby="module-label">
+                  <span class="module-ref__name" id="module-name"></span>
+                  <button type="button" class="button button--small" id="module-edit">Régler le module</button>
+                </div>
+                <span class="field__help">Son nom et sa place dans le cours valent pour toutes ses leçons.</span>
+                <input name="module" type="hidden" />
+                <input name="moduleOrder" type="hidden" />
+              </div>
               <label class="field">
                 <span class="field__label">Ordre dans le module <abbr title="obligatoire">*</abbr></span>
                 <input name="order" type="number" step="1" required />
-              </label>
-              <label class="field">
-                <span class="field__label">Ordre du module</span>
-                <input name="moduleOrder" type="number" step="1" />
               </label>
               <label class="field field--wide">
                 <span class="field__label">Description</span>

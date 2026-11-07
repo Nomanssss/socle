@@ -103,6 +103,7 @@ de code, et l'on n'a plus à connaître la syntaxe Markdown.*
 
 ## Phase 6 - Organiser le cours
 
+- [x] Régler un module (nom, place dans le cours) depuis le sommaire ou la leçon : réécrit `module` et `moduleOrder` dans toutes ses leçons, les noms « Module N - … » suivent leur rang ; la leçon ne porte plus ces champs
 - [ ] Créer une leçon (dossier de module, nom de fichier, en-tête minimal)
   - ⚠ Constaté : une leçon créée pendant `npm run dev` n'a pas de page tant que le serveur n'a pas redémarré (`getStaticPaths` n'est pas relu). L'admin devra le redémarrer, ou le dire.
 - [ ] Renommer, déplacer, supprimer une leçon
