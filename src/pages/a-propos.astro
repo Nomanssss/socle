@@ -1,0 +1,92 @@
+---
+import '../styles/theme.scss';
+import BaseHead from '../components/BaseHead.astro';
+import SkipLink from '../components/SkipLink.astro';
+import Topbar from '../components/Topbar.astro';
+import Icon from '../components/Icon.astro';
+import Footer from '../components/Footer.astro';
+import { site, author } from '../../scripts/config.mjs';
+
+// =============================================================
+// Page « À propos de l'auteur », liée depuis le pied de page.
+//
+// Une présentation facultative de l'auteur du cours - un paragraphe,
+// une photo carrée et des liens (site personnel, réseaux sociaux…) -
+// renseignée dans « author » de socle.config.json. Contrairement aux
+// mentions légales, rien n'est requis : la page reste en ligne même
+// vide, avec un rappel discret pour son propriétaire.
+//
+// Même allure que les pages-sommaires (Slides, Sources) : un titre
+// sur le fond teinté, puis une carte qui réunit le tout.
+// =============================================================
+const { title: siteTitle, lang } = site();
+const { bio, photo, photoAlt, links } = author();
+---
+
+<html lang={lang}>
+  <head>
+    <BaseHead
+      title={`À propos - ${siteTitle}`}
+      description={`Qui a écrit le cours ${siteTitle}.`}
+    />
+  </head>
+  <body>
+    <SkipLink />
+
+    <Topbar />
+
+    <div class="c-home">
+      <main id="contenu" tabindex="-1" class="c-home__program o-wrapper o-wrapper--large">
+        <div class="o-stack o-stack--xl">
+          <header class="c-index">
+            <h1 class="c-index__title">À propos de l'auteur</h1>
+          </header>
+
+          <section class="c-author" aria-label="Présentation">
+            {
+              photo && (
+                <img class="c-author__photo" src={photo} alt={photoAlt} width="160" height="160" />
+              )
+            }
+
+            <div class="c-author__body o-stack o-stack--lg">
+              {
+                bio ? (
+                  <p class="c-author__bio">{bio}</p>
+                ) : (
+                  <p class="c-notice">
+                    Aucune présentation n'est encore renseignée. Écrivez-la dans{' '}
+                    <code>socle.config.json</code>, section <code>author.bio</code>.
+                  </p>
+                )
+              }
+
+              {
+                links.length > 0 && (
+                  <ul class="o-cluster o-cluster--xs" aria-label="Retrouver l'auteur">
+                    {links.map((link) => (
+                      <li>
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="c-button c-button--small c-button--light"
+                        >
+                          {link.label}
+                          <Icon name="external" size={14} />
+                          <span class="u-hidden-visually"> (nouvelle fenêtre)</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              }
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <Footer />
+  </body>
+</html>

@@ -191,3 +191,35 @@ export function missingLegal() {
   const { legal } = site();
   return LEGAL_FIELDS.filter(({ key }) => !legal[key]).map(({ label }) => label);
 }
+
+/**
+ * L'auteur du cours : une présentation facultative, une photo et des liens
+ * (site personnel, réseaux sociaux…), affichés sur /a-propos/. Contrairement
+ * aux mentions légales, rien n'est requis - un champ vide n'est pas signalé
+ * au build, cette page est un bonus et non une obligation. Un lien sans
+ * libellé ou sans adresse est écarté plutôt qu'affiché à moitié rempli.
+ *
+ * La photo n'est PAS un chemin optimisé par Astro (`astro:assets`) : c'est
+ * une chaîne posée dans `public/`, servie telle quelle - même parti pris
+ * que pour les icônes du site. Une image déjà carrée et de petite taille
+ * (400×400 px suffit) évite d'en télécharger une trop lourde.
+ *
+ * @returns {{ bio: string, photo: string, photoAlt: string, links: { label: string, url: string }[] }}
+ */
+export function author() {
+  const raw = readConfig().author ?? {};
+  /** @type {{ label?: unknown, url?: unknown }[]} */
+  const links = Array.isArray(raw.links) ? raw.links : [];
+
+  return {
+    bio: String(raw.bio ?? '').trim(),
+    photo: String(raw.photo ?? '').trim(),
+    photoAlt: String(raw.photoAlt ?? '').trim(),
+    links: links
+      .map((link) => ({
+        label: String(link?.label ?? '').trim(),
+        url: String(link?.url ?? '').trim(),
+      }))
+      .filter((link) => link.label && link.url),
+  };
+}

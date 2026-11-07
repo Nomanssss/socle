@@ -67,17 +67,20 @@ Le champ `title` est facultatif. Le champ `explanation` aussi, mais il fait la d
 
 ## La frise
 
-Pour une suite d'étapes, chronologique ou non. Chaque étape se déplie au clic.
+Pour une suite d'étapes, chronologique ou non. Chaque étape se déplie au clic. Le champ `heading`, posé sur une étape, ouvre un intertitre qui regroupe les étapes suivantes - utile quand elles couvrent plusieurs périodes.
 
-<Timeline steps={[
-  { title: "Déclarer", description: "Une ligne d'import en haut du fichier .mdx." },
-  { title: "Utiliser", description: "Le composant dans le corps du texte, à l'endroit voulu." },
-  { title: "Vérifier", description: "npm run dev recharge la page à l'enregistrement." },
-]} />
+<Timeline
+  title="Utiliser un composant"
+  steps={[
+    { heading: "Mise en place", title: "Déclarer", description: "Une ligne d'import en haut du fichier .mdx." },
+    { title: "Utiliser", description: "Le composant dans le corps du texte, à l'endroit voulu." },
+    { heading: "Vérification", title: "Vérifier", description: "npm run dev recharge la page à l'enregistrement." },
+  ]}
+/>
 
 ```jsx
-<Timeline steps={[
-  { title: "Déclarer", description: "Ce qui se passe à cette étape." },
+<Timeline title="Titre facultatif" steps={[
+  { heading: "Intertitre facultatif", title: "Déclarer", description: "Ce qui se passe à cette étape." },
 ]} />
 ```
 

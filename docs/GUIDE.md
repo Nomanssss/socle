@@ -92,7 +92,7 @@ Tous les composants sont des **`.astro`** : ils s'exécutent au build et ne néc
 | `PodcastEmbed.astro` | Lecteur audio embarqué | `src`, `title?`, `height?`, `caption?` |
 | `CodepenEmbed.astro` | Pen CodePen éditable | `user`, `penId`, `title?`, `defaultTab?`, `height?` |
 | `Quiz.astro` | QCM auto-corrigé | `questions`, `title?` |
-| `Timeline.astro` | Frise d'étapes dépliables | `steps` |
+| `Timeline.astro` | Frise d'étapes dépliables | `steps`, `title?` (`heading?` par étape, pour grouper) |
 | `Flashcards.astro` | Cartes recto/verso | `cards` |
 | `DragMatch.astro` | Association par glisser-déposer | `pairs` |
 | `ProgressBar.astro` | Jauge de progression : un segment par leçon (par défaut), ou continue avec `variant="bar"` (celle du cours, dans la barre latérale) | `lessonIds`, `label?`, `variant?`, `hideHeader?`, `class?` |
@@ -580,6 +580,26 @@ Les champs sont lus par `scripts/config.mjs` (`site()`, `legalEntries()`, `missi
 
 La rubrique **« Conception et réalisation »** crédite le template lui-même et son auteur, [Alexandre Allain](https://www.linkedin.com/in/alexandre-allain-4a2592151). C'est la seule mention de la page qui ne dépend pas de `socle.config.json` : elle parle de Socle, pas du cours qu'il héberge.
 
+### La page « À propos de l'auteur »
+
+Une présentation facultative de **l'auteur du cours** cette fois, pas du template : un paragraphe, une photo carrée et des liens (site personnel, réseaux sociaux…), section `author` de `socle.config.json` :
+
+```json
+"author": {
+  "bio": "Deux ou trois phrases sur vous.",
+  "photo": "/photos/auteur.jpg",
+  "photoAlt": "",
+  "links": [
+    { "label": "Mon site", "url": "https://exemple.fr" },
+    { "label": "Mastodon", "url": "https://exemple.fr/@vous" }
+  ]
+}
+```
+
+Contrairement aux mentions légales, **rien n'est requis** : `bio` vide n'est pas signalé au build, et `links` accepte aussi bien un tableau vide qu'une dizaine d'entrées. Un lien sans `label` ou sans `url` est simplement écarté. `src/pages/a-propos.astro`, lié depuis le pied de page, lit ces champs via `author()` dans `scripts/config.mjs`.
+
+**`photo` n'est pas un chemin optimisé par Astro** (`astro:assets`) : c'est une chaîne posée dans **`public/`**, servie telle quelle - même parti pris que pour les icônes du site (voir « Images »). Déposez-y une image déjà carrée et de petite taille (400×400 px suffit), et référencez-la par son chemin depuis la racine (`/photos/auteur.jpg`). `photoAlt` suit la même règle que `coverAlt` : laissez-le vide si la photo est purement décorative.
+
 ### La version de Socle
 
 Cette même rubrique affiche « construit avec **Socle 1.1.0** », et chaque page du site porte l'information en en-tête :
@@ -642,10 +662,12 @@ Elle porte `<meta name="robots" content="noindex, follow">` — une page d'erreu
 
 ### Le pied de page
 
-`src/components/Footer.astro` est posé sur l'accueil, sur chaque leçon et sur les pages annexes. Il porte trois choses :
+`src/components/Footer.astro` est posé sur l'accueil, sur chaque leçon et sur les pages annexes. Il porte cinq choses :
 
 - **la marque**, qui ramène à l'accueil. Ce n'est pas une balise `<img>` mais un fond dessiné par `logo.logotype()` — donc toujours dans la couleur de la charte du moment, et assombrie au survol (voir « Les marques du projet ») ;
-- **les liens annexes** : « Sources du cours » quand une leçon cite des sources, et les mentions légales ;
+- **le lien vers la page « À propos de l'auteur »** ;
+- **le lien vers les sources du cours**, quand une leçon en cite (voir « Citer ses sources ») ;
+- **le lien vers les mentions légales** ;
 - **la note sur la progression** stockée dans le navigateur : une information de confidentialité, qui a sa place partout et non sur la seule page d'accueil.
 
 Pour ajouter une page annexe (conditions d'utilisation, accessibilité…), dupliquez `mentions-legales.astro` : le gabarit `.c-page` (barre du haut, titre, `.s-richtext`) est fait pour ça, et le lien s'ajoute dans le `<nav>` de `Footer.astro`.

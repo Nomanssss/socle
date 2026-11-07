@@ -17,12 +17,7 @@ Quand un point est traité, il quitte ce fichier et rejoint le
 
 *Les leçons, le frontmatter, les composants pédagogiques, les images.*
 
-- [ ] **`Timeline` : l'allure de la frise est à revoir.** Graphiquement, elle
-  ne tient pas face au reste des composants - la ligne, les pastilles, le
-  chevron de dépliage sont à reprendre.
-- [ ] **`Timeline` : impossible de titrer.** Une frise arrive nue dans la
-  page : ni titre pour la nommer, ni intertitres pour regrouper ses étapes
-  quand elles couvrent plusieurs périodes.
+- [ ] _rien pour l'instant_
 
 ## Slides
 

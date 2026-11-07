@@ -6,10 +6,11 @@ import { getCourse, hasSources } from '../utils/course';
 // Footer - pied de page commun à l'accueil, aux leçons et aux
 // pages annexes.
 //
-// Trois choses, et pas une de plus : la marque (qui ramène à
-// l'accueil), les liens annexes (sources du cours, mentions
-// légales), et la note sur
-// la progression stockée dans le navigateur - une information de
+// Cinq choses, et pas une de plus : la marque (qui ramène à
+// l'accueil), le lien vers l'auteur du cours, celui vers les
+// sources (quand le cours en cite), celui vers les mentions
+// légales, et la note sur la
+// progression stockée dans le navigateur - une information de
 // confidentialité, qui a sa place sur toutes les pages et non sur
 // la seule page d'accueil.
 //
@@ -21,14 +22,19 @@ import { getCourse, hasSources } from '../utils/course';
 const { title } = site();
 const year = new Date().getFullYear();
 
-// Sur la page des mentions elles-mêmes, le lien est signalé comme
-// courant - le même `aria-current` que la barre latérale d'une leçon.
-const LEGAL_PATH = '/mentions-legales/';
-const path = Astro.url.pathname.replace(/\/*$/, '/');
-const isLegalPage = path === LEGAL_PATH;
-
-// Les sources du cours, quand il en a : même condition que la barre du haut.
+// Sur la page des mentions (ou des sources) elle-même, le lien est
+// signalé comme courant - le même `aria-current` que la barre
+// latérale d'une leçon.
+const AUTHOR_PATH = '/a-propos/';
 const SOURCES_PATH = '/sources/';
+const LEGAL_PATH = '/mentions-legales/';
+const currentPath = Astro.url.pathname.replace(/\/*$/, '/');
+const isAuthorPage = currentPath === AUTHOR_PATH;
+const isSourcesPage = currentPath === SOURCES_PATH;
+const isLegalPage = currentPath === LEGAL_PATH;
+
+// Le lien des sources n'apparaît que si le cours en cite : même
+// condition que la barre du haut.
 const showSources = hasSources(await getCourse());
 ---
 
@@ -40,11 +46,18 @@ const showSources = hasSources(await getCourse());
       </a>
 
       <nav class="c-footer__nav o-cluster o-cluster--middle" aria-label="Liens de bas de page">
+        <a
+          href={AUTHOR_PATH}
+          aria-current={isAuthorPage ? 'page' : undefined}
+          class="c-footer__link"
+        >
+          À propos de l'auteur
+        </a>
         {
           showSources && (
             <a
               href={SOURCES_PATH}
-              aria-current={path === SOURCES_PATH ? 'page' : undefined}
+              aria-current={isSourcesPage ? 'page' : undefined}
               class="c-footer__link"
             >
               Sources du cours

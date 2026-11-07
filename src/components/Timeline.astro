@@ -5,41 +5,75 @@
 // Chaque étape peut être dépliée pour révéler sa description
 // (utilise <details>/<summary> natifs : accessible, sans JS).
 //
+// `title` nomme la frise entière ; `heading`, posé sur une étape,
+// ouvre un nouveau groupe (intertitre) devant elle - utile quand
+// les étapes couvrent plusieurs périodes.
+//
 // Usage MDX :
-//   <Timeline steps={[
-//     { title: "1990 - Naissance du Web", description: "..." },
+//   <Timeline title="Du brouillon à la mise en ligne" steps={[
+//     { heading: "Écriture", title: "1990 - Naissance du Web", description: "..." },
 //     { title: "2014 - HTML5", description: "..." },
+//     { heading: "Diffusion", title: "2024 - Le Web partout", description: "..." },
 //   ]} />
 // =============================================================
 interface Step {
   title: string;
   description?: string;
+  heading?: string;
 }
 interface Props {
   steps: Step[];
+  title?: string;
 }
-const { steps } = Astro.props;
+const { steps, title } = Astro.props;
+
+interface Group {
+  heading?: string;
+  steps: Step[];
+}
+
+// Une étape avec `heading` ouvre un nouveau groupe ; les suivantes,
+// sans `heading`, rejoignent le groupe en cours.
+const groups = steps.reduce<Group[]>((acc, step) => {
+  const last = acc[acc.length - 1];
+  if (step.heading || !last) {
+    acc.push({ heading: step.heading, steps: [step] });
+  } else {
+    last.steps.push(step);
+  }
+  return acc;
+}, []);
 ---
 
-<ol class="c-timeline">
+<div class="c-timeline">
   {
-    steps.map((step) => (
-      <li class="c-timeline__item">
-        <span class="c-timeline__dot" aria-hidden="true" />
-        {step.description ? (
-          <details class="c-timeline__details">
-            <summary class="c-timeline__summary">
-              <span class="c-timeline__chevron" aria-hidden="true">
-                ▸
-              </span>
-              <span>{step.title}</span>
-            </summary>
-            <p class="c-timeline__description">{step.description}</p>
-          </details>
-        ) : (
-          <p class="c-timeline__title">{step.title}</p>
-        )}
-      </li>
+    title && (
+      <p class="c-timeline__title">
+        <span aria-hidden="true">🕒</span>
+        {title}
+      </p>
+    )
+  }
+  {
+    groups.map((group) => (
+      <div class="c-timeline__group">
+        {group.heading && <p class="c-timeline__heading">{group.heading}</p>}
+        <ol class="c-timeline__list">
+          {group.steps.map((step) => (
+            <li class="c-timeline__item">
+              <span class="c-timeline__dot" aria-hidden="true" />
+              {step.description ? (
+                <details class="c-timeline__details">
+                  <summary class="c-timeline__summary">{step.title}</summary>
+                  <p class="c-timeline__description">{step.description}</p>
+                </details>
+              ) : (
+                <p class="c-timeline__step-title">{step.title}</p>
+              )}
+            </li>
+          ))}
+        </ol>
+      </div>
     ))
   }
-</ol>
+</div>

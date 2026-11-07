@@ -25,9 +25,9 @@ _Rien pour l'instant._
 
 ## [1.1.0] - 2026-11-07
 
-Refonte de l'interface - accueil, leçon, slides - et deux nouvelles
-pages : les présentations et les sources du cours. Rien à réécrire dans
-un cours existant : les nouveaux champs sont facultatifs.
+Refonte de l'interface - accueil, leçon, slides - et trois nouvelles
+pages : les présentations, les sources du cours et l'auteur. Rien à
+réécrire dans un cours existant : les nouveaux champs sont facultatifs.
 
 ### Ajouté
 
@@ -41,7 +41,8 @@ un cours existant : les nouveaux champs sont facultatifs.
 - **Sources du cours** : un champ `sources` dans le frontmatter (titre,
   auteur et adresse facultatifs) liste les références d'une leçon en fin de
   page, et la page `/sources/` les réunit toutes, module par module - liée
-  depuis la barre du haut et le pied de page dès qu'une source existe.
+  depuis la barre du haut et le pied de page dès qu'une source existe. Une
+  leçon verrouillée n'y apparaît pas.
 - La barre du haut apparaît aussi sur les **mentions légales** et la page
   **404**, qui perdent leur lien « ← Accueil » devenu redondant.
 - **Page 404** : une adresse inconnue tombe désormais sur une page du cours,
@@ -60,6 +61,16 @@ un cours existant : les nouveaux champs sont facultatifs.
 - **Intégration continue** (GitHub Actions) : à chaque poussée, les types
   sont vérifiés et le site construit.
 - **Ce journal**.
+- **`Timeline` peut désormais se titrer** : une prop `title` nomme la frise,
+  et un champ `heading` sur une étape ouvre un intertitre pour regrouper les
+  étapes qui couvrent plusieurs périodes.
+- **Page « À propos de l'auteur »** (`/a-propos/`), liée depuis le pied de
+  page : une présentation facultative (paragraphe, photo carrée et liens -
+  site personnel, réseaux sociaux…) renseignée dans la nouvelle section
+  `author` de `socle.config.json`. Rien n'est requis, contrairement aux
+  mentions légales. La photo est un chemin dans `public/`, servi tel quel
+  et non optimisé par Astro. La page suit la nouvelle interface : barre du
+  haut, et une carte qui réunit photo, présentation et liens.
 
 ### Modifié
 
@@ -81,6 +92,9 @@ un cours existant : les nouveaux champs sont facultatifs.
   3 »), son chapô et sa **durée de lecture**, puis un bloc **« En bref »**
   tiré des `slidePoints`. Le PDF du module se télécharge désormais depuis
   l'en-tête de chaque leçon, et non plus depuis la seule dernière.
+- **`Timeline` perd le chevron de dépliage**, qui ne rendait pas bien, et
+  gagne un peu d'air entre son titre et la frise.
+
 - `npm run check` **fonctionne sans installation supplémentaire** :
   `@astrojs/check` et `typescript` font désormais partie des dépendances de
   développement. La vérification passe sans erreur ni avertissement.
