@@ -166,3 +166,16 @@ p {
   color: #333;
 }
 ```
+
+---
+
+<!-- _class: end -->
+<!-- _paginate: false -->
+
+# Merci !
+
+Prénom Nom
+
+- [Site personnel](https://exemple.fr)
+- [Mastodon](https://exemple.fr/@vous)
+- [LinkedIn](https://www.linkedin.com/in/exemple)

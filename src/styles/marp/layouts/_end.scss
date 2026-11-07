@@ -1,0 +1,134 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: End (Marp layout)
+ * Type: Theme
+ * Description: Slide de fin - un remerciement, le logo, les liens de l'auteur,
+ *              sur fond de couleur principale.
+ *              Générée automatiquement à la fin de chaque deck.
+ *              Usage : <!-- _class: end -->
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../../settings/colors";
+@use "../../settings/spacing";
+@use "../../settings/typography";
+@use "../../tools/logo";
+
+/*******************************************************************************
+ * Layout
+*******************************************************************************/
+
+/**
+ * Fond plein de la couleur principale, comme l'intercalaire `section` : la
+ * slide qui reste projetée pendant les questions porte la marque du cours.
+ * Tout est centré - le titre, un petit logo, le nom de l'auteur, une ligne
+ * de liens.
+ *
+ * Le petit logo est peint par le `::after` du titre, ce qui le garde collé
+ * sous « Merci ! » sans balise de plus. `::before` porte le grand filigrane, repris de `section` ;
+ * `::after` de la slide reste à la pagination, coupée ici par le générateur.
+ *
+ * Les liens viennent d'une liste markdown, posée en ligne et séparée par des
+ * points médians : une liste à puces verticale ferait formulaire.
+**/
+section.end {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: colors.get("on-primary");
+  background: colors.get("primary");
+
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    bottom: 5%;
+    right: -10%;
+    width: rem.convert(650px);
+    aspect-ratio: 1;
+    background-image: logo.logo(colors.$page);
+    background-repeat: no-repeat;
+    background-size: contain;
+    transform: rotate(-15deg);
+    opacity: 0.1;
+  }
+
+  h1 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: spacing.get("lg");
+    margin-bottom: spacing.get("2xl");
+    font-size: rem.convert(80px);
+    color: colors.get("on-primary");
+
+    &::after {
+      content: "";
+      width: rem.convert(130px);
+      aspect-ratio: logo.$logotype-ratio;
+      background-image: logo.logotype(colors.$page);
+      background-repeat: no-repeat;
+      background-size: contain;
+    }
+  }
+
+  // La couleur est redonnée au paragraphe : la base des slides passe les
+  // `p` en ton atténué, illisible sur le fond plein.
+  p {
+    margin: 0 0 spacing.get("sm");
+    font-size: rem.convert(32px);
+    font-weight: typography.$bold;
+    color: colors.get("on-primary");
+  }
+
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: rem.convert(26px);
+  }
+
+  // Les liens se suivent en ligne : on retire la puce losange de la base
+  // des slides (retrait et `::before` absolu), et le séparateur reprend le
+  // `::before` dans le flux du texte.
+  li {
+    margin: 0;
+    padding-left: 0;
+
+    &::before {
+      content: none;
+    }
+
+    & + li::before {
+      content: "·";
+      position: static;
+      width: auto;
+      height: auto;
+      margin-inline: spacing.get("md");
+      background: none;
+      transform: none;
+      opacity: 0.6;
+    }
+  }
+
+  a {
+    color: colors.get("on-primary");
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+}

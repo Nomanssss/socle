@@ -98,7 +98,7 @@ LICENSE                       → MIT, voir « Licence » en fin de document
 
 | Commande | Ce qu'elle fait |
 | --- | --- |
-| `npm run dev` | serveur de développement → <http://localhost:4321> |
+| `npm run dev` | serveur de développement → <http://localhost:4321>, et l'admin → <http://localhost:4321/admin/> |
 | `npm run build` | le site statique, dans `dist/` |
 | `npm run preview` | prévisualise le build |
 | `npm run check` | vérifie les types et le frontmatter, sans construire |
@@ -108,8 +108,11 @@ LICENSE                       → MIT, voir « Licence » en fin de document
 | `npm run slides:preview` | aperçu live du thème des slides → <http://localhost:8080> |
 | `npm run bundle` | le livrable complet : le site **et** les présentations |
 | `npm run reset` | efface le cours de démonstration |
+| `npm run test:admin` | les tests de l'admin |
 
 Pour ne régénérer qu'une partie des présentations — les leçons seules, les modules seuls, un format précis — il existe `slides:lecons`, `slides:modules`, `slides:pptx` et leurs variantes `:html`. La grille complète est dans le [guide](docs/GUIDE.md#ne-régénérer-quune-partie).
+
+**L'admin** (`/admin/`, avec `npm run dev`) permet d'écrire le cours sans éditeur de code : leçons, composants, slides, images, verrou et réglages, dans des formulaires. Elle écrit directement les fichiers du dépôt, n'existe qu'en local et n'arrive jamais dans le site publié. Détails dans le [guide](docs/GUIDE.md#ladmin--écrire-sans-éditeur-de-code).
 
 `brand` tourne tout seul avant `dev` et `build` : une couleur changée dans `socle.config.json` est prise en compte sans rien lancer d'autre.
 

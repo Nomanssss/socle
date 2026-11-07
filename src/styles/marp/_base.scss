@@ -50,8 +50,8 @@ section {
  * est le moyen d'obtenir un aplat que `background-size` sait découper.
  *
  * Exclue des mises en page qui occupent déjà toute la surface - slide de
- * titre, intercalaire, image plein cadre - ainsi que de `statement`, dont la
- * phrase centrée se suffit à elle-même, et de `image-split`, dont l'image est
+ * titre, intercalaire, image plein cadre - ainsi que de `statement` et de
+ * `end`, dont le contenu centré se suffit à lui-même, et de `image-split`, dont l'image est
  * posée par Marp dans une couche à part.
  *
  * Sur `image-left` et `image-right`, elle passe SOUS le panneau d'image : la
@@ -60,7 +60,7 @@ section {
  * `background-color` plus haut, et non le raccourci `background` : celui-ci
  * remettrait `background-image` à zéro, donc effacerait la bande.
 **/
-section:not(.lead, .section, .statement, .image-full, .image-split) {
+section:not(.lead, .section, .statement, .end, .image-full, .image-split) {
   background-image: var(--band);
   background-repeat: no-repeat;
   background-position: bottom center;
@@ -349,7 +349,7 @@ section[data-marpit-pagination]::after {
  * elle, reste là où elle est active - chaque mise en page en règle la
  * couleur.
 **/
-section:is(.lead, .section, .statement, .image-full, .image-split) {
+section:is(.lead, .section, .statement, .end, .image-full, .image-split) {
   > header,
   > footer {
     display: none;

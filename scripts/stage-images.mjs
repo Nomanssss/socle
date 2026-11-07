@@ -36,10 +36,10 @@ export function stageImage(absPath, outDir) {
   return `assets/${name}`;
 }
 
-const rewrite = (baseDir, outDir) => (match, pre, src, post) => {
+const rewrite = (baseDir, toUrl) => (match, pre, src, post) => {
   const s = src.trim().replace(/^['"]|['"]$/g, '');
   if (/^(https?:|data:|\/)/.test(s)) return match;
-  const staged = stageImage(resolve(baseDir, s), outDir);
+  const staged = toUrl(resolve(baseDir, s));
   return staged ? pre + staged + post : match;
 };
 
@@ -49,8 +49,16 @@ const rewrite = (baseDir, outDir) => (match, pre, src, post) => {
  * Deux formes sont couvertes : la syntaxe markdown `![](x.png)`, et les
  * directives de fond `<!-- _backgroundImage: url('x.png') -->` - qu'un auteur
  * écrit à la main pour les mises en page à panneau d'image.
+ *
+ * `toUrl` reçoit le chemin absolu de chaque image et rend l'adresse à
+ * écrire à sa place (null : on n'y touche pas). C'est ce qui permet à
+ * l'aperçu de l'admin de désigner les images autrement qu'en les copiant.
  */
-export const stageImages = (markdown, baseDir, outDir) =>
+export const rewriteImages = (markdown, baseDir, toUrl) =>
   markdown
-    .replace(/(!\[[^\]]*\]\()([^)]+)(\))/g, rewrite(baseDir, outDir))
-    .replace(/(_backgroundImage:\s*url\()([^)]+)(\))/g, rewrite(baseDir, outDir));
+    .replace(/(!\[[^\]]*\]\()([^)]+)(\))/g, rewrite(baseDir, toUrl))
+    .replace(/(_backgroundImage:\s*url\()([^)]+)(\))/g, rewrite(baseDir, toUrl));
+
+/** Réécrit les images d'un markdown en les copiant dans <outDir>/assets/. */
+export const stageImages = (markdown, baseDir, outDir) =>
+  rewriteImages(markdown, baseDir, (absPath) => stageImage(absPath, outDir));

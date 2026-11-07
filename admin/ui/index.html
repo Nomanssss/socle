@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Admin · {{TITLE}}</title>
+    <!-- La couleur principale du cours, injectée par le serveur de l'admin. -->
+    <style>:root { --brand: {{PRIMARY}}; }</style>
+    <link rel="stylesheet" href="admin.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <header class="bar">
+      <a class="bar__brand" href="/" target="_blank" rel="noopener">{{TITLE}} <span>admin</span></a>
+      <nav class="bar__nav" aria-label="Sections de l'admin">
+        <a class="bar__tab" id="tab-lessons" href="#">Leçons</a>
+        <a class="bar__tab" id="tab-media" href="#medias">Médiathèque</a>
+        <a class="bar__tab" id="tab-settings" href="#reglages">Réglages</a>
+      </nav>
+      <p class="bar__lesson" id="lesson-heading"></p>
+      <p class="bar__status" id="status" role="status" aria-live="polite"></p>
+      <a class="button" id="view-page" target="_blank" rel="noopener" hidden>Voir la page ↗</a>
+      <button type="button" class="button button--primary" id="save" disabled>
+        Enregistrer <kbd id="save-shortcut">Ctrl S</kbd>
+      </button>
+    </header>
+
+    <div class="layout" id="layout">
+      <nav class="toc" id="toc" aria-label="Leçons du cours"></nav>
+
+      <main class="editor" id="editor">
+        <p class="empty" id="empty">Choisissez une leçon dans le sommaire.</p>
+
+        <section class="media-view" id="media-view" aria-labelledby="media-title" hidden>
+          <h1 class="media-view__title" id="media-title">Médiathèque</h1>
+          <p class="media-view__intro">
+            Les images du cours. Ajoutez-en en les glissant ci-dessous, puis insérez-les dans une leçon avec
+            le bouton « + Image ». Une image ne peut être supprimée que si plus rien ne l'utilise.
+          </p>
+          <div id="media-library"></div>
+        </section>
+
+        <section class="media-view" id="settings-view" aria-label="Réglages" hidden></section>
+
+        <form class="lesson" id="lesson-form" hidden>
+          <div class="tabs" role="tablist" aria-label="Ce que l'on édite">
+            <button type="button" class="tabs__tab" role="tab" id="tab-page" aria-controls="page-panel" aria-selected="true">Page</button>
+            <button type="button" class="tabs__tab" role="tab" id="tab-slides" aria-controls="slides-panel" aria-selected="false" tabindex="-1">
+              Slides <span class="tabs__count" id="slides-count"></span>
+            </button>
+          </div>
+
+          <div class="tabs__panel" id="page-panel" role="tabpanel" aria-labelledby="tab-page">
+          <details class="panel" id="frontmatter-panel" open>
+            <summary class="panel__title">En-tête</summary>
+            <div class="fields">
+              <label class="field field--wide">
+                <span class="field__label">Titre <abbr title="obligatoire">*</abbr></span>
+                <input name="title" required />
+              </label>
+              <!-- Le module n'appartient pas à la leçon : son nom et sa place se
+                   règlent pour toutes ses leçons à la fois. Les deux valeurs
+                   restent dans le formulaire, cachées, pour que l'en-tête
+                   enregistré les garde telles quelles. -->
+              <div class="field">
+                <span class="field__label" id="module-label">Module</span>
+                <div class="module-ref" aria-labelledby="module-label">
+                  <span class="module-ref__name" id="module-name"></span>
+                  <button type="button" class="button button--small" id="module-edit">Régler le module</button>
+                </div>
+                <span class="field__help">Son nom et sa place dans le cours valent pour toutes ses leçons.</span>
+                <input name="module" type="hidden" />
+                <input name="moduleOrder" type="hidden" />
+              </div>
+              <label class="field">
+                <span class="field__label">Ordre dans le module <abbr title="obligatoire">*</abbr></span>
+                <input name="order" type="number" step="1" required />
+              </label>
+              <label class="field field--wide">
+                <span class="field__label">Description</span>
+                <textarea name="description" rows="2"></textarea>
+                <span class="field__help">Le chapô, affiché sous le titre de la leçon et sur sa slide de titre.</span>
+              </label>
+              <div class="field">
+                <span class="field__label" id="cover-label">Couverture</span>
+                <input name="cover" type="hidden" />
+                <div class="cover" aria-labelledby="cover-label">
+                  <div class="cover__thumb" id="cover-thumb"></div>
+                  <div class="cover__actions">
+                    <button type="button" class="button button--small" id="cover-pick">Choisir une image</button>
+                    <button type="button" class="link link--danger" id="cover-remove" hidden>Retirer</button>
+                  </div>
+                </div>
+                <span class="field__help">Le bandeau en haut de la page, et de la première slide.</span>
+              </div>
+              <label class="field">
+                <span class="field__label">Texte alternatif de la couverture</span>
+                <input name="coverAlt" />
+                <span class="field__help">Vide si l'image est purement décorative.</span>
+              </label>
+              <fieldset class="field field--wide">
+                <legend class="field__label">Sources</legend>
+                <ol class="sources" id="sources"></ol>
+                <button type="button" class="button button--small" id="add-source">+ Ajouter une source</button>
+              </fieldset>
+            </div>
+          </details>
+
+          <section class="panel panel--text" aria-labelledby="text-title">
+            <div class="toolbar">
+              <h2 class="panel__title" id="text-title">Texte</h2>
+              <div class="chips" id="components" aria-label="Composants de la leçon"></div>
+              <div class="menu" id="insert-menu">
+                <button type="button" class="button button--small" id="insert-add" aria-expanded="false" aria-controls="insert-list">+ Insérer</button>
+                <ul class="menu__list" id="insert-list" hidden></ul>
+              </div>
+            </div>
+            <div class="format" id="format-bar" data-editor="body" role="toolbar" aria-label="Mise en forme" aria-controls="body-host">
+              <button type="button" class="format__button" data-command="bold" title="Gras (⌘B)"><strong>G</strong></button>
+              <button type="button" class="format__button" data-command="italic" title="Italique (⌘I)"><em>I</em></button>
+              <span class="format__separator"></span>
+              <button type="button" class="format__button" data-command="heading" data-level="2" title="Titre de section">Titre</button>
+              <button type="button" class="format__button" data-command="heading" data-level="3" title="Sous-titre">Sous-titre</button>
+              <span class="format__separator"></span>
+              <button type="button" class="format__button" data-command="bullets" title="Liste à puces">• Liste</button>
+              <button type="button" class="format__button" data-command="numbers" title="Liste numérotée">1. Liste</button>
+              <button type="button" class="format__button" data-command="quote" title="Citation">❝ Citation</button>
+              <button type="button" class="format__button" data-command="link" title="Lien (⌘K)">🔗 Lien</button>
+              <span class="format__separator"></span>
+              <button type="button" class="format__button" data-command="table" title="Insérer un tableau">▦ Tableau</button>
+              <button type="button" class="format__button" data-command="code" title="Bloc de code (Tab y indente)">&lt;/&gt; Code</button>
+              <label class="format__mode">
+                <input type="checkbox" class="plain-toggle" id="plain-mode" />
+                Texte brut
+              </label>
+            </div>
+            <p class="notice notice--error" id="mdx-error" hidden></p>
+            <div class="body-host" id="body-host">
+              <textarea class="body" id="body" name="body" spellcheck="true" aria-labelledby="text-title" hidden></textarea>
+            </div>
+          </section>
+          </div>
+
+          <div class="tabs__panel slides" id="slides-panel" role="tabpanel" aria-labelledby="tab-slides" hidden>
+            <section class="panel slides__editor" aria-labelledby="slides-title">
+              <div class="toolbar">
+                <h2 class="panel__title" id="slides-title">Slides</h2>
+                <span class="toolbar__spacer"></span>
+                <div class="menu" id="slide-menu">
+                  <button type="button" class="button button--small" id="slide-add" aria-expanded="false" aria-controls="slide-templates">+ Slide</button>
+                  <ul class="menu__list" id="slide-templates" hidden></ul>
+                </div>
+              </div>
+
+              <div id="slides-points">
+                <p class="slides__intro">
+                  Cette leçon n'a pas de deck écrit à la main : ses slides sont fabriquées à partir de ses
+                  points-clés, sur une seule slide. Pour aller plus loin, écrivez son deck.
+                </p>
+                <label class="field field--wide">
+                  <span class="field__label">Points-clés</span>
+                  <textarea name="slidePoints" rows="6"></textarea>
+                  <span class="field__help">Un point par ligne.</span>
+                </label>
+                <button type="button" class="button" id="slides-create">Écrire le deck à la main</button>
+              </div>
+
+              <div id="slides-deck" hidden>
+                <p class="slides__intro">
+                  Une slide par bloc, séparées par une ligne <code>---</code>. La slide de titre et la slide
+                  de fin sont ajoutées toutes seules : ne les écrivez pas.
+                </p>
+                <div class="format format--slides" id="slides-format-bar" data-editor="slides" role="toolbar" aria-label="Mise en forme des slides" aria-controls="slides-host">
+                  <button type="button" class="format__button" data-command="bold" title="Gras (⌘B)"><strong>G</strong></button>
+                  <button type="button" class="format__button" data-command="italic" title="Italique (⌘I)"><em>I</em></button>
+                  <span class="format__separator"></span>
+                  <button type="button" class="format__button" data-command="heading" data-level="2" title="Titre de la slide">Titre</button>
+                  <button type="button" class="format__button" data-command="heading" data-level="3" title="Intertitre (une colonne, dans les mises en page à colonnes)">Colonne</button>
+                  <span class="format__separator"></span>
+                  <button type="button" class="format__button" data-command="bullets" title="Liste à puces">• Liste</button>
+                  <button type="button" class="format__button" data-command="numbers" title="Liste numérotée">1. Liste</button>
+                  <button type="button" class="format__button" data-command="link" title="Lien (⌘K)">🔗 Lien</button>
+                  <span class="format__separator"></span>
+                  <button type="button" class="format__button" data-command="image" title="Une image dans la slide">🖼 Image</button>
+                  <button type="button" class="format__button" data-command="table" title="Insérer un tableau">▦ Tableau</button>
+                  <button type="button" class="format__button" data-command="code" title="Bloc de code (Tab y indente)">&lt;/&gt; Code</button>
+                  <label class="format__mode">
+                    <input type="checkbox" class="plain-toggle" />
+                    Texte brut
+                  </label>
+                </div>
+                <div class="body-host slides__host" id="slides-host">
+                  <textarea class="body slides__text" id="slides-text" spellcheck="true" aria-labelledby="slides-title" hidden></textarea>
+                </div>
+                <button type="button" class="link link--danger" id="slides-drop">Supprimer ce deck et revenir aux points-clés</button>
+              </div>
+            </section>
+
+            <section class="panel slides__preview" aria-labelledby="slides-preview-title">
+              <div class="toolbar">
+                <h2 class="panel__title" id="slides-preview-title">Aperçu</h2>
+                <span class="slides__status" id="slides-status" role="status" aria-live="polite"></span>
+              </div>
+              <p class="notice notice--error" id="slides-error" hidden></p>
+              <!-- Sans « allow-scripts » : un deck ne peut rien exécuter. « allow-same-origin »
+                   laisse l'admin faire défiler l'aperçu jusqu'à la slide du curseur. -->
+              <iframe class="slides__frame" id="slides-frame" title="Aperçu des slides" sandbox="allow-same-origin"></iframe>
+            </section>
+          </div>
+        </form>
+      </main>
+
+    </div>
+
+    <dialog class="dialog" id="component-dialog" aria-labelledby="dialog-title">
+      <form method="dialog" class="dialog__form" id="component-form" novalidate>
+        <header class="dialog__header">
+          <h2 id="dialog-title"></h2>
+        </header>
+        <div class="dialog__body" id="dialog-body"></div>
+        <footer class="dialog__footer">
+          <p class="notice notice--error" id="dialog-error" hidden></p>
+          <button type="button" class="button" id="dialog-cancel">Annuler</button>
+          <button type="submit" class="button button--primary">Appliquer</button>
+        </footer>
+      </form>
+    </dialog>
+  </body>
+</html>
