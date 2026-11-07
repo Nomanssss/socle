@@ -3,23 +3,35 @@ import '../styles/theme.scss';
 import { getCollection } from 'astro:content';
 import BaseHead from '../components/BaseHead.astro';
 import SkipLink from '../components/SkipLink.astro';
+import Topbar from '../components/Topbar.astro';
+import ProgressBar from '../components/ProgressBar.astro';
+import ProgressCard from '../components/ProgressCard.astro';
+import Icon from '../components/Icon.astro';
 import Footer from '../components/Footer.astro';
-import { isLocked, unknownLocked, site } from '../../scripts/config.mjs';
+import { unknownLocked, site } from '../../scripts/config.mjs';
+import { getCourse, openLessons, pad, pdfFileName } from '../utils/course';
 
 // =============================================================
-// Page d'accueil - liste les modules et leurs leçons.
+// Page d'accueil - le cours d'un coup d'œil, et la reprise.
+//
+// En haut, le titre du cours et sa carte de progression ; en
+// dessous, le programme : une carte par module, ses leçons et
+// leur état.
 //
 // Les leçons verrouillées (« locked » dans socle.config.json) restent
 // LISTÉES ici, grisées et sans lien : le sommaire annonce ce qui
 // arrive. Leur page, elle, n'existe pas - c'est getStaticPaths qui
 // s'en charge, dans pages/lecons/[...id].astro.
+//
+// Tout ce qui dépend de la progression (bouton « Reprendre », états
+// des leçons et des modules) est posé par le script, en bas : le
+// HTML servi décrit un cours pas encore commencé.
 // =============================================================
-const all = await getCollection('lecons');
 
 // Un identifiant mal orthographié dans « locked » ne verrouille rien
 // et ne dirait rien : on préfère un avertissement au build plutôt
 // qu'une leçon qu'on croit protégée alors qu'elle est en ligne.
-const strays = unknownLocked(all.map((lesson) => lesson.id));
+const strays = unknownLocked((await getCollection('lecons')).map((lesson) => lesson.id));
 if (strays.length > 0) {
   console.warn(
     `\n⚠ socle.config.json → « locked » : aucune leçon ne correspond à ${strays
@@ -28,27 +40,21 @@ if (strays.length > 0) {
   );
 }
 
-const byModule = new Map<string, typeof all>();
-for (const lesson of all) {
-  const arr = byModule.get(lesson.data.module) ?? [];
-  arr.push(lesson);
-  byModule.set(lesson.data.module, arr);
-}
-for (const arr of byModule.values()) {
-  arr.sort((a, b) => a.data.order - b.data.order);
-}
-const modules = [...byModule.entries()].sort((a, b) => {
-  const oa = a[1][0].data.moduleOrder ?? Number.POSITIVE_INFINITY;
-  const ob = b[1][0].data.moduleOrder ?? Number.POSITIVE_INFINITY;
-  return oa !== ob ? oa - ob : a[0].localeCompare(b[0]);
-});
+const modules = await getCourse();
+const open = openLessons(modules);
 
-// Première leçon OUVERTE (cible du bouton « Commencer » du hero) : viser
-// une leçon verrouillée enverrait le visiteur sur un 404.
-const firstLesson = modules.flatMap(([, lessons]) => lessons).find((lesson) => !isLocked(lesson.id));
+// Première leçon OUVERTE (cible du bouton « Commencer ») : viser une
+// leçon verrouillée enverrait le visiteur sur un 404.
+const firstLesson = open[0];
+
+const lessonCount = modules.reduce((sum, module) => sum + module.lessons.length, 0);
+const hasPdf = modules.some((module) => module.pdf);
+const hasDecks = hasPdf || modules.some((module) => module.html);
 
 // Titre et accroche : réglés dans socle.config.json, section « site ».
 const { title: siteTitle, tagline: siteTagline, lang } = site();
+
+const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
 ---
 
 <html lang={lang}>
@@ -58,100 +64,210 @@ const { title: siteTitle, tagline: siteTagline, lang } = site();
   <body>
     <SkipLink />
 
-    <header class="c-header">
-      <div class="c-header__content o-wrapper o-wrapper--large">
-        <div class="c-header__main">
-          <h1 class="c-header__title">{siteTitle}</h1>
-          <p class="c-header__tagline">{siteTagline}</p>
-          {
-            firstLesson && (
-              <a
-                href={`/lecons/${firstLesson.id}/`}
-                class="c-button c-button--primary c-header__cta"
-              >
-                Commencer le cours →
-              </a>
-            )
-          }
-        </div>
-      </div>
-    </header>
+    <Topbar current="home" />
 
-    <!-- Contenu principal : largeur de lecture (o-wrapper) et rythme
-         vertical entre les modules (o-stack) -->
-    <div class="c-home o-wrapper o-wrapper--large">
-      <main id="contenu" tabindex="-1" class="o-stack o-stack--2xl">
-        {
-          modules.map(([moduleName, lessons]) => {
-            return (
-              <section class="c-home__module">
-                <div class="c-home__module-head o-cluster o-cluster--between o-cluster--baseline">
-                  <h2 class="c-home__module-title">{moduleName}</h2>
-                  <span class="c-home__module-meta">
-                    {lessons.length} leçon{lessons.length > 1 ? 's' : ''}
-                  </span>
-                </div>
-                <ul class="o-stack">
-                  {lessons.map((lesson) =>
-                    isLocked(lesson.id) ? (
-                      <li>
-                        {/* Un <div> et non un <a> : rien à suivre, donc rien à
-                            annoncer comme lien à un lecteur d'écran. */}
-                        <div class="c-home__lesson c-home__lesson--locked">
-                          <div class="c-home__lesson-head o-cluster o-cluster--between o-cluster--middle">
-                            <h3 class="c-home__lesson-title">
-                              <span class="c-home__lock" aria-hidden="true">
-                                🔒
+    <div class="c-home">
+      <section class="c-hero" aria-labelledby="hero-title">
+        <div class="c-hero__content o-wrapper">
+          <div class="c-hero__layout">
+            <div class="c-hero__main o-stack o-stack--lg">
+              <ul class="c-hero__facts o-cluster o-cluster--xs" aria-label="Le cours en chiffres">
+                <li class="c-hero__fact">{plural(modules.length, 'module')}</li>
+                <li class="c-hero__fact">{plural(lessonCount, 'leçon')}</li>
+                {hasPdf && <li class="c-hero__fact">Slides PDF incluses</li>}
+              </ul>
+
+              <div class="o-stack o-stack--md">
+                <h1 id="hero-title" class="c-hero__title">{siteTitle}</h1>
+                {siteTagline && <p class="c-hero__tagline">{siteTagline}</p>}
+              </div>
+
+              {
+                firstLesson && (
+                  <div class="o-cluster o-cluster--sm">
+                    <a
+                      href={firstLesson.url}
+                      class="c-button c-button--primary c-button--large"
+                      data-resume
+                    >
+                      <span data-resume-label>Commencer le cours</span>
+                      <Icon name="arrow-right" />
+                    </a>
+                    {hasDecks && (
+                      <a href="/presentations/" class="c-button c-button--large c-button--light">
+                        <Icon name="slides" />
+                        Toutes les slides
+                      </a>
+                    )}
+                  </div>
+                )
+              }
+            </div>
+
+            <div class="c-hero__aside">
+              <ProgressCard modules={modules} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Le programme : une carte par module -->
+      <main id="contenu" tabindex="-1" class="c-home__program o-wrapper">
+        <div class="o-stack o-stack--lg">
+          <h2 class="c-home__title">Le programme</h2>
+
+          <div class="o-grid o-grid--large o-grid--lg">
+            {
+              modules.map((module) => {
+                const ids = module.lessons.filter((l) => !l.locked).map((l) => l.id);
+                const locked = module.lessons.filter((l) => l.locked).length;
+                return (
+                  <article
+                    id={`module-${module.number}`}
+                    class="c-module"
+                    data-module={JSON.stringify(ids)}
+                  >
+                    <header class="c-module__head">
+                      <span class="c-module__number" aria-hidden="true">
+                        {pad(module.number)}
+                      </span>
+                      <div class="o-stack o-stack--2xs">
+                        <h3 class="c-module__title">
+                          <span class="u-hidden-visually">Module {module.number} : </span>
+                          {module.shortName}
+                        </h3>
+                        <p class="c-module__meta">
+                          {plural(module.lessons.length, 'leçon')}
+                          <span data-module-state />
+                          {locked > 0 && ` · ${locked} à venir`}
+                        </p>
+                      </div>
+                    </header>
+
+                    {ids.length > 0 && (
+                      <ProgressBar
+                        lessonIds={ids}
+                        label={`Progression du module ${module.number}`}
+                        variant="bar"
+                        hideHeader
+                      />
+                    )}
+
+                    <ul class="c-module__lessons">
+                      {module.lessons.map((lesson) =>
+                        lesson.locked ? (
+                          <li>
+                            {/* Un <div> et non un <a> : rien à suivre, donc rien à
+                                annoncer comme lien à un lecteur d'écran. */}
+                            <div class="c-module__lesson c-module__lesson--locked">
+                              <Icon name="lock" size={20} class="c-module__lock" />
+                              <span class="c-module__lesson-title">{lesson.title}</span>
+                              <span class="c-module__tag">Bientôt</span>
+                            </div>
+                          </li>
+                        ) : (
+                          <li>
+                            <a
+                              href={lesson.url}
+                              class="c-module__lesson"
+                              data-lesson-link={lesson.id}
+                              data-lesson-title={lesson.title}
+                            >
+                              <span class="c-status" aria-hidden="true" data-status />
+                              <span class="c-module__lesson-title">
+                                {lesson.title}
+                                <span class="u-hidden-visually" data-lesson-state hidden>
+                                  (terminée)
+                                </span>
                               </span>
-                              {lesson.data.title}
-                            </h3>
-                            <span class="c-home__lesson-tag c-home__lesson-tag--locked">
-                              Bientôt disponible
-                            </span>
-                          </div>
-                          {lesson.data.description && (
-                            <p class="c-home__lesson-desc">{lesson.data.description}</p>
-                          )}
-                        </div>
-                      </li>
-                    ) : (
-                      <li>
-                        <a
-                          href={`/lecons/${lesson.id}/`}
-                          data-lesson-link={lesson.id}
-                          class="c-home__lesson"
-                        >
-                          <div class="c-home__lesson-head o-cluster o-cluster--between o-cluster--middle">
-                            <h3 class="c-home__lesson-title">{lesson.data.title}</h3>
-                            <span class="c-home__lesson-tag" data-lesson-tag hidden>
-                              Terminé
-                            </span>
-                          </div>
-                          {lesson.data.description && (
-                            <p class="c-home__lesson-desc">{lesson.data.description}</p>
-                          )}
-                        </a>
-                      </li>
-                    )
-                  )}
-                </ul>
-              </section>
-            );
-          })
-        }
+                              <span class="c-module__resume" data-resume-tag hidden>
+                                Reprendre
+                                <Icon name="arrow-right" size={14} />
+                              </span>
+                            </a>
+                          </li>
+                        )
+                      )}
+                    </ul>
+
+                    {module.pdf && (
+                      <a
+                        href={module.pdf}
+                        download={pdfFileName(module.name)}
+                        class="c-module__pdf"
+                      >
+                        <Icon name="download" size={16} />
+                        Slides du module (PDF)
+                      </a>
+                    )}
+                  </article>
+                );
+              })
+            }
+          </div>
+        </div>
       </main>
     </div>
 
     <Footer />
 
     <script>
-      import { isCompleted } from '../scripts/progress';
-      document.querySelectorAll<HTMLElement>('[data-lesson-link]').forEach((link) => {
-        const done = isCompleted(link.dataset.lessonLink!);
-        link.classList.toggle('is-completed', done);
-        const tag = link.querySelector<HTMLElement>('[data-lesson-tag]');
-        if (tag) tag.hidden = !done;
-      });
+      import { isCompleted, PROGRESS_EVENT } from '../scripts/progress';
+
+      // La leçon à reprendre : la première ouverte qui n'est pas terminée,
+      // dans l'ordre de la page - donc du cours.
+      const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-lesson-link]')];
+
+      function refresh() {
+        const next = links.find((link) => !isCompleted(link.dataset.lessonLink!));
+        const started = links.some((link) => isCompleted(link.dataset.lessonLink!));
+
+        // États des leçons : pastille, mention lue, étiquette « Reprendre ».
+        links.forEach((link) => {
+          const done = isCompleted(link.dataset.lessonLink!);
+          const isNext = started && link === next;
+          link.classList.toggle('is-next', isNext);
+          link.querySelector('[data-status]')?.classList.toggle('is-done', done);
+          link.querySelector('[data-status]')?.classList.toggle('is-current', isNext);
+          const state = link.querySelector<HTMLElement>('[data-lesson-state]');
+          if (state) state.hidden = !done;
+          const tag = link.querySelector<HTMLElement>('[data-resume-tag]');
+          if (tag) tag.hidden = !isNext;
+        });
+
+        // États des modules : commencé, en cours (il contient la suivante),
+        // terminé. La mention suit l'effectif dans la ligne de méta.
+        document.querySelectorAll<HTMLElement>('[data-module]').forEach((module) => {
+          const ids = JSON.parse(module.dataset.module || '[]') as string[];
+          const done = ids.filter(isCompleted).length;
+          const complete = ids.length > 0 && done === ids.length;
+          const current = !!next && module.contains(next) && started;
+          module.classList.toggle('is-started', done > 0);
+          module.classList.toggle('is-current', current);
+          const state = module.querySelector<HTMLElement>('[data-module-state]');
+          if (state) state.textContent = complete ? ' · terminé' : current ? ' · en cours' : '';
+        });
+
+        // Le bouton du hero : « Commencer » tant que rien n'est fait, puis
+        // « Reprendre » vers la suivante, puis « Revoir » une fois tout lu.
+        const resume = document.querySelector<HTMLAnchorElement>('[data-resume]');
+        const label = resume?.querySelector<HTMLElement>('[data-resume-label]');
+        if (resume && label) {
+          if (!started) {
+            label.textContent = 'Commencer le cours';
+            resume.href = links[0]?.href ?? resume.href;
+          } else if (next) {
+            label.textContent = `Reprendre : ${next.dataset.lessonTitle}`;
+            resume.href = next.href;
+          } else {
+            label.textContent = 'Revoir le cours';
+            resume.href = links[0]?.href ?? resume.href;
+          }
+        }
+      }
+
+      refresh();
+      window.addEventListener(PROGRESS_EVENT, refresh);
     </script>
   </body>
 </html>

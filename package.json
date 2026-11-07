@@ -1,6 +1,6 @@
 {
   "name": "socle",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Template Astro réutilisable pour MOOC / cours en ligne (statique, sans backend).",
   "type": "module",
   "engines": {

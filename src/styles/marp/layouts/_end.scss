@@ -83,10 +83,13 @@ section.end {
     }
   }
 
+  // La couleur est redonnée au paragraphe : la base des slides passe les
+  // `p` en ton atténué, illisible sur le fond plein.
   p {
     margin: 0 0 spacing.get("sm");
     font-size: rem.convert(32px);
     font-weight: typography.$bold;
+    color: colors.get("on-primary");
   }
 
   ul {
@@ -99,12 +102,25 @@ section.end {
     font-size: rem.convert(26px);
   }
 
+  // Les liens se suivent en ligne : on retire la puce losange de la base
+  // des slides (retrait et `::before` absolu), et le séparateur reprend le
+  // `::before` dans le flux du texte.
   li {
     margin: 0;
+    padding-left: 0;
+
+    &::before {
+      content: none;
+    }
 
     & + li::before {
       content: "·";
+      position: static;
+      width: auto;
+      height: auto;
       margin-inline: spacing.get("md");
+      background: none;
+      transform: none;
       opacity: 0.6;
     }
   }

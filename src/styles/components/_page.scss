@@ -7,8 +7,7 @@
  * Type: Component
  * Description:
  *   Gabarit des pages annexes - mentions légales aujourd'hui, conditions
- *   d'utilisation ou déclaration d'accessibilité demain : un lien de retour,
- *   un titre, puis du texte rédigé confié au scope `.s-richtext`.
+ *   d'utilisation ou déclaration d'accessibilité demain : un titre, puis du texte rédigé confié au scope `.s-richtext`.
  *
  *   La largeur de lecture vient de `.o-wrapper--medium` posé dans le HTML,
  *   comme pour l'article d'une leçon. À ne pas confondre avec
@@ -33,25 +32,8 @@
   padding-block: spacing.get("xl");
 }
 
-  // Même lien de retour que la barre latérale d'une leçon : le visiteur
-  // n'a pas à réapprendre le geste d'une page à l'autre.
-  .c-page__back {
-    display: inline-flex;
-    align-items: center;
-    gap: spacing.get("2xs");
-    font-size: typography.size("sm");
-    font-weight: typography.$semibold;
-    color: colors.get("text");
-    text-decoration: none;
-    transition: color 150ms ease;
-
-    &:hover {
-      color: colors.get("primary-hover");
-    }
-  }
-
   .c-page__header {
-    margin-block: spacing.get("md") spacing.get("xl");
+    margin-bottom: spacing.get("xl");
     padding-bottom: spacing.get("sm");
     border-bottom: rem.convert(1px) solid colors.get("border");
   }
@@ -102,50 +84,3 @@
     // socle.config.json : on respecte les retours à la ligne saisis.
     white-space: pre-line;
   }
-
-/*******************************************************************************
- * Présentation de l'auteur
-*******************************************************************************/
-
-/**
- * La photo (carrée, facultative) à côté du paragraphe de présentation.
- * `o-cluster` gère déjà le passage à la ligne sur petit écran ; seul le
- * paragraphe doit s'étirer pour occuper la place laissée par la photo.
-**/
-.c-page__intro {
-  > p {
-    flex: 1 1 #{rem.convert(240px)};
-    min-width: 0;
-  }
-}
-
-  .c-page__photo {
-    flex-shrink: 0;
-    width: rem.convert(160px);
-    height: rem.convert(160px);
-    object-fit: cover;
-    border-radius: spacing.radius();
-  }
-
-  // La présentation de l'auteur (« author.bio »), même parti pris que les
-  // valeurs des mentions légales : les retours à la ligne saisis comptent.
-  .c-page__bio {
-    white-space: pre-line;
-  }
-
-/*******************************************************************************
- * États
-*******************************************************************************/
-
-/**
- * Aucune mention renseignée : la page reste en ligne mais le dit, ici et au
- * build. Le ton est celui d'un rappel au propriétaire du site, pas d'une
- * erreur adressée au visiteur.
-**/
-.c-page__todo {
-  padding: spacing.get("md");
-  color: colors.get("text-muted");
-  background: colors.get("surface-muted");
-  border: rem.convert(1px) dashed colors.get("border");
-  border-radius: spacing.radius();
-}

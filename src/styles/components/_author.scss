@@ -1,0 +1,58 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Author
+ * Type: Component
+ * Description:
+ *   Carte de présentation de l'auteur, sur /a-propos/ : la photo carrée
+ *   (facultative), le paragraphe de présentation et les liens. Photo et texte
+ *   se partagent la ligne tant qu'ils tiennent, puis la photo passe au-dessus :
+ *   c'est la largeur minimale du texte qui décide, sans point de rupture.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../tools/fonts";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-author {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: spacing.get("lg");
+  padding: spacing.get("lg");
+  background: colors.get("background");
+  border: rem.convert(1px) solid colors.get("border-soft");
+  border-radius: spacing.radius("lg");
+}
+
+  .c-author__photo {
+    flex-shrink: 0;
+    width: rem.convert(160px);
+    height: rem.convert(160px);
+    object-fit: cover;
+    border-radius: spacing.radius("lg");
+  }
+
+  .c-author__body {
+    flex: 1 1 rem.convert(280px);
+    min-width: 0;
+  }
+
+    // La présentation (« author.bio ») : les retours à la ligne saisis dans
+    // socle.config.json comptent, comme pour les mentions légales.
+    .c-author__bio {
+      @include fonts.large-text;
+      line-height: 1.6;
+      white-space: pre-line;
+    }

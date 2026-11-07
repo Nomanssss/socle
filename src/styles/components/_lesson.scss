@@ -6,14 +6,13 @@
  * Name: Lesson
  * Type: Component
  * Description:
- *   Gabarit d'une leçon : barre latérale de navigation + colonne de
- *   contenu. La largeur de lecture vient de `.o-wrapper--medium`, le
- *   rythme des listes de `.o-stack`, la grille du pager de `.o-grid--halves`.
+ *   Gabarit d'une leçon : barre latérale (progression du cours et sommaire)
+ *   + colonne de contenu. La largeur de lecture vient de `.o-wrapper--medium`,
+ *   le rythme vertical de `.o-stack`, la grille du pager de `.o-grid--halves`.
  *
- *   La barre latérale porte le symbole de la marque en filigrane, débordant
- *   de son bord droit - même parti pris que `.c-header__content` : un décor
- *   posé dans un pseudo-élément, donc hors du HTML et hors de portée des
- *   lecteurs d'écran.
+ *   La barre du haut est collante sur une leçon (`.c-topbar--sticky`) : le
+ *   sommaire, collant lui aussi, s'arrête juste dessous, et les ancres du
+ *   contenu se posent sous elle plutôt que derrière.
 **/
 
 /*******************************************************************************
@@ -22,12 +21,18 @@
 
 @use "sass-rem" as rem;
 @use "../settings/colors";
-@use "../settings/effects";
+@use "../settings/global";
 @use "../settings/spacing";
 @use "../settings/typography";
 @use "../tools/fonts";
-@use "../tools/logo";
 @use "../tools/mq" as mq;
+@use "../tools/responsive";
+
+/*******************************************************************************
+ * Variables
+*******************************************************************************/
+
+$topbar: rem.convert(global.$topbar-height);
 
 /*******************************************************************************
  * Shell
@@ -39,6 +44,11 @@
 
   @include mq.mq($from: medium) {
     flex-direction: row;
+  }
+
+  // Une ancre (#un-intertitre) se pose sous la barre collante, pas dessous.
+  [id] {
+    scroll-margin-top: calc(#{$topbar} + #{spacing.get("md")});
   }
 }
 
@@ -60,18 +70,9 @@
 *******************************************************************************/
 
 .c-lesson__sidebar {
-  position: relative;
   flex-shrink: 0;
-  background: colors.get("background");
-  border-bottom: rem.convert(1px) solid colors.get("border");
-
-  // Le filigrane déborde du bord : sans quoi il pousserait la page en
-  // largeur. « clip » plutôt que « hidden » - on ne veut pas d'un
-  // conteneur défilable sur cet axe, seulement une découpe.
-  overflow: clip;
-  // Le pseudo-élément est en z-index négatif : sans contexte
-  // d'empilement propre, il passerait DERRIÈRE le fond de la barre.
-  isolation: isolate;
+  background: colors.get("canvas");
+  border-bottom: rem.convert(1px) solid colors.get("border-soft");
 
   // Le sommaire se replie SOUS « medium », et seulement quand le script a
   // posé « js » sur <html>. Sans script, rien de tout ceci ne s'applique :
@@ -82,35 +83,14 @@
     }
 
     :root.js &.is-nav-open .c-lesson__nav {
-      display: block;
+      display: flex;
     }
   }
 
   @include mq.mq($from: medium) {
-    width: rem.convert(288px);
+    width: rem.convert(300px);
     border-bottom: 0;
-    border-right: rem.convert(1px) solid colors.get("border");
-
-    // Le filigrane ne vit qu'ici : replié en burger, la barre ne fait plus
-    // qu'une centaine de pixels de haut, où une marque de 176 px serait
-    // tranchée par le haut - le défaut qu'on vient justement de corriger.
-    &::after {
-      content: "";
-      position: absolute;
-      z-index: -1;
-      // Un SEUL bord qui coupe, le droit. Débordant aussi par le bas, la
-      // marque était tranchée sur deux côtés et ne se lisait plus comme un
-      // logo - juste comme une forme claire posée là.
-      right: rem.convert(-52px);
-      bottom: spacing.get("xl");
-      width: rem.convert(176px);
-      aspect-ratio: logo.$logo-ratio;
-      background-image: logo.logo(colors.$primary);
-      background-repeat: no-repeat;
-      background-size: contain;
-      opacity: 0.06;
-      transform: rotate(-15deg);
-    }
+    border-right: rem.convert(1px) solid colors.get("border-soft");
   }
 }
 
@@ -125,176 +105,185 @@
   // Il porte aussi le padding : le collant doit emmener ses marges avec
   // lui, et la zone défilante les inclure.
   .c-lesson__sidebar-inner {
-    padding: spacing.get("lg");
+    display: flex;
+    flex-direction: column;
+    gap: spacing.get("lg");
+    padding: spacing.get("md");
 
     @include mq.mq($from: medium) {
       position: sticky;
-      top: 0;
+      top: $topbar;
       // Plus haute que l'écran, la navigation défile en interne plutôt que
       // de dépasser. Une hauteur MAXIMALE, pas fixe : une navigation courte
       // ne doit pas réserver tout l'écran.
-      max-height: 100vh;
+      max-height: calc(100vh - #{$topbar});
+      padding: spacing.get("lg") spacing.get("md");
       overflow-y: auto;
     }
   }
 
-  .c-lesson__burger {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: rem.convert(40px);
-    height: rem.convert(40px);
-    padding: 0;
-    color: colors.get("text");
-    background: transparent;
-    border: rem.convert(1px) solid colors.get("border");
-    border-radius: spacing.radius("sm");
-    cursor: pointer;
-    transition: background-color 150ms ease;
-
-    &:hover {
-      background-color: colors.get("surface-muted");
+    .c-lesson__bar {
+      display: flex;
+      align-items: flex-end;
+      gap: spacing.get("md");
     }
 
-    @include mq.mq($until: medium) {
-      :root.js & {
-        display: inline-flex;
-      }
-    }
-  }
-
-    // Trois barres dessinées en CSS : une icône de trois traits ne mérite
-    // ni fichier ni SVG dans le HTML. La barre du milieu est l'élément
-    // lui-même, les deux autres ses pseudo-éléments.
-    .c-lesson__burger-icon {
-      position: relative;
-      display: block;
-      width: rem.convert(18px);
-      height: rem.convert(2px);
-      background: currentColor;
-      border-radius: rem.convert(999px);
-      transition: background-color 150ms ease;
-
-      &::before,
-      &::after {
-        content: "";
-        position: absolute;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: currentColor;
-        border-radius: inherit;
-        transition: transform 150ms ease;
+      .c-lesson__progress {
+        flex: 1 1 auto;
+        padding-inline: spacing.get("xs");
       }
 
-      &::before {
-        transform: translateY(rem.convert(-6px));
-      }
-
-      &::after {
-        transform: translateY(rem.convert(6px));
-      }
-    }
-
-    // Ouvert : la barre du milieu s'efface, les deux autres se croisent.
-    .is-nav-open .c-lesson__burger-icon {
-      background: transparent;
-
-      &::before {
-        transform: rotate(45deg);
-      }
-
-      &::after {
-        transform: rotate(-45deg);
-      }
-    }
-
-  .c-lesson__home-link {
-    display: inline-flex;
-    align-items: center;
-    gap: spacing.get("2xs");
-    font-size: typography.size("sm");
-    font-weight: typography.$semibold;
-    color: colors.get("text");
-    text-decoration: none;
-    transition: color 150ms ease;
-
-    &:hover {
-      color: colors.get("primary-hover");
-    }
-  }
-
-  .c-lesson__progress {
-    margin-block: spacing.get("md");
-    padding-block: spacing.get("md");
-    border-block: rem.convert(1px) solid colors.get("border");
-  }
-
-  .c-lesson__module {
-    margin-bottom: spacing.get("lg");
-  }
-
-    .c-lesson__module-name {
-      @include fonts.eyebrow;
-      margin-bottom: spacing.get("sm");
-      color: colors.get("text");
-    }
-
-      .c-lesson__nav-link {
-        display: flex;
+      .c-lesson__burger {
+        display: none;
         align-items: center;
-        gap: spacing.get("xs");
-        padding: spacing.get("xs") spacing.get("sm");
-        font-size: typography.size("sm");
-        line-height: 1.375;
-        color: inherit;
-        text-decoration: none;
+        justify-content: center;
+        flex-shrink: 0;
+        width: rem.convert(44px);
+        height: rem.convert(44px);
+        padding: 0;
+        color: colors.get("text");
+        background: colors.get("background");
+        border: rem.convert(1px) solid colors.get("border-soft");
         border-radius: spacing.radius("sm");
-        transition: background-color 150ms ease, color 150ms ease;
+        cursor: pointer;
+        transition: background-color 150ms ease;
 
-        &:not(.c-lesson__nav-link--locked) {
-          &:hover {
-            background-color: colors.get("surface-muted");
+        &:hover {
+          background-color: colors.get("surface-muted");
+        }
+
+        @include mq.mq($until: medium) {
+          :root.js & {
+            display: inline-flex;
+          }
+        }
+      }
+
+        // Trois barres dessinées en CSS : une icône de trois traits ne mérite
+        // ni fichier ni SVG dans le HTML. La barre du milieu est l'élément
+        // lui-même, les deux autres ses pseudo-éléments.
+        .c-lesson__burger-icon {
+          position: relative;
+          display: block;
+          width: rem.convert(18px);
+          height: rem.convert(2px);
+          background: currentColor;
+          border-radius: rem.convert(999px);
+          transition: background-color 150ms ease;
+
+          &::before,
+          &::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: currentColor;
+            border-radius: inherit;
+            transition: transform 150ms ease;
           }
 
-          &.is-completed:not([aria-current]) {
-            background-color: colors.get("success-soft");
+          &::before {
+            transform: translateY(rem.convert(-6px));
+          }
 
-            &:hover {
-              background-color: color-mix(in srgb, #{colors.get("success")} 18%, transparent);
+          &::after {
+            transform: translateY(rem.convert(6px));
+          }
+        }
+
+        // Ouvert : la barre du milieu s'efface, les deux autres se croisent.
+        .is-nav-open .c-lesson__burger-icon {
+          background: transparent;
+
+          &::before {
+            transform: rotate(45deg);
+          }
+
+          &::after {
+            transform: rotate(-45deg);
+          }
+        }
+
+/*******************************************************************************
+ * Sommaire
+*******************************************************************************/
+
+    .c-lesson__nav {}
+
+      .c-lesson__module {}
+
+        // L'intitulé de module est le bouton qui (re)plie sa liste. La flèche
+        // native de <summary> est retirée au profit du chevron, qui pivote.
+        .c-lesson__module-name {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: spacing.get("xs");
+          min-height: rem.convert(44px);
+          padding-inline: spacing.get("xs");
+          font-size: typography.size("xs");
+          font-weight: typography.$semibold;
+          line-height: typography.leading("tight");
+          text-transform: uppercase;
+          letter-spacing: 0.07em;
+          color: colors.get("text-muted");
+          border-radius: spacing.radius("sm");
+          cursor: pointer;
+          list-style: none;
+          transition: color 150ms ease;
+
+          &::-webkit-details-marker {
+            display: none;
+          }
+
+          &:hover {
+            color: colors.get("text");
+          }
+        }
+
+          .c-lesson__chevron {
+            transition: transform 150ms ease;
+
+            [open] > summary & {
+              transform: rotate(180deg);
             }
           }
+
+        .c-lesson__lessons {
+          padding-bottom: spacing.get("xs");
         }
 
-        // Leçon courante.
-        &[aria-current="page"] {
-          font-weight: typography.$semibold;
-          color: colors.get("primary");
-          background-color: colors.get("primary-soft");
-        }
-      }
+          .c-lesson__nav-link {
+            display: flex;
+            align-items: center;
+            gap: spacing.get("sm");
+            min-height: rem.convert(44px);
+            padding: spacing.get("2xs") spacing.get("xs");
+            font-size: rem.convert(15px);
+            line-height: 1.35;
+            color: colors.get("text");
+            border-radius: spacing.radius("sm");
+            transition: background-color 150ms ease;
 
-        // Le titre occupe la place restante, la coche est repoussée à droite :
-        // tous les titres démarrent ainsi au même endroit, coche ou pas.
-        .c-lesson__nav-title {
-          flex: 1 1 auto;
-        }
+            &:not(.c-lesson__nav-link--locked):hover {
+              background-color: colors.get("surface-muted");
+            }
 
-        .c-lesson__check {
-          flex-shrink: 0;
-          color: colors.get("success");
-        }
+            // Leçon courante.
+            &[aria-current="page"] {
+              font-weight: typography.$semibold;
+              background-color: colors.get("surface-muted");
+            }
+          }
 
-        .c-lesson__nav-link--locked {
-          color: colors.get("text-muted");
-        }
+            .c-lesson__nav-title {
+              flex: 1 1 auto;
+            }
 
-        .c-lesson__lock {
-          flex-shrink: 0;
-          font-size: 0.8em;
-          opacity: 0.7;
-        }
+            .c-lesson__nav-link--locked {
+              color: colors.get("text-muted");
+            }
 
 /*******************************************************************************
  * Main
@@ -305,94 +294,154 @@
   min-width: 0;
 }
 
-  .c-lesson__cover {
-    display: block;
-    width: 100%;
-    max-height: rem.convert(360px);
-    object-fit: cover;
-  }
-
   .c-lesson__article {
-    padding-block: spacing.get("xl");
+    @include responsive.fluid-size(32px, 56px, padding-top, 375px, 1280px);
+    padding-bottom: spacing.get("2xl");
 
     @include mq.mq($from: medium) {
       --gutter: #{spacing.get("xl")};
     }
   }
 
-    .c-lesson__header {
-      margin-bottom: spacing.get("xl");
-      padding-bottom: spacing.get("sm");
-      border-bottom: rem.convert(1px) solid colors.get("border");
-    }
+/*******************************************************************************
+ * En-tête
+*******************************************************************************/
+
+    .c-lesson__header {}
 
       .c-lesson__eyebrow {
-        @include fonts.eyebrow;
+        font-size: typography.size("sm");
+        font-weight: typography.$semibold;
         color: colors.get("primary");
       }
 
       .c-lesson__title {
-        margin-top: spacing.get("xs");
+        @include responsive.fluid-size(34px, 52px, font-size, 375px, 1280px);
+        line-height: 1.05;
+        letter-spacing: -0.02em;
       }
 
-    .c-lesson__complete {
-      margin-top: spacing.get("xl");
+      .c-lesson__lead {
+        @include fonts.large-text;
+        line-height: 1.5;
+        color: colors.get("text-muted");
+      }
+
+      .c-lesson__meta {
+        padding-top: spacing.get("2xs");
+      }
+
+        .c-lesson__duration {
+          display: inline-flex;
+          align-items: center;
+          gap: spacing.get("2xs");
+          padding-right: spacing.get("xs");
+          font-size: typography.size("sm");
+          color: colors.get("text-muted");
+        }
+
+    // Contenue dans la colonne de lecture, en bandeau : elle annonce la
+    // leçon sans repousser le texte sous la ligne de flottaison.
+    .c-lesson__cover {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 6;
+      object-fit: cover;
+      border-radius: spacing.radius("lg");
+    }
+
+/*******************************************************************************
+ * En bref
+*******************************************************************************/
+
+    .c-lesson__summary {
+      padding: spacing.get("md") spacing.get("lg");
+      background: colors.get("canvas");
+      border: rem.convert(1px) solid colors.get("border-soft");
+      border-radius: spacing.radius("lg");
+    }
+
+      .c-lesson__summary-title {
+        margin-bottom: spacing.get("sm");
+        font-family: typography.family("body");
+        font-size: typography.size("xs");
+        font-weight: typography.$bold;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: colors.get("primary");
+      }
+
+        .c-lesson__point {
+          display: flex;
+          gap: spacing.get("sm");
+          font-size: rem.convert(17px);
+          line-height: 1.5;
+
+          // La flèche est une puce : un décor, que le lecteur d'écran saute
+          // déjà puisqu'il annonce la liste et ses éléments.
+          &::before {
+            content: "→";
+            flex-shrink: 0;
+            font-weight: typography.$bold;
+            color: colors.get("primary");
+          }
+        }
+
+/*******************************************************************************
+ * Sources
+*******************************************************************************/
+
+    .c-lesson__sources {
       padding-top: spacing.get("lg");
-      border-top: rem.convert(1px) solid colors.get("border");
+      border-top: rem.convert(1px) solid colors.get("border-soft");
+    }
+
+      .c-lesson__sources-title {
+        font-size: typography.size("lg");
+      }
+
+/*******************************************************************************
+ * Fin de leçon
+*******************************************************************************/
+
+    .c-lesson__end {
+      padding-top: spacing.get("xl");
+      border-top: rem.convert(1px) solid colors.get("border-soft");
     }
 
 /*******************************************************************************
  * Pager (précédent / suivant)
 *******************************************************************************/
 
-.c-lesson__pager {
-  margin-top: spacing.get("lg");
-}
+      .c-lesson__pager {}
 
-  .c-lesson__pager-link {
-    display: block;
-    padding: spacing.get("md");
-    text-decoration: none;
-    background: colors.get("surface");
-    border: rem.convert(1px) solid colors.get("border");
-    border-radius: spacing.radius();
-    box-shadow: effects.shadow("sm");
-    transition: border-color 150ms ease, box-shadow 150ms ease;
+        .c-lesson__pager-link {
+          display: flex;
+          flex-direction: column;
+          gap: spacing.get("2xs");
+          padding: spacing.get("md");
+          color: colors.get("text");
+          border: rem.convert(1px) solid colors.get("border-soft");
+          border-radius: spacing.radius("lg");
+          transition: border-color 150ms ease, background-color 150ms ease;
 
-    &:hover {
-      border-color: colors.get("primary");
-      box-shadow: effects.shadow("md");
-    }
+          &:hover {
+            background-color: colors.get("canvas");
+            border-color: colors.get("primary");
+          }
+        }
 
-    &:hover .c-lesson__pager-title {
-      color: colors.get("primary");
-    }
-  }
+        .c-lesson__pager-link--next {
+          text-align: right;
+        }
 
-  .c-lesson__pager-link--prev {}
+          .c-lesson__pager-label {
+            font-size: typography.size("xs");
+            color: colors.get("text-muted");
+          }
 
-  .c-lesson__pager-link--next {
-    text-align: right;
-  }
-
-    .c-lesson__pager-label {
-      @include fonts.eyebrow;
-      display: block;
-      color: colors.get("text-muted");
-    }
-
-    .c-lesson__pager-title {
-      display: block;
-      margin-top: spacing.get("2xs");
-      font-weight: typography.$semibold;
-      color: colors.get("text");
-    }
-
-  // Case vide du pager : inutile tant que la grille n'a qu'une colonne.
-  .c-lesson__pager-empty {
-    display: none;
-
-    @include mq.mq($from: small) {
-      display: block;
-    }
-  }
+          .c-lesson__pager-title {
+            font-size: rem.convert(17px);
+            font-weight: typography.$semibold;
+            line-height: typography.leading("tight");
+          }

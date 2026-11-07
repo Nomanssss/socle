@@ -37,13 +37,15 @@ const lecons = defineCollection({
       coverAlt: z.string().optional(),
       // Points-clés, optionnels : réutilisés plus tard pour un export Marp (slides).
       slidePoints: z.array(z.string()).optional(),
-      // Sources citées dans la leçon, optionnelles : reprises sur la page
-      // commune « Sources du cours », liée depuis le pied de page.
+      // Références citées par la leçon, optionnelles : listées en fin de
+      // leçon, et rassemblées pour tout le cours sur la page /sources/.
+      // Seul le titre est obligatoire - un livre n'a pas toujours d'adresse.
       sources: z
         .array(
           z.object({
-            label: z.string(),
-            url: z.string().optional(),
+            title: z.string(),
+            url: z.url().optional(),
+            author: z.string().optional(),
           })
         )
         .optional(),

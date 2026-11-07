@@ -60,6 +60,12 @@ $grid-min: 300px !default;
   }
 }
 
+// Colonnes larges : des cartes chargées (titre, jauge, liste) qui
+// deviennent illisibles sous 440 px. Deux colonnes sur un grand écran.
+.o-grid--large {
+  --min: #{rem.convert(440px)};
+}
+
 // Espacements : .o-grid--2xs → .o-grid--2xl
 @each $namespace, $space in spacing.$spacings {
   .o-grid--#{$namespace} {

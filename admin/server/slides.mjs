@@ -21,7 +21,7 @@ import { join, resolve, relative, extname, sep } from 'node:path';
 import * as sass from 'sass';
 import { Marp } from '@marp-team/marp-core';
 import { AdminError, LESSONS_DIR, lessonPath } from './lessons.mjs';
-import { defaultBand, marpHeader, endSlide, moduleCovers, lessonParts, slidesFileOf } from '../../scripts/slides-deck.mjs';
+import { defaultBand, lessonHead, endSlide, moduleCovers, lessonParts, slidesFileOf } from '../../scripts/slides-deck.mjs';
 import { isLocked, normalizeId } from '../../scripts/config.mjs';
 
 const ROOT = process.cwd();
@@ -105,7 +105,7 @@ export async function previewSlides({ id: rawId, data, slides, knownCss }) {
     slides,
   });
 
-  const markdown = marpHeader(/** @type {any} */ (data).title) + lead + content + endSlide();
+  const markdown = lessonHead(/** @type {Record<string, any>} */ (data), id) + lead + content + endSlide();
   const theme = await themeCss();
   // `script: false` : Marp ajoute sinon au HTML un script pour les
   // navigateurs, que l'aperçu - sans droit d'exécuter quoi que ce soit -

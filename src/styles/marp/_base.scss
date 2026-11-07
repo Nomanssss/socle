@@ -14,6 +14,7 @@
 
 @use "sass-rem" as rem;
 @use "../settings/colors";
+@use "../tools/logo";
 @use "../settings/spacing";
 @use "../settings/typography";
 
@@ -21,19 +22,27 @@
  * Slide
 *******************************************************************************/
 
+/**
+ * Les marges de la slide laissent la place à ce qui est posé en absolu
+ * par-dessus : le surtitre en haut (`header`), la bande de pied en bas
+ * (`footer` et pagination). `--band-height` est donc aussi la marge basse.
+**/
 section {
-  padding: rem.convert(64px) rem.convert(80px);
+  --band-height: #{rem.convert(56px)};
+  --gutter: #{rem.convert(80px)};
+
+  padding: rem.convert(112px) var(--gutter) calc(var(--band-height) + #{rem.convert(40px)});
   font-family: typography.family("body");
   font-size: rem.convert(28px);
   line-height: typography.leading("normal");
   color: colors.get("text");
   background-color: colors.get("background");
-  --band: linear-gradient(#{colors.get("primary-soft")} 0 100%);
-  --band-height: 5%;
+  --band: linear-gradient(#{colors.get("surface-muted")} 0 100%);
 }
 
 /**
- * BANDE DE PIED DE SLIDE : 10 % de la hauteur, en couleur `primary-soft`.
+ * BANDE DE PIED DE SLIDE : 56 px de haut, en couleur `surface-muted`. Elle
+ * porte le pied de page (le cours et la leçon) et la pagination.
  *
  * Posée en couche de FOND et non dans un pseudo-élément : `::before` est déjà
  * pris par le filigrane de `statement` et par le panneau des mises en page à
@@ -72,15 +81,17 @@ h4 {
 }
 
 h1 {
-  font-size: rem.convert(56px);
+  font-size: rem.convert(64px);
+  letter-spacing: -0.02em;
 }
 
 h2 {
-  font-size: rem.convert(40px);
+  font-size: rem.convert(56px);
+  letter-spacing: -0.015em;
 }
 
 h3 {
-  font-size: rem.convert(30px);
+  font-size: rem.convert(34px);
 }
 
 /**
@@ -108,8 +119,13 @@ ol {
  * Texte & éléments
 *******************************************************************************/
 
+/**
+ * Le texte courant passe en ton atténué : sur une slide, ce sont les titres
+ * et les listes qui portent le propos, le paragraphe l'accompagne.
+**/
 p {
   margin-block: spacing.get("xs");
+  color: colors.get("text-muted");
 }
 
 /**
@@ -125,7 +141,54 @@ li {
 
 ul,
 ol {
-  padding-left: spacing.get("lg");
+  padding-left: 0;
+  list-style: none;
+}
+
+/**
+ * Les puces sont dessinées, et pas laissées au navigateur : un losange aux
+ * couleurs de la marque - le symbole du logo, en petit - pour les listes, une
+ * pastille numérotée pour les listes ordonnées. Le numéro vient du compteur
+ * `list-item`, que le navigateur tient pour chaque `<ol>` : un `start="4"`
+ * est respecté sans rien écrire.
+**/
+ul > li,
+ol > li {
+  position: relative;
+  padding-left: rem.convert(44px);
+}
+
+ul > li::before {
+  content: "";
+  position: absolute;
+  top: 0.55em;
+  left: rem.convert(4px);
+  width: rem.convert(12px);
+  height: rem.convert(12px);
+  background: colors.get("primary");
+  border-radius: rem.convert(3px);
+  transform: rotate(-12deg);
+}
+
+ol > li {
+  padding-left: rem.convert(64px);
+}
+
+ol > li::before {
+  content: counter(list-item);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: rem.convert(44px);
+  height: rem.convert(44px);
+  font-size: rem.convert(20px);
+  font-weight: typography.$bold;
+  line-height: 1;
+  color: colors.get("primary");
+  background: colors.get("surface-muted");
+  border-radius: rem.convert(12px);
 }
 
 strong {
@@ -195,6 +258,12 @@ blockquote {
   padding-left: spacing.get("md");
   border-left: rem.convert(6px) solid colors.get("primary");
   color: colors.get("text-muted");
+
+  // La couleur se décide sur la citation, pas sur ses paragraphes : sans
+  // quoi le ton atténué des `p` écraserait celle de `statement`.
+  p {
+    color: inherit;
+  }
 }
 
 img {
@@ -202,10 +271,87 @@ img {
 }
 
 /*******************************************************************************
- * Pagination
+ * Surtitre, pied de page et pagination
 *******************************************************************************/
 
-section::after {
-  color: colors.get("text-muted");
+/**
+ * Le surtitre : le module, au-dessus du titre, précédé du symbole de la
+ * marque en petit. Il vient de la directive `header`, que `build-slides`
+ * écrit pour chaque deck - rien à faire dans un `.slides.md`.
+**/
+section > header {
+  position: absolute;
+  top: rem.convert(48px);
+  left: var(--gutter);
+  right: var(--gutter);
+  display: flex;
+  align-items: center;
+  gap: rem.convert(12px);
   font-size: rem.convert(16px);
+  font-weight: typography.$bold;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: colors.get("primary");
+
+  &::before {
+    content: "";
+    flex-shrink: 0;
+    width: rem.convert(16px);
+    aspect-ratio: logo.$logo-ratio;
+    background-image: logo.logo(colors.$primary);
+    background-repeat: no-repeat;
+    background-size: contain;
+  }
+}
+
+/**
+ * Le pied de page et la pagination se partagent la bande : le cours et la
+ * leçon à gauche, « 2 / 12 » à droite. Le total vient de Marp, qui l'expose
+ * dans `data-marpit-pagination-total` : on sait où l'on en est ET ce qu'il
+ * reste, comme sur la jauge segmentée du site.
+**/
+section > footer,
+section::after {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  height: var(--band-height);
+  padding: 0;
+  font-size: rem.convert(16px);
+  line-height: 1;
+  color: colors.get("text-muted");
+}
+
+section > footer {
+  left: var(--gutter);
+  right: calc(var(--gutter) + #{rem.convert(120px)});
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+section::after {
+  right: var(--gutter);
+  font-variant-numeric: tabular-nums;
+}
+
+// Seulement sur une slide paginée : ailleurs, les deux `attr()` vides
+// laisseraient une barre oblique seule dans le coin.
+section[data-marpit-pagination]::after {
+  content: attr(data-marpit-pagination) " / " attr(data-marpit-pagination-total);
+}
+
+/**
+ * Les mises en page qui occupent toute la surface n'ont ni bande, ni
+ * surtitre, ni pied : leur composition se suffit à elle-même. La pagination,
+ * elle, reste là où elle est active - chaque mise en page en règle la
+ * couleur.
+**/
+section:is(.lead, .section, .statement, .end, .image-full, .image-split) {
+  > header,
+  > footer {
+    display: none;
+  }
 }

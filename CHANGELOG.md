@@ -19,8 +19,32 @@ rien casser, un *correctif* répare.
 
 ## Non publié
 
+_Rien pour l'instant._
+
+---
+
+## [1.1.0] - 2026-11-07
+
+Refonte de l'interface - accueil, leçon, slides - et trois nouvelles
+pages : les présentations, les sources du cours et l'auteur. Rien à
+réécrire dans un cours existant : les nouveaux champs sont facultatifs.
+
 ### Ajouté
 
+- **Page « Slides »** (`/presentations/`) : les présentations réunies sur
+  une page du site, accessible depuis la barre du haut et le bandeau
+  d'accueil - chaque module en ligne et en PDF, chaque leçon en ligne.
+- **Les slides se consultent en ligne** : `npm run slides:html` publie
+  désormais les decks HTML (et leurs images) dans `public/slides/`, et
+  chaque leçon gagne un bouton **« Voir en slides »**. Jusqu'ici, le HTML
+  ne vivait que dans le paquet de `npm run bundle`.
+- **Sources du cours** : un champ `sources` dans le frontmatter (titre,
+  auteur et adresse facultatifs) liste les références d'une leçon en fin de
+  page, et la page `/sources/` les réunit toutes, module par module - liée
+  depuis la barre du haut et le pied de page dès qu'une source existe. Une
+  leçon verrouillée n'y apparaît pas.
+- La barre du haut apparaît aussi sur les **mentions légales** et la page
+  **404**, qui perdent leur lien « ← Accueil » devenu redondant.
 - **Page 404** : une adresse inconnue tombe désormais sur une page du cours,
   et non sur l'erreur brute de l'hébergeur. Elle explique aussi le cas d'une
   leçon verrouillée, dont l'adresse est devinable depuis le sommaire.
@@ -37,10 +61,6 @@ rien casser, un *correctif* répare.
 - **Intégration continue** (GitHub Actions) : à chaque poussée, les types
   sont vérifiés et le site construit.
 - **Ce journal**.
-- **Page « Sources du cours »** (`/sources/`), liée depuis le pied de page :
-  rassemble les sources déclarées dans le nouveau champ `sources` du
-  frontmatter d'une leçon, groupées par leçon. Une leçon verrouillée n'y
-  apparaît pas.
 - **`Timeline` peut désormais se titrer** : une prop `title` nomme la frise,
   et un champ `heading` sur une étape ouvre un intertitre pour regrouper les
   étapes qui couvrent plusieurs périodes.
@@ -49,10 +69,29 @@ rien casser, un *correctif* répare.
   site personnel, réseaux sociaux…) renseignée dans la nouvelle section
   `author` de `socle.config.json`. Rien n'est requis, contrairement aux
   mentions légales. La photo est un chemin dans `public/`, servi tel quel
-  et non optimisé par Astro.
+  et non optimisé par Astro. La page suit la nouvelle interface : barre du
+  haut, et une carte qui réunit photo, présentation et liens.
 
 ### Modifié
 
+- **Accueil redessiné** : une barre du haut commune à toutes les pages, un
+  hero qui annonce le cours en chiffres et propose de **reprendre** là où
+  l'on s'était arrêté, une **carte de progression** (part du cours terminée,
+  leçon à suivre) et le programme en **cartes de module** - jauge, état de
+  chaque leçon, PDF du module. Tout reste calculé dans le navigateur, sans
+  compte.
+- **Slides redessinées** : un surtitre de module et une bande de pied qui
+  porte le cours, la leçon et la pagination « 2 / 12 », écrits par
+  `build-slides` ; une slide de titre avec la couverture en panneau à droite,
+  un surtitre et le chapô de la leçon ; des puces en losange et des listes
+  numérotées en pastilles ; des colonnes numérotées, aux images recadrées
+  pleine largeur plutôt qu'en tuiles carrées.
+- **Leçon redessinée** : fil d'Ariane et **jauge de lecture** dans la barre
+  du haut, progression du cours et sommaire **replié par module** dans la
+  barre latérale, un en-tête qui situe la leçon (« Module 2 · Leçon 1 sur
+  3 »), son chapô et sa **durée de lecture**, puis un bloc **« En bref »**
+  tiré des `slidePoints`. Le PDF du module se télécharge désormais depuis
+  l'en-tête de chaque leçon, et non plus depuis la seule dernière.
 - **`Timeline` perd le chevron de dépliage**, qui ne rendait pas bien, et
   gagne un peu d'air entre son titre et la frise.
 

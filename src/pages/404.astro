@@ -2,6 +2,7 @@
 import '../styles/theme.scss';
 import BaseHead from '../components/BaseHead.astro';
 import SkipLink from '../components/SkipLink.astro';
+import Topbar from '../components/Topbar.astro';
 import Footer from '../components/Footer.astro';
 import { site } from '../../scripts/config.mjs';
 
@@ -36,6 +37,8 @@ const { title: siteTitle, lang } = site();
   </head>
   <body>
     <SkipLink />
+
+    <Topbar />
 
     <main id="contenu" tabindex="-1" class="c-page o-wrapper o-wrapper--medium">
       <header class="c-page__header">

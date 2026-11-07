@@ -1,0 +1,45 @@
+---
+import Icon from './Icon.astro';
+
+// =============================================================
+// Sources - une liste de références
+//
+// Le champ `sources:` du frontmatter d'une leçon, mis en forme :
+// l'auteur s'il est connu, puis le titre, en lien quand la
+// référence a une adresse. Sert en fin de leçon et sur la page
+// /sources/, qui réunit celles de tout le cours.
+//
+// Un lien sortant s'ouvre dans un nouvel onglet - l'apprenant
+// garde sa leçon ouverte - et le dit aux lecteurs d'écran.
+// =============================================================
+interface Source {
+  title: string;
+  url?: string;
+  author?: string;
+}
+
+interface Props {
+  sources: Source[];
+}
+
+const { sources } = Astro.props;
+---
+
+<ul class="c-sources o-stack o-stack--sm">
+  {
+    sources.map((source) => (
+      <li class="c-sources__item">
+        {source.author && <span class="c-sources__author">{source.author} - </span>}
+        {source.url ? (
+          <a href={source.url} target="_blank" rel="noopener noreferrer" class="c-sources__link">
+            <cite>{source.title}</cite>
+            <Icon name="external" size={14} />
+            <span class="u-hidden-visually"> (nouvelle fenêtre)</span>
+          </a>
+        ) : (
+          <cite>{source.title}</cite>
+        )}
+      </li>
+    ))
+  }
+</ul>

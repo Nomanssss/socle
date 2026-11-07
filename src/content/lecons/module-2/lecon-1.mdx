@@ -9,6 +9,13 @@ slidePoints:
   - "L'URL est déduite du chemin du fichier : rien à déclarer"
   - "Trois champs obligatoires : title, module, order"
   - "Le dossier fait l'URL, le champ « module » fait le regroupement"
+sources:
+  - title: "Collections de contenu"
+    author: "Documentation d'Astro"
+    url: "https://docs.astro.build/fr/guides/content-collections/"
+  - title: "MDX"
+    author: "Documentation d'Astro"
+    url: "https://docs.astro.build/fr/guides/integrations-guide/mdx/"
 ---
 
 import Quiz from '@components/Quiz.astro';
@@ -57,10 +64,22 @@ Trois champs sont obligatoires, les autres sont facultatifs :
 | `module` | oui | Le nom du module. C'est **lui** qui regroupe les leçons |
 | `order` | oui | La place de la leçon dans son module : 1, 2, 3… |
 | `moduleOrder` | non | La place du module sur l'accueil. Absent, les modules sont classés par ordre alphabétique |
-| `description` | non | Le résumé affiché sous le titre sur la page d'accueil |
+| `description` | non | Le chapô, affiché sous le titre de la leçon |
 | `cover` | non | Une image de bandeau en tête de leçon |
 | `coverAlt` | non | La description de cette image, pour l'accessibilité |
-| `slidePoints` | non | Un deck de slides de secours — voir le module 3 |
+| `slidePoints` | non | Les points-clés : le bloc « En bref » en tête de leçon, et un deck de slides de secours — voir le module 3 |
+| `sources` | non | Les références citées : listées en fin de leçon et sur la page « Sources du cours » |
+
+Une source s'écrit en deux ou trois lignes ; seul le titre est obligatoire, un livre n'ayant pas toujours d'adresse :
+
+```yaml
+sources:
+  - title: "Collections de contenu"
+    author: "Documentation d'Astro"
+    url: "https://docs.astro.build/fr/guides/content-collections/"
+```
+
+Celles de cette leçon sont en bas de page, et la page « Sources du cours » les rassemble toutes, module par module.
 
 ### Le piège du regroupement
 

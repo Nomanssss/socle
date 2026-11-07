@@ -32,4 +32,12 @@ $breakpoints: (
  * Superposition
 *******************************************************************************/
 
-$sidebar-zindex: 10;
+$topbar-zindex: 20;
+
+/*******************************************************************************
+ * Barre du haut
+*******************************************************************************/
+
+// Hauteur de la barre du haut, jauge de lecture comprise. Sur une leçon, la
+// barre est collante : le sommaire, collant lui aussi, s'arrête juste dessous.
+$topbar-height: 68px;

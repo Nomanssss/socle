@@ -16,7 +16,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve, basename } from 'node:path';
 import matter from 'gray-matter';
-import { author } from './config.mjs';
+import { author, site } from './config.mjs';
 import { rewriteImages } from './stage-images.mjs';
 
 /**
@@ -52,18 +52,70 @@ export function defaultBand(root = process.cwd()) {
 const yamlString = (/** @type {unknown} */ s) => `"${String(s).replace(/"/g, '\\"')}"`;
 
 /**
- * L'en-tête Marp d'un deck : les mêmes réglages pour tous.
+ * L'en-tête Marp d'un deck : les mêmes réglages pour tous, plus le surtitre
+ * et le pied de page de ses slides.
+ *
+ *   header  le module, en surtitre au-dessus du titre de chaque slide ;
+ *   footer  le cours et la leçon, dans la bande de pied, à gauche de la
+ *           pagination.
+ *
+ * Ce sont des directives GLOBALES : elles valent pour toutes les slides du
+ * deck. Le thème les masque là où la mise en page se suffit à elle-même
+ * (slide de titre, intercalaire, citation, image plein cadre, fin).
  *
  * @param {unknown} title
+ * @param {{ header?: string | null, footer?: string | null }} [options]
  */
-export function marpHeader(title) {
+export function marpHeader(title, { header, footer } = {}) {
   let head = '---\n';
   head += 'marp: true\n';
   head += 'theme: socle\n';
   head += 'paginate: true\n';
   if (title) head += `title: ${yamlString(title)}\n`;
+  if (header) head += `header: ${yamlString(header)}\n`;
+  if (footer) head += `footer: ${yamlString(footer)}\n`;
   head += '---\n\n';
   return head;
+}
+
+/**
+ * Le libellé d'un module en surtitre : « Module 1 - Prendre le template en
+ * main » devient « Module 1 · Prendre le template en main ». Le point médian
+ * est celui des surtitres du site ; un libellé d'une autre forme passe tel
+ * quel.
+ *
+ * @param {unknown} label
+ */
+export const moduleEyebrow = (label) => String(label).replace(/^(module\s+\d+)\s*[-–—:]\s*/i, '$1 · ');
+
+/**
+ * « Module 1 - Prendre le template en main » → « Prendre le template en main ».
+ *
+ * @param {unknown} label
+ */
+export const moduleShortName = (label) =>
+  String(label).replace(/^module\s+\d+\s*[-–—:·.]\s*/i, '').trim() || String(label);
+
+/**
+ * Le pied de page d'une leçon : « Socle — Ce que fait ce template ».
+ *
+ * @param {unknown} title
+ */
+export const lessonFooter = (title) => `${site().title} — ${title}`;
+
+/**
+ * L'en-tête Marp du deck d'UNE leçon : son titre, son module en surtitre,
+ * le cours et la leçon en pied de page. Partagé par build-slides et par
+ * l'aperçu de l'admin, qui montrent ainsi les mêmes slides.
+ *
+ * @param {Record<string, any>} data L'en-tête de la leçon.
+ * @param {string} id
+ */
+export function lessonHead(data, id) {
+  return marpHeader(data.title, {
+    header: data.module ? moduleEyebrow(data.module) : null,
+    footer: lessonFooter(data.title ?? id),
+  });
 }
 
 /**
@@ -172,9 +224,9 @@ export function lessonParts({ rel, file, data, covers, band, stage, slides }) {
   // Le corps qui suit, lui, est le même - assemblé une fois, servi deux fois.
   let lead = '<!-- _class: lead -->\n';
   lead += '<!-- _paginate: false -->\n\n';
-  // La couverture alimente le bandeau haut de la slide de titre. On ne passe
-  // pas par `![bg]` : cette syntaxe répartit l'image en colonnes (left/right)
-  // et ne sait pas cadrer une bande en hauteur. La directive, elle, expose
+  // La couverture alimente le panneau d'image de la slide de titre. On ne
+  // passe pas par `![bg]` : cette syntaxe ne laisse pas la mise en page
+  // décider du cadrage. La directive, elle, expose
   // l'image dans la variable `--background-image`, que `layouts/_lead.scss`
   // récupère pour la cadrer lui-même. Aucun réglage de taille à passer ici :
   // le cadrage appartient à la mise en page.
@@ -187,14 +239,27 @@ export function lessonParts({ rel, file, data, covers, band, stage, slides }) {
     if (staged) lead += `<!-- _backgroundImage: url('${staged}') -->\n`;
   }
   lead += '\n';
+  // Surtitre, titre, chapô. Le surtitre situe la leçon (« Module 1 · Leçon
+  // 2 ») quand les deux numéros sont connus, sinon il reprend le module.
+  const position =
+    Number.isFinite(Number(data.moduleOrder)) && Number.isFinite(Number(data.order))
+      ? `Module ${data.moduleOrder} · Leçon ${data.order}`
+      : data.module;
+  if (position) lead += `${position}\n\n`;
   lead += `# ${data.title ?? id}\n\n`;
-  if (data.module) lead += `**${data.module}**\n`;
+  if (data.description) lead += `${data.description}\n`;
 
   // L'intercalaire, lui, se réduit au titre : le nom du module est déjà sur
   // la première slide du deck, et le fond plein du modèle « section » ne
   // s'accommode ni d'une couverture ni d'un sous-titre. La pagination y
   // reste active - on est au milieu d'un deck, plus à son ouverture.
-  const section = `<!-- _class: section -->\n\n# ${data.title ?? id}\n`;
+  //
+  // Il relance aussi le pied de page : dans le deck du module, chaque leçon
+  // y inscrit son titre à partir de sa propre ouverture. Une directive sans
+  // « _ » vaut pour la slide ET les suivantes, jusqu'à la prochaine.
+  const section =
+    `<!-- _class: section -->\n<!-- footer: ${yamlString(lessonFooter(data.title ?? id))} -->\n\n` +
+    `# ${data.title ?? id}\n`;
 
   // -- Corps, commun aux deux versions -------------------------------------
   let markdown = slides;
