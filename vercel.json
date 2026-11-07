@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/admin", "destination": "/api/admin?__admin=" },
+    { "source": "/admin/:path*", "destination": "/api/admin?__admin=:path*" }
+  ],
+  "functions": {
+    "api/admin.mjs": {
+      "maxDuration": 30,
+      "includeFiles": "{admin/ui/**,src/styles/**,node_modules/sass-rem/**,node_modules/sass-em/**,node_modules/sass-mq/**}"
+    }
+  }
+}

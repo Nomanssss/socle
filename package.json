@@ -10,6 +10,7 @@
     "dev": "astro dev",
     "predev": "npm run brand",
     "build": "astro build",
+    "vercel-build": "npm run build && node scripts/admin-vendor.mjs",
     "prebuild": "npm run brand",
     "preview": "astro preview",
     "check": "astro check",

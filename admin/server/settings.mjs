@@ -315,11 +315,22 @@ export async function writeSettings({ config: incoming, hash, force }) {
 
   if (isDeepStrictEqual(current, next)) return { hash: fingerprint(text), brand: null };
 
-  const printed = printConfig(next);
-  await store().commit([{ path: CONFIG, content: printed }], 'Admin : réglages du cours');
-
   const brandChanged =
     !isDeepStrictEqual(current.colors, next.colors) || !isDeepStrictEqual(current.fonts, next.fonts);
+
+  // En ligne, `npm run brand` ne tourne pas avant la construction : une
+  // police mal orthographiée ne serait signalée qu'à l'échec de l'aperçu.
+  // On demande donc à Google Fonts, avant d'enregistrer, si elle existe.
+  if (store().kind !== 'local' && !isDeepStrictEqual(current.fonts, next.fonts)) {
+    for (const key of EDITABLE.fonts) {
+      if (next.fonts[key] !== current.fonts?.[key] && !(await googleFontExists(next.fonts[key]))) {
+        throw new AdminError(422, `La police « ${next.fonts[key]} » n’existe pas sur Google Fonts : rien n’a été enregistré.`);
+      }
+    }
+  }
+
+  const printed = printConfig(next);
+  await store().commit([{ path: CONFIG, content: printed }], 'Admin : réglages du cours');
   if (!brandChanged) return { hash: fingerprint(printed), brand: null };
 
   // `npm run brand` écrit des fichiers sur le disque : il ne tourne qu'en
@@ -333,6 +344,22 @@ export async function writeSettings({ config: incoming, hash, force }) {
     throw new AdminError(422, 'La charte n’a pas pu être appliquée : rien n’a été enregistré.', { brand });
   }
   return { hash: fingerprint(printed), brand };
+}
+
+/**
+ * Une famille existe-t-elle sur Google Fonts ? L'API des feuilles de style
+ * répond 400 à un nom inconnu. Injoignable, on ne bloque pas : la
+ * construction du site tranchera.
+ *
+ * @param {string} family
+ */
+async function googleFontExists(family) {
+  try {
+    const response = await fetch(`https://fonts.googleapis.com/css2?family=${encodeURIComponent(family).replace(/%20/g, '+')}`);
+    return response.status !== 400;
+  } catch {
+    return true;
+  }
 }
 
 /**

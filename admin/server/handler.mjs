@@ -65,11 +65,13 @@ const PUBLIC_UI = new Set(['/', '/admin.css', '/login.js']);
 
 /**
  * @param {string} base Le préfixe d'URL de l'admin (« /admin »).
- * @param {{ auth?: ReturnType<typeof import('./auth.mjs').createAuth> | null }} [options]
+ * @param {{ auth?: ReturnType<typeof import('./auth.mjs').createAuth> | null, uploadLimit?: number }} [options]
  *   `auth` : la connexion de l'admin en ligne (auth.mjs). Absente, c'est
  *   l'admin locale - réservée à la machine elle-même, sans mot de passe.
+ *   `uploadLimit` : la taille maximale d'une image envoyée (plus basse en
+ *   ligne, où une fonction Vercel ne reçoit pas plus de 4,5 Mo).
  */
-export function createHandler(base, { auth = null } = {}) {
+export function createHandler(base, { auth = null, uploadLimit = MAX_UPLOAD } = {}) {
   /**
    * @param {import('node:http').IncomingMessage} req
    * @param {import('node:http').ServerResponse} res
@@ -128,13 +130,13 @@ export function createHandler(base, { auth = null } = {}) {
         const route = path.slice('/api'.length);
         if (req.method === 'GET' && route === '/media/file') return serveImage(res, await readMedia(url.searchParams.get('path')));
         if (req.method === 'GET' && route === '/slides/image') return serveImage(res, await readSlideImage(url.searchParams.get('path')));
-        const result = await api(req, route, url.searchParams);
+        const result = await api(req, route, url.searchParams, { uploadLimit });
         return send(res, 200, result);
       }
       if (req.method === 'GET' && UI_FILES[path]) return await serveUi(res, UI_FILES[path]);
       if (req.method === 'GET' && path === '/vendor/codemirror.js') {
         res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
-        res.end(await codemirrorBundle());
+        res.end(await codemirrorBundle({ prebuilt: Boolean(auth) }));
         return;
       }
       return send(res, 404, { error: 'Rien à cette adresse.' });
@@ -150,8 +152,9 @@ export function createHandler(base, { auth = null } = {}) {
  * @param {import('node:http').IncomingMessage} req
  * @param {string} route
  * @param {URLSearchParams} params
+ * @param {{ uploadLimit: number }} options
  */
-async function api(req, route, params) {
+async function api(req, route, params, { uploadLimit }) {
   const key = `${req.method} ${route}`;
   switch (key) {
     case 'GET /lessons':
@@ -195,7 +198,7 @@ async function api(req, route, params) {
     case 'GET /media':
       return { media: await listMedia() };
     case 'POST /media':
-      return { media: await uploadMedia(params.get('name'), await readBody(req, MAX_UPLOAD)) };
+      return { media: await uploadMedia(params.get('name'), await readBody(req, uploadLimit)) };
     case 'DELETE /media':
       return await deleteMedia(params.get('path'));
     case 'GET /slides':

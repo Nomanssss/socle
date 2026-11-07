@@ -532,3 +532,78 @@ test('admin en ligne : rien sans connexion, tout avec', async () => {
     server.close();
   }
 });
+
+// -------------------------------------------------------------
+// La fonction Vercel (api/admin.mjs), de bout en bout
+// -------------------------------------------------------------
+
+test('fonction Vercel : variables manquantes, connexion, écriture sur le brouillon', async () => {
+  const http = await import('node:http');
+  const { fakeGitHub } = await import('./fake-github.mjs');
+  const { hashPassword } = await import('../server/auth.mjs');
+  const { useStore, localStore } = await import('../server/store.mjs');
+
+  // Sans variables : la fonction le dit, sans rien montrer d'autre.
+  const { readEnv } = await import('../../api/admin.mjs');
+  assert.deepEqual(readEnv({}).missing, ['ADMIN_PASSWORD_HASH', 'ADMIN_SESSION_SECRET', 'GITHUB_TOKEN', 'GITHUB_REPO']);
+  assert.equal(readEnv({ VERCEL_GIT_REPO_OWNER: 'moi', VERCEL_GIT_REPO_SLUG: 'cours' }).repo, 'moi/cours');
+
+  const github = fakeGitHub({
+    'socle.config.json': '{\n  "site": { "title": "Cours en ligne" },\n  "locked": []\n}\n',
+    'src/content/lecons/a/l1.mdx': LESSON('A1', 'Module 1 - A', 1, 1),
+  });
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (url, init) =>
+    String(url).startsWith('https://api.github.com') ? github.fetch(url, init) : realFetch(url, init);
+  Object.assign(process.env, {
+    ADMIN_PASSWORD_HASH: hashPassword('un mot de passe solide'),
+    ADMIN_SESSION_SECRET: 's'.repeat(40),
+    GITHUB_TOKEN: 'jeton',
+    GITHUB_REPO: 'moi/cours',
+  });
+
+  const { default: fn } = await import(`../../api/admin.mjs?vercel=${Date.now()}`);
+  // Comme Vercel : /admin/<chemin> arrive réécrit en /api/admin?__admin=<chemin>.
+  const server = http.createServer((req, res) => {
+    const url = new URL(req.url, 'http://x');
+    const path = url.pathname.replace(/^\/admin\/?/, '');
+    url.searchParams.set('__admin', path);
+    req.url = `/api/admin?${url.searchParams}`;
+    fn(req, res);
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${/** @type {any} */ (server.address()).port}`;
+  const go = (path, init = {}) => fetch(`${origin}${path}`, { redirect: 'manual', ...init });
+  const json = { 'Content-Type': 'application/json', Origin: origin };
+  try {
+    assert.match(await (await go('/admin/')).text(), /Connexion · Cours en ligne/, 'le titre vient du brouillon');
+    assert.equal((await go('/admin/api/lessons')).status, 401);
+
+    const ok = await go('/admin/api/login', { method: 'POST', headers: json, body: '{"password":"un mot de passe solide"}' });
+    const cookie = String(ok.headers.get('set-cookie')).split(';')[0];
+    const lessons = await (await go('/admin/api/lessons', { headers: { cookie } })).json();
+    assert.deepEqual(lessons.lessons.map((l) => l.id), ['a/l1']);
+
+    const lesson = await (await go('/admin/api/lesson?id=a/l1', { headers: { cookie } })).json();
+    const saved = await go('/admin/api/lesson', {
+      method: 'PUT',
+      headers: { ...json, cookie },
+      body: JSON.stringify({ id: 'a/l1', data: { ...lesson.data, title: 'A1 en ligne' }, body: lesson.body, hash: lesson.hash }),
+    });
+    assert.equal(saved.status, 200);
+    assert.match(github.file('brouillon', 'src/content/lecons/a/l1.mdx'), /title: "A1 en ligne"/);
+    assert.match(github.file('main', 'src/content/lecons/a/l1.mdx'), /title: "A1"/, 'main intact');
+
+    const big = await go('/admin/api/media?name=gros.png', {
+      method: 'POST',
+      headers: { 'Content-Type': 'image/png', Origin: origin, cookie },
+      body: Buffer.alloc(5 * 1024 * 1024),
+    });
+    assert.equal(big.status, 413, 'une image de 5 Mo est refusée avant Vercel');
+  } finally {
+    server.close();
+    globalThis.fetch = realFetch;
+    for (const key of ['ADMIN_PASSWORD_HASH', 'ADMIN_SESSION_SECRET', 'GITHUB_TOKEN', 'GITHUB_REPO']) delete process.env[key];
+    useStore(localStore());
+  }
+});
