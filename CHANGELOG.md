@@ -19,11 +19,25 @@ rien casser, un *correctif* répare.
 
 ## Non publié
 
+_Rien pour l'instant._
+
+---
+
+## [1.1.0] - 2026-11-07
+
+Refonte de l'interface - accueil, leçon, slides - et deux nouvelles
+pages : les présentations et les sources du cours. Rien à réécrire dans
+un cours existant : les nouveaux champs sont facultatifs.
+
 ### Ajouté
 
-- **Page « Slides »** (`/presentations/`) : les PDF de module réunis sur
+- **Page « Slides »** (`/presentations/`) : les présentations réunies sur
   une page du site, accessible depuis la barre du haut et le bandeau
-  d'accueil dès qu'un PDF a été généré.
+  d'accueil - chaque module en ligne et en PDF, chaque leçon en ligne.
+- **Les slides se consultent en ligne** : `npm run slides:html` publie
+  désormais les decks HTML (et leurs images) dans `public/slides/`, et
+  chaque leçon gagne un bouton **« Voir en slides »**. Jusqu'ici, le HTML
+  ne vivait que dans le paquet de `npm run bundle`.
 - **Sources du cours** : un champ `sources` dans le frontmatter (titre,
   auteur et adresse facultatifs) liste les références d'une leçon en fin de
   page, et la page `/sources/` les réunit toutes, module par module - liée

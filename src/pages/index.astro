@@ -49,6 +49,7 @@ const firstLesson = open[0];
 
 const lessonCount = modules.reduce((sum, module) => sum + module.lessons.length, 0);
 const hasPdf = modules.some((module) => module.pdf);
+const hasDecks = hasPdf || modules.some((module) => module.html);
 
 // Titre et accroche : réglés dans socle.config.json, section « site ».
 const { title: siteTitle, tagline: siteTagline, lang } = site();
@@ -92,7 +93,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
                       <span data-resume-label>Commencer le cours</span>
                       <Icon name="arrow-right" />
                     </a>
-                    {hasPdf && (
+                    {hasDecks && (
                       <a href="/presentations/" class="c-button c-button--large c-button--light">
                         <Icon name="slides" />
                         Toutes les slides

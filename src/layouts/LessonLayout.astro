@@ -182,6 +182,15 @@ const { lang } = site();
                 {minutes} min de lecture
               </span>
               {
+                current.deck && (
+                  <a href={current.deck} target="_blank" rel="noopener" class="c-button c-button--small">
+                    <Icon name="slides" size={16} />
+                    Voir en slides
+                    <span class="u-hidden-visually"> (nouvel onglet)</span>
+                  </a>
+                )
+              }
+              {
                 currentModule.pdf && (
                   <a
                     href={currentModule.pdf}

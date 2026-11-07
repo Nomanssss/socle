@@ -28,6 +28,8 @@ export interface CourseLesson {
   locked: boolean;
   /** L'adresse de la page ; null pour une leçon verrouillée, qui n'en a pas. */
   url: string | null;
+  /** L'adresse de son deck HTML, s'il a été généré par `npm run slides:html`. */
+  deck: string | null;
   entry: Lesson;
 }
 
@@ -43,6 +45,8 @@ export interface CourseModule {
   lessons: CourseLesson[];
   /** L'adresse du PDF résumé, s'il a été généré par `npm run slides`. */
   pdf: string | null;
+  /** L'adresse du même deck en HTML, s'il a été généré par `npm run slides:html`. */
+  html: string | null;
 }
 
 /**
@@ -93,14 +97,16 @@ export function moduleDirOf(id: string): string {
 }
 
 /**
- * Le PDF résumé d'un module, s'il est là où il sera SERVI : dans
- * public/slides/modules/. Le vérifier dans slides/ ne prouverait rien - ce
- * dossier de travail n'est servi ni en dev ni au build. C'est
- * `npm run slides` qui alimente public/, et il réclame Chrome.
+ * Un deck, s'il est là où il sera SERVI : dans public/slides/. Le vérifier
+ * dans slides/ ne prouverait rien - ce dossier de travail n'est servi ni en
+ * dev ni au build. C'est `npm run slides` (PDF, il réclame Chrome) et
+ * `npm run slides:html` qui alimentent public/.
+ *
+ *   published('modules', 'module-1.pdf') → « /slides/modules/module-1.pdf »
  */
-function modulePdf(dir: string): string | null {
-  return existsSync(join(process.cwd(), 'public/slides/modules', `${dir}.pdf`))
-    ? `/slides/modules/${dir}.pdf`
+function published(folder: 'modules' | 'lecons', file: string): string | null {
+  return existsSync(join(process.cwd(), 'public/slides', folder, file))
+    ? `/slides/${folder}/${file}`
     : null;
 }
 
@@ -137,7 +143,8 @@ export async function getCourse(): Promise<CourseModule[]> {
       shortName: shortModuleName(name),
       number: index + 1,
       dir,
-      pdf: modulePdf(dir),
+      pdf: published('modules', `${dir}.pdf`),
+      html: published('modules', `${dir}.html`),
       lessons: lessons.map((entry, i) => {
         const locked = isLocked(entry.id);
         return {
@@ -147,6 +154,7 @@ export async function getCourse(): Promise<CourseModule[]> {
           position: i + 1,
           locked,
           url: locked ? null : `/lecons/${entry.id}/`,
+          deck: locked ? null : published('lecons', `${entry.id.replace(/\//g, '-')}.html`),
           entry,
         };
       }),

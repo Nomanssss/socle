@@ -95,7 +95,7 @@ Tous les composants sont des **`.astro`** : ils s'exécutent au build et ne néc
 | `Timeline.astro` | Frise d'étapes dépliables | `steps` |
 | `Flashcards.astro` | Cartes recto/verso | `cards` |
 | `DragMatch.astro` | Association par glisser-déposer | `pairs` |
-| `ProgressBar.astro` | Jauge segmentée d'un module, un segment par leçon (déjà dans le layout) | `lessonIds`, `label?`, `class?` |
+| `ProgressBar.astro` | Jauge de progression : un segment par leçon (par défaut), ou continue avec `variant="bar"` (celle du cours, dans la barre latérale) | `lessonIds`, `label?`, `variant?`, `hideHeader?`, `class?` |
 
 Forme des props structurées :
 
@@ -400,34 +400,37 @@ La slide de titre d'une leçon existe donc en deux versions, pour deux rôles : 
 
 Le site s'en sert à deux endroits : chaque **carte de module** de l'accueil propose « Slides du module (PDF) », et **chaque leçon** affiche un bouton « PDF du module » dans son en-tête, à côté de la durée de lecture. Ni l'un ni l'autre n'apparaît tant que le PDF n'a pas été généré.
 
-La page **Slides** (`/presentations/`, dans la barre du haut) les rassemble : une carte par module, ses leçons, et le bouton de téléchargement. Son lien n'apparaît que lorsqu'au moins un PDF existe. Elle ne remplace pas le sommaire du paquet livré (`dist/slides/index.html`, voir « Livrer le cours ») : celui-ci liste aussi les decks HTML et les decks de leçon, qui ne vivent que dans le paquet - d'où une adresse distincte, `/slides/` étant déjà le dossier des fichiers.
+La page **Slides** (`/presentations/`, dans la barre du haut) les rassemble : une carte par module, le module entier **en ligne** (HTML) et **en PDF**, et chaque leçon à feuilleter seule. Les decks HTML s'ouvrent dans un nouvel onglet : c'est une visionneuse plein écran, sans retour vers le cours. Chaque leçon propose aussi le sien, avec un bouton **« Voir en slides »** dans son en-tête.
+
+Son lien n'apparaît que lorsqu'au moins un deck existe, et chaque bouton que lorsque son fichier existe : `npm run slides` produit les PDF, `npm run slides:html` les HTML. Elle ne remplace pas le sommaire du paquet livré (`dist/slides/index.html`, voir « Livrer le cours »), qui doit fonctionner sans le site - d'où une adresse distincte, `/slides/` étant déjà le dossier des fichiers.
 
 Le module, ici, c'est le **dossier** (`module-1/` → `module-1.pdf`) et non le champ `module:` du frontmatter : il faut un nom de fichier, et « Module 1 - Prendre le template en main » n'en fait pas un bon. Le libellé, lui, titre la première slide et nomme le fichier tel qu'il arrivera dans les téléchargements de l'apprenant. Si un dossier réunit des leçons qui annoncent des `module:` différents, le build le signale et retient le premier.
 
 #### Où vit le fichier, et pourquoi là
 
-`slides/` est un **dossier de travail** à la racine : Astro ne le sert pas en développement et ne le copie pas au build. Seul `npm run bundle` en verse le contenu dans le paquet, à la toute fin. Un bouton pointant vers `slides/` ne mènerait donc nulle part sur `localhost:4321`, ni sur un site publié avec `npm run build`.
-
 `slides/` est un **dossier de travail** à la racine, pas un dossier du site : `astro build` ne le regarde pas, et `dist/` n'en contient rien. Seul `npm run bundle` en verse le contenu dans le paquet, à la toute fin. Un bouton pointant vers `slides/` mènerait donc à un 404 sur tout site publié avec `npm run build`.
 
-`npm run slides` recopie donc chaque PDF de module dans **`public/slides/modules/`** — `public/` étant le dossier dont Astro copie le contenu tel quel dans `dist/`. Le sous-dossier `modules/` reproduit le rangement du paquet, pour que l'URL soit la même partout :
+Les commandes de slides recopient donc ce que le site lie dans **`public/slides/`** — `public/` étant le dossier dont Astro copie le contenu tel quel dans `dist/` :
 
-| | `/slides/modules/module-1.pdf` |
-| --- | --- |
-| `npm run dev` | servi depuis `public/` |
-| `npm run build` | copié dans `dist/` par Astro |
-| `npm run bundle` | idem, puis `bundle-dist` ajoute `lecons/` à côté |
+| | Où | Par |
+| --- | --- | --- |
+| PDF de chaque module | `public/slides/modules/` | `npm run slides` |
+| HTML de chaque module, et ses images | `public/slides/modules/` (+ `assets/`) | `npm run slides:html` |
+| HTML de chaque leçon, et ses images | `public/slides/lecons/` (+ `assets/`) | `npm run slides:html` |
+
+Les sous-dossiers reproduisent le rangement du paquet, pour que l'URL soit la même partout : servie depuis `public/` par `npm run dev`, copiée dans `dist/` par `npm run build`, puis reprise à l'identique par `bundle-dist`. Les images suivent les HTML parce que Marp les cite en chemin relatif (`assets/x.png`) : c'est `scripts/deck-assets.mjs` qui les recopie, pour `build-slides` comme pour `bundle-dist`.
 
 > ⚠️ En développement, Vite sert aussi les fichiers de la **racine du projet** : `/slides/module-1.pdf` y répond, et `/socle.config.json` aussi. C'est une commodité du serveur de dev, absente du site construit — ne vous y fiez pas pour juger si un lien tiendra en production.
 
 Le deck d'un module suit le **format demandé**, comme celui d'une leçon : `npm run slides` en fait un PDF, `npm run slides:html` un HTML projetable. Les deux arrivent dans le paquet, sous `dist/slides/modules/`.
 
-Seul le **PDF** passe en plus dans `public/` : c'est le seul format que le bouton du site propose, et y verser aussi les HTML alourdirait chaque build pour un fichier que rien ne lie. `public/slides/modules/` est dans `.gitignore` — c'est un produit de `npm run slides`.
+Le **PDF d'une leçon** et les PPTX, eux, ne passent pas dans `public/` : rien ne les lie depuis le site, ils alourdiraient chaque build pour rien. `public/slides/` est dans `.gitignore` — c'est un produit des commandes de slides.
 
 Deux garde-fous :
 
-- le bouton n'apparaît **que si le PDF est dans `public/slides/modules/`** au moment où le site se construit. Sur un dépôt où `npm run slides` n'a jamais tourné (il réclame Chrome), il n'y a pas de bouton plutôt qu'un lien mort ;
-- `npm run bundle` génère **les slides avant le site**. Dans l'autre sens, sur un dépôt tout neuf, le site se construirait alors que `public/slides/modules/` est encore vide : aucun bouton, et le paquet livré serait muet là-dessus.
+- un bouton n'apparaît **que si son fichier est dans `public/slides/`** au moment où le site se construit. Sur un dépôt où les slides n'ont jamais été générées, il n'y a pas de bouton plutôt qu'un lien mort ;
+- `npm run bundle` génère **les slides avant le site**. Dans l'autre sens, sur un dépôt tout neuf, le site se construirait alors que `public/slides/` est encore vide : aucun bouton, et le paquet livré serait muet là-dessus.
+- verrouiller une leçon retire aussi son deck de `public/slides/lecons/` à la génération suivante : le site ne sert pas les slides d'une leçon fermée.
 
 ---
 
@@ -456,7 +459,7 @@ dist/
   LISEZ-MOI.txt               comment ouvrir le paquet
 ```
 
-L'ordre compte, et dans les deux sens : les slides sont **générées avant** le site — qui vérifie leur présence pour décider d'afficher le bouton « PDF résumé » — puis **copiées après** lui, `astro build` vidant `dist/` à chaque passage. D'où la séquence de `npm run bundle` : `slides` → `slides:html` → `build` → `bundle-dist`. Ce dernier refuse de tourner si le site n'a pas été construit.
+L'ordre compte, et dans les deux sens : les slides sont **générées avant** le site — qui vérifie leur présence pour décider d'afficher les boutons « PDF du module » et « Voir en slides » — puis **copiées après** lui, `astro build` vidant `dist/` à chaque passage. D'où la séquence de `npm run bundle` : `slides` → `slides:html` → `build` → `bundle-dist`. Ce dernier refuse de tourner si le site n'a pas été construit.
 
 ### Le site a besoin d'un serveur, les slides non
 
@@ -579,17 +582,17 @@ La rubrique **« Conception et réalisation »** crédite le template lui-même 
 
 ### La version de Socle
 
-Cette même rubrique affiche « construit avec **Socle 1.0.0** », et chaque page du site porte l'information en en-tête :
+Cette même rubrique affiche « construit avec **Socle 1.1.0** », et chaque page du site porte l'information en en-tête :
 
 ```html
-<meta name="generator" content="Socle 1.0.0">
+<meta name="generator" content="Socle 1.1.0">
 ```
 
 C'est la convention qu'emploient Astro ou WordPress. Un cours en ligne dit ainsi de quelle version du template il est issu - la première question qu'on se pose devant un site livré il y a un an qui se comporte bizarrement.
 
 Le numéro vit dans `scripts/config.mjs` (`SOCLE_VERSION`), et **pas** dans `package.json`. La raison tient à ce qu'est ce dépôt : une fois le template dupliqué, `package.json` appartient à l'auteur du cours, qui y met le nom et le numéro de *son* projet. La mention afficherait alors la version du cours en croyant donner celle du template. Les deux numéros disent la même chose au moment du clone, puis suivent chacun leur vie.
 
-Le pied de page, lui, n'en parle pas : « Socle 1.0.0 » sous le pied de page d'un cours ne dit rien à l'apprenant qui le lit. L'information s'adresse à qui reprend le projet ou inspecte la page, pas au lecteur.
+Le pied de page, lui, n'en parle pas : « Socle 1.1.0 » sous le pied de page d'un cours ne dit rien à l'apprenant qui le lit. L'information s'adresse à qui reprend le projet ou inspecte la page, pas au lecteur.
 
 > Pour publier une version de Socle : `SOCLE_VERSION` dans `scripts/config.mjs` **et** `version` dans `package.json`, dans le même commit.
 
@@ -1027,7 +1030,7 @@ La règle habituelle - « on ne versionne pas ce qu'une commande sait reconstrui
 | `src/styles/generic/_fonts.scss` | les `@font-face` du site |
 | `fonts.lock.json` | la trace de ce qui a été téléchargé - c'est ce qui permet à `npm run brand` de ne rien refaire quand rien n'a changé |
 
-À l'inverse, `public/slides/` — les PDF de module que `npm run slides` publie pour le site — est ignoré : c'est un produit de build comme un autre, et il pèse.
+À l'inverse, `public/slides/` — les decks que les commandes de slides publient pour le site — est ignoré : c'est un produit de build comme un autre, et il pèse.
 
 Un clone compile donc **hors ligne**. Le revers : après un changement de police, ces fichiers apparaissent dans vos diffs. C'est voulu — un changement de charte est un changement de projet, il mérite d'être visible dans l'historique.
 

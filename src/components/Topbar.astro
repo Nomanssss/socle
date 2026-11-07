@@ -45,7 +45,7 @@ const modules = await getCourse();
 const links: { key: string; label: string; href: string }[] = [
   { key: 'home', label: 'Sommaire', href: '/' },
 ];
-if (modules.some((module) => module.pdf)) {
+if (modules.some((module) => module.pdf || module.html)) {
   links.push({ key: 'presentations', label: 'Slides', href: '/presentations/' });
 }
 if (hasSources(modules)) {

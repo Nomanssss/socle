@@ -25,10 +25,11 @@
 // Usage : node scripts/bundle-dist.mjs
 // =============================================================
 
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync, rmSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { site } from './config.mjs';
+import { copyDeckAssets } from './deck-assets.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SLIDES_DIR = join(ROOT, 'slides');
@@ -107,7 +108,7 @@ ok(`${decks.length} deck(s) copié(s) dans dist/slides/${missing ? ` (${missing}
 // 2 bis. Les decks de module
 //
 // Un deck par dossier de leçons (« module-1.pdf ») : c'est le « PDF
-// résumé » que la dernière leçon du module propose au téléchargement.
+// résumé » que chaque leçon du module propose au téléchargement.
 // Il n'a pas d'entrée au manifeste - celui-ci décrit les leçons, et le
 // nom du fichier se déduit de leur identifiant : « module-1/lecon-2 »
 // appartient à « module-1 ». Une liste de plus finirait par diverger.
@@ -141,47 +142,17 @@ if (moduleDecks.size > 0) {
 }
 
 // -------------------------------------------------------------
-// 2 bis. Images des decks HTML
+// 2 ter. Images des decks HTML
 // -------------------------------------------------------------
-// Contrairement aux polices (embarquées en base64 par marp/_fonts.scss),
-// Marp laisse les images du contenu en chemin RELATIF - « assets/x.png ».
-// Un .html livré sans ce dossier perd donc ses images. On ne copie que les
-// fichiers réellement cités par les decks livrés : le banc d'essai du thème
-// (00-modeles) a ses propres images, qui n'ont rien à faire dans le paquet.
-//
-// On scanne du HTML rendu, où la PROSE peut ressembler à un chemin : une
-// phrase finissant par « … dans slides/assets/. » a suffi à faire capturer
-// « . » comme nom de fichier, et à tenter de copier le dossier lui-même.
-// D'où deux exigences : une extension de fichier dans le motif, et une
-// vérification que la cible est bien un fichier avant de la copier.
-const ASSET_REF = /assets\/([A-Za-z0-9][A-Za-z0-9._-]*\.[A-Za-z0-9]{2,5})(?![A-Za-z0-9])/g;
-
-/**
- * Copie, à côté des HTML donnés, les images qu'ils citent.
- *
- * Un dossier d'images PAR dossier de decks : Marp écrit « assets/x.png »
- * relativement au fichier HTML, or lecons/ et modules/ sont deux niveaux
- * distincts. Un seul « slides/assets/ » partagé casserait les deux.
- */
+// Marp laisse les images en chemin relatif (« assets/x.png ») : chaque
+// dossier de decks reçoit les siennes. Voir scripts/deck-assets.mjs.
 function copyAssetsFor(htmlPaths, targetDir, label) {
-  const referenced = new Set();
-  for (const rel of htmlPaths) {
-    const html = readFileSync(join(DIST_SLIDES, rel), 'utf8');
-    for (const m of html.matchAll(ASSET_REF)) referenced.add(m[1]);
-  }
-  if (referenced.size === 0) return;
-
-  mkdirSync(join(targetDir, 'assets'), { recursive: true });
-  let copied = 0;
-  for (const name of referenced) {
-    const src = join(SLIDES_DIR, 'assets', name);
-    if (!existsSync(src) || !statSync(src).isFile()) {
-      warn(`image citée mais introuvable : slides/assets/${name}`);
-      continue;
-    }
-    copyFileSync(src, join(targetDir, 'assets', name));
-    copied += 1;
-  }
+  const { copied, missing } = copyDeckAssets(
+    htmlPaths.map((rel) => join(DIST_SLIDES, rel)),
+    join(SLIDES_DIR, 'assets'),
+    targetDir
+  );
+  for (const name of missing) warn(`image citée mais introuvable : slides/assets/${name}`);
   if (copied > 0) ok(`${copied} image(s) copiée(s) dans ${label}`);
 }
 

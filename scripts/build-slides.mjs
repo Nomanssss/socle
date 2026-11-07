@@ -47,20 +47,42 @@ import { execFileSync } from 'node:child_process';
 import matter from 'gray-matter';
 import { stageImage, stageImages } from './stage-images.mjs';
 import { isLocked, unknownLocked, site } from './config.mjs';
+import { copyDeckAssets } from './deck-assets.mjs';
 
 const ROOT = process.cwd();
 const LESSONS_DIR = join(ROOT, 'src/content/lecons');
 const OUT_DIR = join(ROOT, 'slides');
-// Le site LIE les PDF de module (« PDF du module », page Slides) :
-// ils doivent donc être servis par Astro, ce que slides/ n'est pas - c'est
-// un dossier de travail à la racine, qu'Astro ignore en dev comme au build.
+// Le site LIE certains decks : le PDF et le HTML de chaque module (« PDF du
+// module », page Slides), le HTML de chaque leçon (« Voir en slides »). Ils
+// doivent donc être servis par Astro, ce que slides/ n'est pas - c'est un
+// dossier de travail à la racine, qu'Astro ignore en dev comme au build.
 // public/ est le seul endroit dont le contenu est servi tel quel dans les
-// deux cas. Les decks de LEÇON, eux, n'y vont pas : rien ne les lie depuis
-// le site, et bundle-dist les met dans le paquet livré.
+// deux cas. Le PDF d'une LEÇON, lui, n'y va pas : rien ne le lie depuis le
+// site, et bundle-dist le met dans le paquet livré.
 //
-// Le sous-dossier « modules » reproduit le rangement de dist/slides/, pour
-// que l'URL soit la même en dev et dans le paquet : /slides/modules/…
+// Les sous-dossiers reproduisent le rangement de dist/slides/, pour que
+// l'URL soit la même en dev et dans le paquet : /slides/modules/…,
+// /slides/lecons/…
 const PUBLIC_SLIDES = join(ROOT, 'public/slides/modules');
+const PUBLIC_LESSONS = join(ROOT, 'public/slides/lecons');
+
+/** Copie un deck rendu dans public/, là où le site le sert. */
+function publish(file, targetDir) {
+  mkdirSync(targetDir, { recursive: true });
+  const target = join(targetDir, basename(file));
+  copyFileSync(file, target);
+  return target;
+}
+
+/**
+ * Les HTML publiés ont besoin de leurs images, à côté d'eux : Marp les cite
+ * en chemin relatif (voir scripts/deck-assets.mjs).
+ */
+function publishAssets(htmlFiles, targetDir) {
+  if (htmlFiles.length === 0) return;
+  const { missing } = copyDeckAssets(htmlFiles, join(OUT_DIR, 'assets'), targetDir);
+  for (const name of missing) console.warn(`  ⚠ image citée mais introuvable : slides/assets/${name}`);
+}
 const THEME = join(OUT_DIR, 'theme.css');
 
 /**
@@ -177,6 +199,12 @@ for (const rel of allLessons) {
       cleaned += 1;
     }
   }
+  // … et de public/, d'où le site le servirait encore.
+  const stalePublic = join(PUBLIC_LESSONS, `${slug}.html`);
+  if (existsSync(stalePublic)) {
+    rmSync(stalePublic);
+    cleaned += 1;
+  }
 }
 
 if (cleaned > 0) console.log(`  · ${cleaned} fichier(s) d'une leçon verrouillée retiré(s) de slides/`);
@@ -271,6 +299,7 @@ for (const rel of lessons) {
 }
 
 const generated = [];
+const publishedLessons = [];
 const manifest = [];
 
 // Les corps de deck, groupés par dossier de module : de quoi enchaîner
@@ -356,6 +385,9 @@ for (const rel of lessons) {
     console.log(`→ ${id}  (${ext})`);
     render(mdPath, outPath);
     generated.push(outPath);
+
+    // Le HTML de la leçon est servi par le site (« Voir en slides »).
+    if (ext === 'html') publishedLessons.push(publish(outPath, PUBLIC_LESSONS));
   }
 
   // Le dossier fait le module : « module-1/lecon-2.mdx » → « module-1 ».
@@ -406,10 +438,12 @@ for (const rel of allLessons) {
       cleanedModules += 1;
     }
   }
-  const stalePublic = join(PUBLIC_SLIDES, `${dir}.pdf`);
-  if (existsSync(stalePublic)) {
-    rmSync(stalePublic);
-    cleanedModules += 1;
+  for (const e of ['pdf', 'html']) {
+    const stalePublic = join(PUBLIC_SLIDES, `${dir}.${e}`);
+    if (existsSync(stalePublic)) {
+      rmSync(stalePublic);
+      cleanedModules += 1;
+    }
   }
 }
 if (cleanedModules > 0) {
@@ -417,6 +451,7 @@ if (cleanedModules > 0) {
 }
 
 const moduleDecks = [];
+const publishedModules = [];
 
 for (const [dir, { label, labels, bodies }] of DO_MODULES ? byModuleDir : []) {
   // Deux libellés dans un même dossier : on prend le premier, mais on le
@@ -455,13 +490,17 @@ for (const [dir, { label, labels, bodies }] of DO_MODULES ? byModuleDir : []) {
   render(mdPath, outPath);
   moduleDecks.push(outPath);
 
-  // Seul le PDF part dans public/ : c'est ce que propose le bouton du
-  // site, et lui seul (voir PUBLIC_SLIDES, plus haut). Le HTML, lui,
-  // n'existe que pour le paquet livré, où bundle-dist ira le chercher.
-  if (ext === 'pdf') {
-    mkdirSync(PUBLIC_SLIDES, { recursive: true });
-    copyFileSync(outPath, join(PUBLIC_SLIDES, `${dir}.pdf`));
-  }
+  // Le PDF et le HTML partent dans public/ : le site propose les deux
+  // (voir PUBLIC_SLIDES, plus haut). Le PPTX n'y va pas - rien ne le lie.
+  if (ext === 'pdf' || ext === 'html') publishedModules.push(publish(outPath, PUBLIC_SLIDES));
+}
+
+if (ext === 'html') {
+  publishAssets(publishedLessons, PUBLIC_LESSONS);
+  publishAssets(
+    publishedModules.filter((f) => f.endsWith('.html')),
+    PUBLIC_SLIDES
+  );
 }
 
 // Le manifeste décrit les decks, pas le format : il est réécrit à

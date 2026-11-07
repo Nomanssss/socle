@@ -70,7 +70,7 @@ src/
 ├── assets/                   → images sources, optimisées par Astro
 └── styles/                   → ITCSS + BEMIT (voir le guide)
 public/fonts/                 → polices auto-hébergées (générées)
-public/slides/modules/        → PDF résumé de chaque module (généré, servi par le site)
+public/slides/                → decks servis par le site : PDF et HTML des modules, HTML des leçons (générés)
 public/favicon.*, *.png       → icônes du site (le manifeste, lui, est généré)
 socle.config.json             → LE FICHIER À RÉGLER : identité, langue, URL publique, couleurs, polices, leçons verrouillées
 fonts.lock.json               → trace des polices téléchargées (généré)
