@@ -6,17 +6,18 @@ régler la charte, comprendre les styles. Pour démarrer, voir le [README](../RE
 ## Sommaire
 
 1. [Ajouter une leçon](#ajouter-une-leçon)
-2. [Composants disponibles](#composants-disponibles)
-3. [Générer les slides](#générer-les-slides)
-4. [Livrer le cours : `npm run bundle`](#livrer-le-cours--npm-run-bundle)
-5. [Verrouiller une leçon](#verrouiller-une-leçon)
-6. [Identité du site et mentions légales](#identité-du-site-et-mentions-légales)
-7. [Personnaliser l'apparence (rebranding)](#personnaliser-lapparence-rebranding)
-8. [Architecture des styles (ITCSS + BEMIT)](#architecture-des-styles-itcss--bemit)
-9. [Accessibilité](#accessibilité)
-10. [Progression de l'apprenant](#progression-de-lapprenant)
-11. [Faire place nette avec `npm run reset`](#faire-place-nette-avec-npm-run-reset)
-12. [Ce qui est versionné, et ce qui ne l'est pas](#ce-qui-est-versionné-et-ce-qui-ne-lest-pas)
+2. [L'admin : écrire sans éditeur de code](#ladmin--écrire-sans-éditeur-de-code)
+3. [Composants disponibles](#composants-disponibles)
+4. [Générer les slides](#générer-les-slides)
+5. [Livrer le cours : `npm run bundle`](#livrer-le-cours--npm-run-bundle)
+6. [Verrouiller une leçon](#verrouiller-une-leçon)
+7. [Identité du site et mentions légales](#identité-du-site-et-mentions-légales)
+8. [Personnaliser l'apparence (rebranding)](#personnaliser-lapparence-rebranding)
+9. [Architecture des styles (ITCSS + BEMIT)](#architecture-des-styles-itcss--bemit)
+10. [Accessibilité](#accessibilité)
+11. [Progression de l'apprenant](#progression-de-lapprenant)
+12. [Faire place nette avec `npm run reset`](#faire-place-nette-avec-npm-run-reset)
+13. [Ce qui est versionné, et ce qui ne l'est pas](#ce-qui-est-versionné-et-ce-qui-ne-lest-pas)
 
 ---
 
@@ -78,6 +79,57 @@ sources:
 Elles apparaissent à deux endroits, sans rien recopier : **en fin de leçon**, sous un intertitre « Sources », et sur la page **« Sources du cours »** (`/sources/`), qui réunit celles de toutes les leçons, rangées par module. Le lien vers cette page s'ajoute à la barre du haut et au pied de page dès qu'une leçon cite une source. Celles d'une leçon verrouillée n'y figurent pas : son contenu n'est pas en ligne, ses références n'ont pas à l'annoncer.
 
 Une adresse mal formée (`url` sans `https://`) fait échouer le build : la validation Zod l'attrape avant qu'un lien mort n'arrive en ligne.
+
+---
+
+## L'admin : écrire sans éditeur de code
+
+Avec `npm run dev`, une interface d'écriture est disponible sur **<http://localhost:4321/admin/>**. Elle fait tout ce que ce guide décrit à la main, dans des formulaires : écrire une leçon, ses composants et ses slides, gérer les images, verrouiller une leçon, régler le site.
+
+### Ce qu'elle n'est pas
+
+- **Un site en ligne.** L'admin n'existe qu'avec `npm run dev` : c'est un intermédiaire posé devant le serveur de développement, que ni `astro build` ni `astro preview` n'activent. Rien d'elle n'arrive dans `dist/`, et `/admin` répond 404 sur le site publié.
+- **Une base de données.** Ce qu'elle enregistre, ce sont les fichiers du cours eux-mêmes : les `.mdx`, les `.slides.md`, `socle.config.json`, les images de `src/assets/`. Git reste la seule mémoire du cours.
+- **Un éditeur WYSIWYG.** Le texte reste du Markdown, lisible et diffable. Ce sont les composants - là où le MDX devient du JavaScript - qui ont droit à un formulaire.
+
+### Ce qu'on y fait
+
+| Où | Quoi |
+| --- | --- |
+| **Leçons** → onglet *Page* | l'en-tête en formulaire (titre, ordre, chapô, couverture, points-clés, sources), le texte en Markdown avec une barre d'outils, et chaque composant (Quiz, Timeline, Flashcards, DragMatch, Figure, tableaux) dans un éditeur dédié |
+| **Leçons** → onglet *Slides* | le deck de la leçon, avec un aperçu rendu par Marp dans le thème du cours, et des modèles de slide à insérer |
+| **Sommaire** → titre d'un module | son nom et sa place dans le cours, réécrits dans toutes ses leçons d'un coup (voir ci-dessous) |
+| **Sommaire** → cadenas d'une leçon | la verrouiller ou la rouvrir : effet immédiat, la page passe en 404 ou revient |
+| **Médiathèque** | les images du cours : on les glisse, l'admin les range dans `src/assets/` et écrit les imports |
+| **Réglages** | `socle.config.json` en formulaire : le cours, les mentions légales, l'auteur, la charte |
+
+Le bouton **Voir la page** ouvre la leçon sur le site, qui se recharge à chaque enregistrement (**⌘S** / **Ctrl S**).
+
+### Le module se règle au niveau du module
+
+Le nom d'un module et sa place dans le cours vivent dans l'en-tête de **chacune** de ses leçons (`module` et `moduleOrder`). Les modifier leçon par leçon, c'est risquer qu'une faute de frappe coupe le module en deux sur l'accueil. L'admin ne les montre donc pas dans le formulaire d'une leçon : ils se règlent depuis le titre du module dans le sommaire, et sont réécrits dans toutes ses leçons ensemble - toutes, ou aucune si l'écriture échoue.
+
+La place est un rang : les modules sont renumérotés de 1 à N, sans doublon. Un nom qui suit la convention « Module 3 - … » prend son nouveau numéro ; un nom libre n'est jamais touché. Un nom déjà porté par un autre module est refusé, pour ne pas fusionner deux modules par accident. Le dossier du module, lui, ne change pas : l'adresse des leçons reste la même.
+
+### Ce qui la rend sûre
+
+- **Elle ne réécrit que ce qui change.** Un en-tête inchangé est recopié à l'octet près ; modifier un quiz ne touche qu'au quiz ; `socle.config.json` est réécrit dans son propre style, explications `_…` comprises. Un diff Git après passage dans l'admin ressemble à celui d'un humain.
+- **Elle n'écrase pas une modification faite ailleurs.** Si un fichier a changé depuis son ouverture - dans un éditeur de code, ou par une autre action de l'admin - l'enregistrement est refusé, et c'est à vous de choisir.
+- **Elle vérifie avant d'écrire** ce que le build refuserait : une source sans titre, une adresse sans `https://`, une couleur mal formée.
+- **Une charte refusée ne reste pas en place.** Couleurs et polices relancent `npm run brand` à l'enregistrement ; s'il refuse (police inconnue, pas de réseau pour la télécharger), `socle.config.json` est remis dans son état d'avant. Seul un changement de **police** demande une connexion.
+- **Elle n'écoute que votre machine.** Même avec `npm run dev -- --host`, qui ouvre le site au réseau local, `/admin` répond 403 aux autres appareils. Une écriture doit venir de l'admin elle-même : une page web malveillante ouverte dans le même navigateur ne peut pas écrire. Et aucun chemin reçu ne sort de `src/content/lecons/`, `src/assets/` et `socle.config.json`.
+
+> ⚠️ **L'admin écrit dans les fichiers du dépôt.** Un essai - une leçon verrouillée pour voir, une couleur changée - fait donc partie du prochain commit si vous ne relisez pas le diff. C'est le prix d'un cours sans base de données : `git diff` avant chaque commit, et `git restore <fichier>` pour annuler un essai.
+
+### Où ça vit dans le code
+
+| Fichier | Rôle |
+| --- | --- |
+| `admin/integration.mjs` | branche l'admin sur le serveur de dev (`astro:server:setup`), et lui fait relire `socle.config.json` à chaque changement |
+| `admin/server/` | l'API : leçons, composants, médiathèque, slides, réglages |
+| `admin/ui/` | l'interface, en JavaScript natif - seul l'éditeur de texte (CodeMirror) est une dépendance |
+| `admin/test/` | les tests : `npm run test:admin` |
+| `ROADMAP.md` | ce qui est fait, et ce qui reste (créer, déplacer, supprimer une leçon…) |
 
 ---
 

@@ -125,5 +125,5 @@ de code, et l'on n'a plus à connaître la syntaxe Markdown.*
 
 ## Phase 9 - Documenter
 
-- [ ] Une leçon du cours de démonstration consacrée à l'admin
-- [ ] README, `docs/GUIDE.md` et journal des versions
+- [x] Une leçon du cours de démonstration consacrée à l'admin (module 2, leçon 4)
+- [x] README, `docs/GUIDE.md` et journal des versions

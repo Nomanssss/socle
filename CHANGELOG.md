@@ -19,7 +19,28 @@ rien casser, un *correctif* répare.
 
 ## Non publié
 
-_Rien pour l'instant._
+### Ajouté
+
+- **L'admin** (`/admin/`, avec `npm run dev`) : écrire le cours sans éditeur
+  de code. L'en-tête d'une leçon en formulaire, son texte en Markdown avec
+  une barre d'outils, chaque composant (Quiz, Timeline, Flashcards,
+  DragMatch, Figure, tableaux) dans un éditeur dédié, les slides avec un
+  aperçu dans le thème du cours, une médiathèque où l'on glisse ses images,
+  le verrou d'une leçon d'un clic, le réglage d'un module pour toutes ses
+  leçons, et une page **Réglages** pour `socle.config.json` - la charte
+  régénérée à l'enregistrement. L'admin écrit les fichiers du cours eux-mêmes,
+  ne réécrit que ce qui change, n'écoute que la machine locale, et n'arrive
+  jamais dans le site publié.
+- **Une slide de fin** à chaque deck : un remerciement, le logo, le nom et les
+  liens de l'auteur (`author.name`, `author.links`).
+
+### Modifié
+
+- Le serveur de dev **relit `socle.config.json` à chaque changement** : une
+  leçon verrouillée passe aussitôt en 404, sans redémarrage.
+- L'assemblage des decks est partagé entre `build-slides` et l'aperçu de
+  l'admin (`scripts/slides-deck.mjs`) : l'aperçu montre exactement ce que
+  produira `npm run slides`.
 
 ---
 

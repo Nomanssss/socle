@@ -1,0 +1,47 @@
+---
+title: "Écrire avec l'admin"
+module: "Module 2 - Écrire le contenu"
+moduleOrder: 2
+order: 4
+description: "Tout ce module, sans ouvrir un éditeur de code : une interface locale qui écrit les mêmes fichiers que vous."
+slidePoints:
+  - "L'admin vit sur /admin/, avec npm run dev, et nulle part ailleurs"
+  - "Elle écrit les fichiers du cours eux-mêmes : pas de base de données"
+  - "Elle ne réécrit que ce qui change : le diff reste lisible"
+  - "Un essai fait partie du prochain commit : relisez git diff"
+---
+
+Les leçons précédentes montrent comment écrire un cours **dans les fichiers** : un en-tête, du Markdown, des composants en JSX. C'est la façon la plus directe de faire, mais elle suppose d'ouvrir un éditeur de code. L'admin propose la même chose dans des formulaires.
+
+## Où la trouver
+
+Lancez le serveur de développement, puis ouvrez l'admin :
+
+```bash
+npm run dev
+# → http://localhost:4321/admin/
+```
+
+Elle n'existe **que là**. Ni `npm run build` ni le site publié ne la contiennent : en ligne, `/admin` répond 404. Personne ne peut donc modifier votre cours depuis Internet - et c'est voulu.
+
+## Ce qu'on y fait
+
+- **Écrire une leçon** : l'en-tête dans un formulaire, le texte en Markdown à côté, avec une barre d'outils pour les titres, listes, liens et tableaux.
+- **Éditer un composant** : un clic sur la pastille d'un Quiz, d'une Timeline ou de cartes ouvre un formulaire fait pour lui. Plus de virgule oubliée dans un tableau JavaScript.
+- **Écrire les slides** de la leçon, en voyant l'aperçu se dessiner dans le thème du cours.
+- **Glisser des images** dans la médiathèque, puis les choisir comme couverture ou les insérer.
+- **Verrouiller une leçon** d'un clic sur son cadenas, dans le sommaire.
+- **Régler un module** - son nom, sa place - depuis son titre : toutes ses leçons suivent.
+- **Régler le site** : le nom du cours, les mentions légales, l'auteur, les couleurs et les polices.
+
+## Ce qu'elle écrit
+
+L'admin n'a pas de base de données : ce qu'elle enregistre, ce sont **les mêmes fichiers** que vous écririez à la main. Elle prend soin de ne réécrire que ce qui change - modifier une question de quiz ne touche qu'à cette question, et le reste du fichier ressort à l'octet près.
+
+Vous pouvez donc passer de l'un à l'autre : écrire un passage dans l'admin, le reprendre dans votre éditeur, revenir à l'admin. Si un fichier a changé entre-temps, elle refuse d'écraser et vous laisse choisir.
+
+> **À retenir avant chaque commit.** Ce que vous faites dans l'admin modifie le dépôt, essais compris : une leçon verrouillée « pour voir » restera verrouillée dans le prochain commit. Relisez `git diff` avant de commiter, et `git restore <fichier>` annule un essai.
+
+## Quand préférer les fichiers
+
+L'admin couvre l'écriture courante. Pour tout ce qui sort des formulaires - un composant que l'admin ne sait pas encore éditer, une mise en page de slide inhabituelle, une modification en série sur dix leçons - le fichier reste la voie la plus directe. Les deux écrivent la même chose : choisissez celle qui va le plus vite.
