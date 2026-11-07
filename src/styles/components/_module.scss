@@ -1,0 +1,201 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Module
+ * Type: Component
+ * Description:
+ *   Carte d'un module sur l'accueil : son numéro, son titre, sa jauge, ses
+ *   leçons avec leur état, et le PDF résumé quand il existe.
+ *
+ *   Les états sont posés par le script de la page, d'après la progression :
+ *     .is-started   au moins une leçon terminée - le numéro se remplit ;
+ *     .is-current   le module de la leçon à reprendre - la carte s'affirme.
+ *   Côté leçon, `.is-next` désigne celle à reprendre.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/effects";
+@use "../settings/spacing";
+@use "../settings/typography";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+/**
+ * Le contour passe de 1 à 2 px sur la carte courante : le padding perd le
+ * pixel gagné, pour que le contenu ne bouge pas d'un cheveu au changement
+ * d'état. D'où la variable.
+**/
+.c-module {
+  --border: #{rem.convert(1px)};
+
+  display: flex;
+  flex-direction: column;
+  gap: spacing.get("md");
+  padding: calc(#{spacing.get("lg")} - var(--border));
+  background: colors.get("background");
+  border: var(--border) solid colors.get("border-soft");
+  border-radius: spacing.radius("lg");
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+  .c-module__head {
+    display: flex;
+    align-items: flex-start;
+    gap: spacing.get("md");
+  }
+
+    .c-module__number {
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      width: rem.convert(44px);
+      height: rem.convert(44px);
+      font-family: typography.family("heading");
+      font-size: typography.size("sm");
+      font-weight: typography.$bold;
+      color: colors.get("primary");
+      background: colors.get("surface-muted");
+      border-radius: spacing.radius();
+      transition: background-color 200ms ease, color 200ms ease;
+    }
+
+    .c-module__title {
+      font-size: rem.convert(22px);
+      line-height: 1.25;
+    }
+
+    .c-module__meta {
+      font-size: typography.size("sm");
+      color: colors.get("text-muted");
+    }
+
+/*******************************************************************************
+ * Leçons
+*******************************************************************************/
+
+  .c-module__lessons {}
+
+    .c-module__lesson {
+      display: flex;
+      align-items: center;
+      gap: spacing.get("sm");
+      min-height: rem.convert(48px);
+      padding: spacing.get("xs");
+      line-height: 1.35;
+      color: colors.get("text");
+      border-radius: spacing.radius("sm");
+      transition: background-color 150ms ease;
+
+      &:not(.c-module__lesson--locked):hover {
+        background: colors.get("surface-muted");
+      }
+
+      &.is-next {
+        font-weight: typography.$semibold;
+        background: colors.get("canvas");
+      }
+    }
+
+      .c-module__lesson-title {
+        flex: 1 1 auto;
+      }
+
+      .c-module__resume {
+        display: inline-flex;
+        align-items: center;
+        gap: spacing.get("2xs");
+        flex-shrink: 0;
+        font-size: typography.size("xs");
+        color: colors.get("primary");
+      }
+
+    .c-module__lesson--locked {
+      color: colors.get("text-muted");
+    }
+
+      .c-module__lock {
+        flex-shrink: 0;
+      }
+
+      .c-module__tag {
+        flex-shrink: 0;
+        padding: rem.convert(3px) spacing.get("sm");
+        font-size: typography.size("xs");
+        line-height: typography.leading("tight");
+        background: colors.get("surface-muted");
+        border-radius: rem.convert(999px);
+      }
+
+  // Le lien du PDF pousse vers le bas : d'une carte à l'autre de la même
+  // rangée, il tombe à la même hauteur quel que soit le nombre de leçons.
+  .c-module__pdf {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: spacing.get("xs");
+    min-height: rem.convert(44px);
+    margin-top: auto;
+    font-size: typography.size("sm");
+    font-weight: typography.$semibold;
+
+    &:hover {
+      color: colors.get("primary-hover");
+    }
+  }
+
+/*******************************************************************************
+ * Page « Sources »
+*******************************************************************************/
+
+  // Le titre de leçon qui coiffe ses références.
+  .c-module__subtitle {
+    font-family: typography.family("body");
+    font-size: typography.size("base");
+    font-weight: typography.$bold;
+
+    a {
+      color: colors.get("text");
+
+      &:hover {
+        color: colors.get("primary");
+      }
+    }
+  }
+
+/*******************************************************************************
+ * Page « Slides »
+*******************************************************************************/
+
+      .c-module__icon {
+        color: colors.get("text-muted");
+      }
+
+  // Même principe que le lien du PDF : le bouton tombe en bas de la carte.
+  .c-module__download {
+    align-self: flex-start;
+    margin-top: auto;
+  }
+
+/*******************************************************************************
+ * States
+*******************************************************************************/
+
+.c-module.is-started .c-module__number {
+  color: colors.get("on-primary");
+  background: colors.get("primary");
+}
+
+.c-module.is-current {
+  --border: #{rem.convert(2px)};
+  border-color: colors.get("primary");
+  box-shadow: effects.shadow("lg");
+}

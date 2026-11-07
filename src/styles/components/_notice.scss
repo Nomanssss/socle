@@ -1,0 +1,36 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Notice
+ * Type: Component
+ * Description:
+ *   Encart « à compléter » : une page reste en ligne alors qu'il lui manque
+ *   de quoi se remplir (mentions légales vides, aucun PDF généré, aucune
+ *   source citée), et elle le dit. Le ton est celui d'un rappel au
+ *   propriétaire du site, pas d'une erreur adressée au visiteur - d'où le
+ *   contour en pointillés, celui d'un emplacement à remplir.
+ *
+ *     <p class="c-notice">À compléter dans <code>socle.config.json</code>…</p>
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/spacing";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-notice {
+  padding: spacing.get("md");
+  color: colors.get("text-muted");
+  background: colors.get("surface-muted");
+  border: rem.convert(1px) dashed colors.get("border");
+  border-radius: spacing.radius();
+}

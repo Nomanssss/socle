@@ -1,31 +1,58 @@
 ---
 // =============================================================
-// ProgressBar - progression d'un module, en segments
+// ProgressBar - progression d'un ensemble de leçons
 //
-// Un segment par leçon, rempli si la leçon est terminée. Le segment
-// correspond à la leçon de MÊME RANG : terminer la 2e sans la 1re
-// remplit bien le 2e segment. C'est plus parlant qu'un pourcentage,
-// qui n'apprend rien sur ce qu'il reste à faire.
+// Deux allures, pour deux usages :
+//
+//   - « segments » (par défaut) : un segment par leçon, rempli si
+//     la leçon est terminée. Le segment correspond à la leçon de
+//     MÊME RANG : terminer la 2e sans la 1re remplit bien le 2e
+//     segment. C'est plus parlant qu'un pourcentage, qui n'apprend
+//     rien sur ce qu'il reste à faire. Pensé pour une dizaine de
+//     leçons au plus : au-delà, les segments deviennent des traits
+//     fins - lisibles, mais moins parlants ;
+//   - « bar » : une jauge continue. Pour le cours entier, dont le
+//     nombre de leçons n'a pas de plafond, et pour les cartes de
+//     module de l'accueil, où le détail est déjà dans la liste.
+//
+// `hideHeader` masque le libellé et le compteur à l'écran, quand
+// la carte qui porte la jauge les dit déjà. Le libellé reste lu
+// par les lecteurs d'écran : il nomme la barre de progression.
 //
 // Lit le localStorage et se met à jour en direct quand une leçon est
 // (dé)cochée (événement PROGRESS_EVENT émis par src/scripts/progress.ts).
-//
-// Pensé pour une dizaine de leçons au plus : au-delà, les segments
-// deviennent des traits fins - lisibles, mais moins parlants.
 // =============================================================
 interface Props {
-  /** Identifiants des leçons du module (ex : ["module-1/lecon-1", ...]). */
+  /** Identifiants des leçons suivies (ex : ["module-1/lecon-1", ...]). */
   lessonIds: string[];
   /** Libellé affiché au-dessus de la jauge. */
   label?: string;
+  /** Allure de la jauge. */
+  variant?: 'segments' | 'bar';
+  /** Masque le libellé et le compteur à l'écran (pas aux lecteurs d'écran). */
+  hideHeader?: boolean;
   class?: string;
 }
-const { lessonIds, label = 'Progression du module', class: className = '' } = Astro.props;
+const {
+  lessonIds,
+  label = 'Progression du module',
+  variant = 'segments',
+  hideHeader = false,
+  class: className = '',
+} = Astro.props;
 const total = lessonIds.length;
 ---
 
-<div class:list={['c-progress', className]} data-lesson-ids={JSON.stringify(lessonIds)}>
-  <p class="c-progress__header o-cluster o-cluster--sm o-cluster--between o-cluster--middle">
+<div
+  class:list={['c-progress', `c-progress--${variant}`, className]}
+  data-lesson-ids={JSON.stringify(lessonIds)}
+>
+  <p
+    class:list={[
+      'c-progress__header o-cluster o-cluster--sm o-cluster--between o-cluster--middle',
+      { 'u-hidden-visually': hideHeader },
+    ]}
+  >
     <span class="c-progress__label">{label}</span>
     <span class="c-progress__value" data-progress-text>0 / {total}</span>
   </p>
@@ -42,7 +69,13 @@ const total = lessonIds.length;
     aria-valuetext={`0 leçon sur ${total}`}
     data-progress-track
   >
-    {lessonIds.map(() => <span class="c-progress__step" aria-hidden="true" />)}
+    {
+      variant === 'bar' ? (
+        <span class="c-progress__fill" aria-hidden="true" data-progress-fill />
+      ) : (
+        lessonIds.map(() => <span class="c-progress__step" aria-hidden="true" />)
+      )
+    }
   </span>
 </div>
 
@@ -57,9 +90,13 @@ const total = lessonIds.length;
 
     root.classList.toggle('is-complete', complete);
 
-    // Un segment par leçon, dans l'ordre du module.
-    const steps = root.querySelectorAll<HTMLElement>('[data-progress-track] > *');
+    // Segments : un par leçon, dans l'ordre.
+    const steps = root.querySelectorAll<HTMLElement>('.c-progress__step');
     steps.forEach((step, i) => step.classList.toggle('is-done', isCompleted(ids[i])));
+
+    // Jauge continue : la part terminée, en variable CSS.
+    const fill = root.querySelector<HTMLElement>('[data-progress-fill]');
+    if (fill) fill.style.setProperty('--progress', String(total > 0 ? done / total : 0));
 
     const text = root.querySelector<HTMLElement>('[data-progress-text]');
     if (text) text.textContent = complete ? 'Terminé' : `${done} / ${total}`;
@@ -73,6 +110,9 @@ const total = lessonIds.length;
 
   document.querySelectorAll<HTMLElement>('.c-progress').forEach((el) => {
     refresh(el);
+    // Les transitions attendent le prochain rendu : posées tout de suite,
+    // elles animeraient ce premier calcul.
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('is-ready')));
     window.addEventListener(PROGRESS_EVENT, () => refresh(el));
   });
 </script>

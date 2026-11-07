@@ -6,7 +6,7 @@ order: 1
 description: "Une commande transforme chaque leçon en présentation, et chaque module en PDF résumé."
 slidePoints:
   - "Une commande génère une présentation par leçon, et un PDF par module"
-  - "Le PDF du module est proposé au téléchargement en fin de module"
+  - "Le PDF du module se télécharge depuis chaque leçon et la page Slides"
   - "Trois niveaux, le premier trouvé gagne : fichier dédié, slidePoints, ou rien"
   - "slidePoints est un remplaçant au rabais du deck, pas un complément"
   - "La slide de titre est fabriquée automatiquement : ne l'écrivez jamais"
@@ -49,7 +49,7 @@ Curiosité utile : `slides:modules` lit quand même toutes vos leçons, puisque 
 
 Le deck d'un module enchaîne les leçons du dossier, dans l'ordre, derrière une slide de titre à son nom. Chaque leçon y est introduite par un intercalaire sur fond plein. Rien n'est réécrit : c'est la suite de ce que vous avez vu leçon après leçon, les leçons verrouillées en moins.
 
-Le site s'en sert : **la dernière leçon de chaque module** affiche un bouton « Télécharger le PDF résumé », à côté de « Marquer comme terminé ». Faites défiler jusqu'en bas de la dernière leçon de ce module, il y est.
+Le site s'en sert : **chaque leçon** affiche un bouton « PDF du module » dans son en-tête - il est juste au-dessus, à côté de la durée de lecture. La page **Slides**, dans la barre du haut, les réunit tous.
 
 Ce bouton n'apparaît **que si le PDF existe** au moment où le site se construit. `npm run build` seul ne le fabrique pas : c'est `npm run slides`, qui réclame Chrome. Plutôt qu'un lien mort, pas de bouton.
 
@@ -128,7 +128,7 @@ N'y remettez pas la slide de titre : elle est déjà là.
     explanation: "Tout est reconstruit à chaque exécution. Pour viser, il y a slides:lecons et slides:modules.",
   },
   {
-    question: "Le bouton « Télécharger le PDF résumé » n'apparaît nulle part. Pourquoi, le plus souvent ?",
+    question: "Le bouton « PDF du module » n'apparaît nulle part. Pourquoi, le plus souvent ?",
     options: ["npm run slides n'a jamais tourné", "Le module n'a qu'une leçon", "Il faut l'activer dans socle.config.json"],
     answer: 0,
     explanation: "Le bouton ne s'affiche que si le PDF du module existe vraiment. npm run build seul ne le produit pas.",

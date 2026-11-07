@@ -22,9 +22,10 @@ slides/
 # Types générés par Astro
 .astro/
 
-# PDF de module publiés par `npm run slides` pour que le site puisse les
-# servir (bouton « Télécharger le PDF résumé »). Générés, donc ignorés -
-# contrairement aux polices, ils ne conditionnent pas la compilation.
+# Decks publiés par `npm run slides` et `npm run slides:html` pour que le
+# site puisse les servir (« PDF du module », « Voir en slides », page
+# Slides). Générés, donc ignorés - contrairement aux polices, ils ne
+# conditionnent pas la compilation.
 public/slides/
 
 # Thème Marp : fontes embarquées en base64, regénérées par `npm run brand`.

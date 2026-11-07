@@ -1,0 +1,59 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Sources
+ * Type: Component
+ * Description:
+ *   Liste de références (`components/Sources.astro`) : en fin de leçon et sur
+ *   la page /sources/. Le titre d'une œuvre est un `<cite>`, mis en italique
+ *   par le navigateur ; on le redresse - l'italique se lit mal sur une liste
+ *   entière, et la typographie française ne l'impose pas aux titres d'articles
+ *   ou de pages web.
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+@use "../settings/spacing";
+@use "../settings/typography";
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-sources {}
+
+  .c-sources__item {
+    line-height: 1.5;
+
+    cite {
+      font-style: normal;
+      font-weight: typography.$semibold;
+    }
+  }
+
+    .c-sources__author {
+      color: colors.get("text-muted");
+    }
+
+    .c-sources__link {
+      text-decoration: underline;
+      text-decoration-color: colors.get("border");
+      text-underline-offset: rem.convert(3px);
+      transition: text-decoration-color 150ms ease;
+
+      &:hover {
+        text-decoration-color: currentColor;
+      }
+
+      .c-icon {
+        display: inline-block;
+        margin-left: spacing.get("2xs");
+        vertical-align: -0.1em;
+      }
+    }

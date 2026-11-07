@@ -106,18 +106,54 @@ section.image-right {
   }
 }
 
+/**
+ * Surtitre, pied de page et pagination suivent le côté du texte : la bande
+ * de pied s'arrête au panneau, ce qu'elle porte aussi.
+**/
 section.image-left {
-  padding-left: calc(var(--media) + #{rem.convert(80px)});
+  padding-left: calc(var(--media) + var(--gutter));
 
   &::before {
     left: 0;
   }
+
+  > header,
+  > footer {
+    left: calc(var(--media) + var(--gutter));
+  }
 }
 
 section.image-right {
-  padding-right: calc(var(--media) + #{rem.convert(80px)});
+  padding-right: calc(var(--media) + var(--gutter));
 
   &::before {
     right: 0;
+  }
+
+  > header {
+    right: calc(var(--media) + var(--gutter));
+  }
+
+  > footer {
+    right: calc(var(--media) + var(--gutter) + #{rem.convert(120px)});
+  }
+
+  &::after {
+    right: calc(var(--media) + var(--gutter));
+  }
+}
+
+/**
+ * Un `###` sous le `##` y joue le chapô : en corps de texte, pas en titre de
+ * plus - la colonne est étroite, deux titres s'y marchaient dessus.
+**/
+section.image-left,
+section.image-right {
+  h2 + h3 {
+    font-family: inherit;
+    font-size: rem.convert(28px);
+    font-weight: normal;
+    line-height: 1.4;
+    color: colors.get("text-muted");
   }
 }

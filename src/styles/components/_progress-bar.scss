@@ -6,8 +6,11 @@
  * Name: Progress bar
  * Type: Component
  * Description:
- *   Jauge segmentée : un segment par leçon du module. Le nombre de segments
- *   dit combien il reste d'étapes, ce qu'un pourcentage ne dit pas.
+ *   Jauge de progression, en deux allures :
+ *     - segmentée (par défaut) : un segment par leçon. Le nombre de segments
+ *       dit combien il reste d'étapes, ce qu'un pourcentage ne dit pas ;
+ *     - continue (`.c-progress--bar`) : pour le cours entier, dont le nombre
+ *       de leçons n'a pas de plafond, et les cartes de module.
 **/
 
 /*******************************************************************************
@@ -59,6 +62,40 @@
     .c-progress__step.is-done {
       background-color: colors.get("primary");
     }
+
+/*******************************************************************************
+ * Variants
+*******************************************************************************/
+
+/**
+ * Jauge continue : une piste, et un remplissage dont la longueur vient de
+ * `--progress` (de 0 à 1), posé par le script. `scaleX` plutôt qu'une
+ * largeur : la transition ne relance pas la mise en page.
+**/
+.c-progress--bar .c-progress__track {
+  overflow: hidden;
+  height: rem.convert(6px);
+  background-color: colors.get("surface-muted");
+  border-radius: rem.convert(999px);
+}
+
+  .c-progress__fill {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: colors.get("primary");
+    border-radius: inherit;
+    transform: scaleX(var(--progress, 0));
+    transform-origin: left center;
+  }
+
+  // L'animation ne vaut que pour un changement en cours de page (une leçon
+  // cochée). Au chargement, la jauge doit apparaître à sa valeur, pas
+  // repartir de zéro à chaque leçon ouverte : le script pose `is-ready`
+  // après son premier calcul.
+  .c-progress.is-ready .c-progress__fill {
+    transition: transform 300ms ease;
+  }
 
 /*******************************************************************************
  * States

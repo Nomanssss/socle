@@ -1,0 +1,87 @@
+/*******************************************************************************
+ * Infos
+*******************************************************************************/
+
+/**
+ * Name: Status
+ * Type: Component
+ * Description:
+ *   Pastille d'état d'une leçon, devant son titre dans les listes : à faire
+ *   (un cercle vide), en cours (cercle et point) ou terminée (disque plein,
+ *   coche blanche). Dessinée en CSS : le script n'a qu'une classe à
+ *   basculer, il n'a pas à remplacer une icône par une autre.
+ *
+ *   Décorative : l'état est dit en texte, masqué visuellement, à côté du
+ *   titre. D'où le `aria-hidden="true"` à poser sur la pastille.
+ *
+ *     <span class="c-status" aria-hidden="true"></span>
+ *     <span class="c-status is-current" aria-hidden="true"></span>
+ *     <span class="c-status is-done" aria-hidden="true"></span>
+**/
+
+/*******************************************************************************
+ * Utils
+*******************************************************************************/
+
+@use "sass-rem" as rem;
+@use "../settings/colors";
+
+/*******************************************************************************
+ * Variables
+*******************************************************************************/
+
+$size: 20px;
+
+/*******************************************************************************
+ * Default styles
+*******************************************************************************/
+
+.c-status {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-block;
+  width: rem.convert($size);
+  height: rem.convert($size);
+  border: rem.convert(2px) solid colors.get("border");
+  border-radius: 50%;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+  }
+}
+
+/*******************************************************************************
+ * States
+*******************************************************************************/
+
+// En cours : le contour passe à la couleur principale, un point au centre.
+.c-status.is-current {
+  border-color: colors.get("primary");
+
+  &::after {
+    width: 50%;
+    height: 50%;
+    background: colors.get("primary");
+    border-radius: 50%;
+  }
+}
+
+// Terminée : disque plein, coche dessinée par deux bordures d'un rectangle
+// tourné - un « L » à 45°. Prime sur « en cours » : déclarée après.
+.c-status.is-done {
+  background: colors.get("primary");
+  border-color: colors.get("primary");
+
+  &::after {
+    width: 30%;
+    height: 55%;
+    background: none;
+    border: solid colors.get("on-primary");
+    border-width: 0 rem.convert(2px) rem.convert(2px) 0;
+    border-radius: 0;
+    transform: translateY(-12%) rotate(45deg);
+  }
+}

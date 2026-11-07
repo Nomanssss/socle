@@ -46,21 +46,43 @@ import { join, dirname, resolve, basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import matter from 'gray-matter';
 import { stageImage, stageImages } from './stage-images.mjs';
-import { isLocked, unknownLocked } from './config.mjs';
+import { isLocked, unknownLocked, site } from './config.mjs';
+import { copyDeckAssets } from './deck-assets.mjs';
 
 const ROOT = process.cwd();
 const LESSONS_DIR = join(ROOT, 'src/content/lecons');
 const OUT_DIR = join(ROOT, 'slides');
-// Le site LIE les PDF de module (bouton « Télécharger le PDF résumé ») :
-// ils doivent donc être servis par Astro, ce que slides/ n'est pas - c'est
-// un dossier de travail à la racine, qu'Astro ignore en dev comme au build.
+// Le site LIE certains decks : le PDF et le HTML de chaque module (« PDF du
+// module », page Slides), le HTML de chaque leçon (« Voir en slides »). Ils
+// doivent donc être servis par Astro, ce que slides/ n'est pas - c'est un
+// dossier de travail à la racine, qu'Astro ignore en dev comme au build.
 // public/ est le seul endroit dont le contenu est servi tel quel dans les
-// deux cas. Les decks de LEÇON, eux, n'y vont pas : rien ne les lie depuis
-// le site, et bundle-dist les met dans le paquet livré.
+// deux cas. Le PDF d'une LEÇON, lui, n'y va pas : rien ne le lie depuis le
+// site, et bundle-dist le met dans le paquet livré.
 //
-// Le sous-dossier « modules » reproduit le rangement de dist/slides/, pour
-// que l'URL soit la même en dev et dans le paquet : /slides/modules/…
+// Les sous-dossiers reproduisent le rangement de dist/slides/, pour que
+// l'URL soit la même en dev et dans le paquet : /slides/modules/…,
+// /slides/lecons/…
 const PUBLIC_SLIDES = join(ROOT, 'public/slides/modules');
+const PUBLIC_LESSONS = join(ROOT, 'public/slides/lecons');
+
+/** Copie un deck rendu dans public/, là où le site le sert. */
+function publish(file, targetDir) {
+  mkdirSync(targetDir, { recursive: true });
+  const target = join(targetDir, basename(file));
+  copyFileSync(file, target);
+  return target;
+}
+
+/**
+ * Les HTML publiés ont besoin de leurs images, à côté d'eux : Marp les cite
+ * en chemin relatif (voir scripts/deck-assets.mjs).
+ */
+function publishAssets(htmlFiles, targetDir) {
+  if (htmlFiles.length === 0) return;
+  const { missing } = copyDeckAssets(htmlFiles, join(OUT_DIR, 'assets'), targetDir);
+  for (const name of missing) console.warn(`  ⚠ image citée mais introuvable : slides/assets/${name}`);
+}
 const THEME = join(OUT_DIR, 'theme.css');
 
 /**
@@ -177,6 +199,12 @@ for (const rel of allLessons) {
       cleaned += 1;
     }
   }
+  // … et de public/, d'où le site le servirait encore.
+  const stalePublic = join(PUBLIC_LESSONS, `${slug}.html`);
+  if (existsSync(stalePublic)) {
+    rmSync(stalePublic);
+    cleaned += 1;
+  }
 }
 
 if (cleaned > 0) console.log(`  · ${cleaned} fichier(s) d'une leçon verrouillée retiré(s) de slides/`);
@@ -193,16 +221,46 @@ function render(mdPath, outPath) {
   execFileSync(MARP_BIN, args, { stdio: 'inherit' });
 }
 
-/** L'en-tête Marp d'un deck : les mêmes réglages pour tous. */
-function marpHeader(title) {
+/**
+ * L'en-tête Marp d'un deck : les mêmes réglages pour tous, plus le surtitre
+ * et le pied de page de ses slides.
+ *
+ *   header  le module, en surtitre au-dessus du titre de chaque slide ;
+ *   footer  le cours et la leçon, dans la bande de pied, à gauche de la
+ *           pagination.
+ *
+ * Ce sont des directives GLOBALES : elles valent pour toutes les slides du
+ * deck. Le thème les masque là où la mise en page se suffit à elle-même
+ * (slide de titre, intercalaire, citation, image plein cadre).
+ */
+function marpHeader(title, { header, footer } = {}) {
   let head = '---\n';
   head += 'marp: true\n';
   head += 'theme: socle\n';
   head += 'paginate: true\n';
   if (title) head += `title: ${yamlString(title)}\n`;
+  if (header) head += `header: ${yamlString(header)}\n`;
+  if (footer) head += `footer: ${yamlString(footer)}\n`;
   head += '---\n\n';
   return head;
 }
+
+const { title: SITE_TITLE } = site();
+
+/**
+ * Le libellé d'un module en surtitre : « Module 1 - Prendre le template en
+ * main » devient « Module 1 · Prendre le template en main ». Le point médian
+ * est celui des surtitres du site ; un libellé d'une autre forme passe tel
+ * quel.
+ */
+const moduleEyebrow = (label) => String(label).replace(/^(module\s+\d+)\s*[-–—:]\s*/i, '$1 · ');
+
+/** « Module 1 - Prendre le template en main » → « Prendre le template en main ». */
+const moduleShortName = (label) =>
+  String(label).replace(/^module\s+\d+\s*[-–—:·.]\s*/i, '').trim() || String(label);
+
+/** Le pied de page d'une leçon : « Socle — Ce que fait ce template ». */
+const lessonFooter = (title) => `${SITE_TITLE} — ${title}`;
 
 /** Le dossier de module d'une leçon, ou null si elle est à la racine. */
 function moduleDirOf(rel) {
@@ -241,6 +299,7 @@ for (const rel of lessons) {
 }
 
 const generated = [];
+const publishedLessons = [];
 const manifest = [];
 
 // Les corps de deck, groupés par dossier de module : de quoi enchaîner
@@ -276,14 +335,27 @@ for (const rel of lessons) {
     if (staged) leadSlide += `<!-- _backgroundImage: url('${staged}') -->\n`;
   }
   leadSlide += '\n';
+  // Surtitre, titre, chapô. Le surtitre situe la leçon (« Module 1 · Leçon
+  // 2 ») quand les deux numéros sont connus, sinon il reprend le module.
+  const position =
+    Number.isFinite(Number(data.moduleOrder)) && Number.isFinite(Number(data.order))
+      ? `Module ${data.moduleOrder} · Leçon ${data.order}`
+      : data.module;
+  if (position) leadSlide += `${position}\n\n`;
   leadSlide += `# ${data.title ?? id}\n\n`;
-  if (data.module) leadSlide += `**${data.module}**\n`;
+  if (data.description) leadSlide += `${data.description}\n`;
 
   // L'intercalaire, lui, se réduit au titre : le nom du module est déjà sur
   // la première slide du deck, et le fond plein du modèle « section » ne
   // s'accommode ni d'une couverture ni d'un sous-titre. La pagination y
   // reste active - on est au milieu d'un deck, plus à son ouverture.
-  const sectionSlide = `<!-- _class: section -->\n\n# ${data.title ?? id}\n`;
+  //
+  // Il relance aussi le pied de page : dans le deck du module, chaque leçon
+  // y inscrit son titre à partir de sa propre ouverture. Une directive sans
+  // « _ » vaut pour la slide ET les suivantes, jusqu'à la prochaine.
+  const sectionSlide =
+    `<!-- _class: section -->\n<!-- footer: ${yamlString(lessonFooter(data.title ?? id))} -->\n\n` +
+    `# ${data.title ?? id}\n`;
 
   // -- Corps, commun aux deux versions -------------------------------------
   let content = '';
@@ -303,12 +375,19 @@ for (const rel of lessons) {
   // qui les compose. Seul le rendu Marp, qui coûte, est conditionnel.
   if (DO_LESSONS) {
     const mdPath = join(OUT_DIR, `${slug}.md`);
-    writeFileSync(mdPath, marpHeader(data.title) + leadSlide + content);
+    const head = marpHeader(data.title, {
+      header: data.module ? moduleEyebrow(data.module) : null,
+      footer: lessonFooter(data.title ?? id),
+    });
+    writeFileSync(mdPath, head + leadSlide + content);
 
     const outPath = join(OUT_DIR, `${slug}.${ext}`);
     console.log(`→ ${id}  (${ext})`);
     render(mdPath, outPath);
     generated.push(outPath);
+
+    // Le HTML de la leçon est servi par le site (« Voir en slides »).
+    if (ext === 'html') publishedLessons.push(publish(outPath, PUBLIC_LESSONS));
   }
 
   // Le dossier fait le module : « module-1/lecon-2.mdx » → « module-1 ».
@@ -335,8 +414,7 @@ for (const rel of lessons) {
 // -------------------------------------------------------------
 // Un deck par module
 //
-// La dernière leçon d'un module propose « Télécharger le PDF résumé » :
-// c'est ce fichier. Il enchaîne les corps déjà assemblés plus haut,
+// Chaque leçon d'un module propose « PDF du module » : c'est ce fichier. Il enchaîne les corps déjà assemblés plus haut,
 // derrière une slide de titre au nom du module - donc exactement ce que
 // l'apprenant a vu leçon après leçon, sans rien de recomposé. Les
 // leçons verrouillées n'y sont pas : elles ne sont pas dans `lessons`.
@@ -360,10 +438,12 @@ for (const rel of allLessons) {
       cleanedModules += 1;
     }
   }
-  const stalePublic = join(PUBLIC_SLIDES, `${dir}.pdf`);
-  if (existsSync(stalePublic)) {
-    rmSync(stalePublic);
-    cleanedModules += 1;
+  for (const e of ['pdf', 'html']) {
+    const stalePublic = join(PUBLIC_SLIDES, `${dir}.${e}`);
+    if (existsSync(stalePublic)) {
+      rmSync(stalePublic);
+      cleanedModules += 1;
+    }
   }
 }
 if (cleanedModules > 0) {
@@ -371,6 +451,7 @@ if (cleanedModules > 0) {
 }
 
 const moduleDecks = [];
+const publishedModules = [];
 
 for (const [dir, { label, labels, bodies }] of DO_MODULES ? byModuleDir : []) {
   // Deux libellés dans un même dossier : on prend le premier, mais on le
@@ -389,9 +470,17 @@ for (const [dir, { label, labels, bodies }] of DO_MODULES ? byModuleDir : []) {
     if (staged) body += `<!-- _backgroundImage: url('${staged}') -->\n`;
   }
   body += '\n';
-  body += `# ${label ?? dir}\n`;
+  // Même construction que la slide de titre d'une leçon : le numéro du
+  // module en surtitre, son nom seul en titre.
+  const number = label?.match(/^module\s+(\d+)/i)?.[1];
+  if (number) body += `Module ${number}\n\n`;
+  body += `# ${label ? moduleShortName(label) : dir}\n`;
 
-  const md = marpHeader(label ?? dir) + body + bodies.map((b) => `\n---\n\n${b}`).join('');
+  const head = marpHeader(label ?? dir, {
+    header: label ? moduleEyebrow(label) : null,
+    footer: SITE_TITLE,
+  });
+  const md = head + body + bodies.map((b) => `\n---\n\n${b}`).join('');
 
   const mdPath = join(OUT_DIR, `${dir}.md`);
   writeFileSync(mdPath, md);
@@ -401,13 +490,17 @@ for (const [dir, { label, labels, bodies }] of DO_MODULES ? byModuleDir : []) {
   render(mdPath, outPath);
   moduleDecks.push(outPath);
 
-  // Seul le PDF part dans public/ : c'est ce que propose le bouton du
-  // site, et lui seul (voir PUBLIC_SLIDES, plus haut). Le HTML, lui,
-  // n'existe que pour le paquet livré, où bundle-dist ira le chercher.
-  if (ext === 'pdf') {
-    mkdirSync(PUBLIC_SLIDES, { recursive: true });
-    copyFileSync(outPath, join(PUBLIC_SLIDES, `${dir}.pdf`));
-  }
+  // Le PDF et le HTML partent dans public/ : le site propose les deux
+  // (voir PUBLIC_SLIDES, plus haut). Le PPTX n'y va pas - rien ne le lie.
+  if (ext === 'pdf' || ext === 'html') publishedModules.push(publish(outPath, PUBLIC_SLIDES));
+}
+
+if (ext === 'html') {
+  publishAssets(publishedLessons, PUBLIC_LESSONS);
+  publishAssets(
+    publishedModules.filter((f) => f.endsWith('.html')),
+    PUBLIC_SLIDES
+  );
 }
 
 // Le manifeste décrit les decks, pas le format : il est réécrit à

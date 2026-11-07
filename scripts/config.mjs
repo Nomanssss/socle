@@ -29,7 +29,7 @@ import { fileURLToPath } from 'node:url';
  * package.json - les deux disent la même chose au moment du clone, puis
  * suivent chacun leur vie.
  */
-export const SOCLE_VERSION = '1.0.0';
+export const SOCLE_VERSION = '1.1.0';
 
 /**
  * Où est socle.config.json ?

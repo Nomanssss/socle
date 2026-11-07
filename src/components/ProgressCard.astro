@@ -1,0 +1,135 @@
+---
+import Icon from './Icon.astro';
+import type { CourseLesson, CourseModule } from '../utils/course';
+
+// =============================================================
+// ProgressCard - « où en suis-je ? », sur l'accueil
+//
+// L'anneau dit la part du cours terminée, « À suivre » mène à la
+// première leçon ouverte qui ne l'est pas encore. Tout vient du
+// localStorage, donc du script : le HTML servi décrit un cours
+// pas encore commencé, ce qui est juste pour un premier visiteur
+// et pour un navigateur sans script.
+//
+// Les leçons sont passées au script en JSON, dans l'ordre du
+// cours : c'est lui qui choisit la suivante, il doit connaître le
+// parcours sans relire la page.
+// =============================================================
+interface Props {
+  modules: CourseModule[];
+}
+
+const { modules } = Astro.props;
+
+const parcours = modules.flatMap((module) =>
+  module.lessons
+    .filter((lesson): lesson is CourseLesson & { url: string } => !lesson.locked)
+    .map((lesson) => ({
+      id: lesson.id,
+      title: lesson.title,
+      url: lesson.url,
+      where: `Module ${module.number} · Leçon ${lesson.position}`,
+    }))
+);
+const first = parcours[0];
+const total = parcours.length;
+
+// Rayon et circonférence de l'anneau : la longueur du trait coloré se
+// calcule sur la seconde, en CSS, à partir de la part terminée.
+const R = 36;
+const CIRCUMFERENCE = 2 * Math.PI * R;
+---
+
+<section
+  class="c-progress-card is-empty"
+  aria-labelledby="progress-card-title" data-progress-card={JSON.stringify(parcours)}>
+  <div class="c-progress-card__head">
+    <div class="c-progress-card__ring" style={`--circumference: ${CIRCUMFERENCE}`}>
+      <svg viewBox="0 0 88 88" aria-hidden="true" focusable="false">
+        <circle class="c-progress-card__ring-track" cx="44" cy="44" r={R} />
+        <circle class="c-progress-card__ring-fill" cx="44" cy="44" r={R} data-ring />
+      </svg>
+      <span class="c-progress-card__percent" data-percent>0 %</span>
+    </div>
+
+    <div class="o-stack o-stack--2xs">
+      <h2 id="progress-card-title" class="c-progress-card__title">Votre progression</h2>
+      <p class="c-progress-card__summary" data-summary>
+        0 leçon terminée sur {total}
+      </p>
+    </div>
+  </div>
+
+  {
+    first && (
+      <div class="c-progress-card__next" data-next>
+        <p class="c-progress-card__label" data-next-label>Pour commencer</p>
+        <a href={first.url} class="c-progress-card__link" data-next-link>
+          <span class="c-progress-card__play">
+            <Icon name="play" size={16} />
+          </span>
+          <span class="o-stack o-stack--2xs">
+            <span class="c-progress-card__link-title" data-next-title>{first.title}</span>
+            <span class="c-progress-card__link-meta" data-next-where>{first.where}</span>
+          </span>
+        </a>
+      </div>
+    )
+  }
+
+  <p class="c-progress-card__note">Enregistrée dans ce navigateur uniquement.</p>
+</section>
+
+<script>
+  import { isCompleted, PROGRESS_EVENT } from '../scripts/progress';
+
+  interface Step {
+    id: string;
+    title: string;
+    url: string;
+    where: string;
+  }
+
+  const card = document.querySelector<HTMLElement>('[data-progress-card]');
+  if (card) {
+    const steps = JSON.parse(card.dataset.progressCard || '[]') as Step[];
+    const $ = <T extends HTMLElement>(selector: string) => card.querySelector<T>(selector);
+
+    const refresh = () => {
+      const total = steps.length;
+      const done = steps.filter((step) => isCompleted(step.id)).length;
+      const ratio = total > 0 ? done / total : 0;
+      const percent = Math.round(ratio * 100);
+
+      card.style.setProperty('--progress', String(ratio));
+      card.classList.toggle('is-empty', done === 0);
+      const percentEl = $('[data-percent]');
+      if (percentEl) percentEl.textContent = `${percent} %`;
+
+      const summary = $('[data-summary]');
+      if (summary) {
+        summary.textContent = `${done} leçon${done > 1 ? 's' : ''} terminée${done > 1 ? 's' : ''} sur ${total}`;
+      }
+
+      // La suivante : la première du parcours qui n'est pas terminée.
+      // Toutes le sont : le bloc s'efface, l'anneau plein suffit à le dire.
+      const next = steps.find((step) => !isCompleted(step.id));
+      const block = $('[data-next]');
+      if (block) block.hidden = !next;
+      if (next) {
+        const link = $<HTMLAnchorElement>('[data-next-link]');
+        const label = $('[data-next-label]');
+        const title = $('[data-next-title]');
+        const where = $('[data-next-where]');
+        if (link) link.href = next.url;
+        if (label) label.textContent = done > 0 ? 'À suivre' : 'Pour commencer';
+        if (title) title.textContent = next.title;
+        if (where) where.textContent = next.where;
+      }
+    };
+
+    refresh();
+    requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('is-ready')));
+    window.addEventListener(PROGRESS_EVENT, refresh);
+  }
+</script>

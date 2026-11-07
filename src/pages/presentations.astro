@@ -1,0 +1,148 @@
+---
+import '../styles/theme.scss';
+import BaseHead from '../components/BaseHead.astro';
+import SkipLink from '../components/SkipLink.astro';
+import Topbar from '../components/Topbar.astro';
+import Icon from '../components/Icon.astro';
+import Footer from '../components/Footer.astro';
+import { site } from '../../scripts/config.mjs';
+import { getCourse, pad, pdfFileName } from '../utils/course';
+
+// =============================================================
+// Page « Slides » - les présentations du cours, module par module.
+//
+// Une carte par module : le module entier à consulter en ligne (HTML)
+// ou à télécharger (PDF), et chaque leçon à consulter seule. Ce sont
+// les fichiers que `npm run slides` (PDF) et `npm run slides:html`
+// copient dans public/slides/ ; le paquet de `npm run bundle` a son
+// propre sommaire (dist/slides/index.html). D'où l'adresse
+// /presentations/ : /slides/ est déjà le dossier de ces fichiers.
+//
+// Ce qui n'a pas été généré n'a pas de bouton : la page dit ce qui
+// manque plutôt que de le cacher. Et si AUCUN deck n'existe, le lien
+// de la barre du haut disparaît (Topbar.astro).
+//
+// Un deck HTML s'ouvre dans un nouvel onglet : c'est une visionneuse
+// plein écran, sans retour vers le cours.
+// =============================================================
+const modules = (await getCourse()).filter((module) => module.lessons.some((l) => !l.locked));
+const available = modules.filter((module) => module.pdf || module.html).length;
+const { title: siteTitle, lang } = site();
+---
+
+<html lang={lang}>
+  <head>
+    <BaseHead
+      title={`Slides - ${siteTitle}`}
+      description={`Les présentations du cours ${siteTitle}, à consulter en ligne ou en PDF.`}
+    />
+  </head>
+  <body>
+    <SkipLink />
+
+    <Topbar current="presentations" />
+
+    <div class="c-home">
+      <main id="contenu" tabindex="-1" class="c-home__program o-wrapper">
+        <div class="o-stack o-stack--xl">
+          <header class="c-index o-stack o-stack--sm">
+            <h1 class="c-index__title">Slides</h1>
+            <p class="c-index__lead">
+              Les slides de chaque leçon, à feuilleter en ligne, et chaque module en entier - en
+              ligne, ou en PDF pour réviser hors ligne et garder une trace du cours.
+            </p>
+          </header>
+
+          {
+            available === 0 && (
+              <p class="c-notice">
+                Aucune présentation n'a encore été générée. Lancez <code>npm run slides:html</code>{' '}
+                pour les consulter en ligne, <code>npm run slides</code> pour les PDF (il demande
+                Chrome ou Chromium), puis reconstruisez le site.
+              </p>
+            )
+          }
+
+          <div class="o-grid o-grid--large o-grid--lg">
+            {
+              modules.map((module) => {
+                const lessons = module.lessons.filter((l) => !l.locked);
+                return (
+                  <article class="c-module">
+                    <header class="c-module__head">
+                      <span class="c-module__number" aria-hidden="true">
+                        {pad(module.number)}
+                      </span>
+                      <div class="o-stack o-stack--2xs">
+                        <h2 class="c-module__title">
+                          <span class="u-hidden-visually">Module {module.number} : </span>
+                          {module.shortName}
+                        </h2>
+                        <p class="c-module__meta">
+                          {lessons.length} leçon{lessons.length > 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </header>
+
+                    <ul class="c-module__lessons">
+                      {lessons.map((lesson) => (
+                        <li>
+                          {lesson.deck ? (
+                            <a href={lesson.deck} target="_blank" rel="noopener" class="c-module__lesson">
+                              <Icon name="slides" size={18} class="c-module__icon" />
+                              <span class="c-module__lesson-title">
+                                {lesson.title}
+                                <span class="u-hidden-visually"> : slides (nouvel onglet)</span>
+                              </span>
+                              <Icon name="external" size={14} class="c-module__icon" />
+                            </a>
+                          ) : (
+                            <a href={lesson.url} class="c-module__lesson">
+                              <Icon name="slides" size={18} class="c-module__icon" />
+                              <span class="c-module__lesson-title">{lesson.title}</span>
+                            </a>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+
+                    {module.pdf || module.html ? (
+                      <div class="c-module__download o-cluster o-cluster--sm">
+                        {module.html && (
+                          <a
+                            href={module.html}
+                            target="_blank"
+                            rel="noopener"
+                            class:list={['c-button', module.pdf ? null : 'c-button--primary']}
+                          >
+                            <Icon name="slides" />
+                            Voir en ligne
+                            <span class="u-hidden-visually"> (nouvel onglet)</span>
+                          </a>
+                        )}
+                        {module.pdf && (
+                          <a
+                            href={module.pdf}
+                            download={pdfFileName(module.name)}
+                            class="c-button c-button--primary"
+                          >
+                            <Icon name="download" />
+                            Télécharger le PDF
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <p class="c-module__meta c-module__download">Slides pas encore générées</p>
+                    )}
+                  </article>
+                );
+              })
+            }
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <Footer />
+  </body>
+</html>

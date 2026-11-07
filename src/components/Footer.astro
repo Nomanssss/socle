@@ -1,5 +1,6 @@
 ---
 import { site } from '../../scripts/config.mjs';
+import { getCourse, hasSources } from '../utils/course';
 
 // =============================================================
 // Footer - pied de page commun à l'accueil, aux leçons et aux
@@ -7,7 +8,8 @@ import { site } from '../../scripts/config.mjs';
 //
 // Cinq choses, et pas une de plus : la marque (qui ramène à
 // l'accueil), le lien vers l'auteur du cours, celui vers les
-// sources, celui vers les mentions légales, et la note sur la
+// sources (quand le cours en cite), celui vers les mentions
+// légales, et la note sur la
 // progression stockée dans le navigateur - une information de
 // confidentialité, qui a sa place sur toutes les pages et non sur
 // la seule page d'accueil.
@@ -30,10 +32,14 @@ const currentPath = Astro.url.pathname.replace(/\/*$/, '/');
 const isAuthorPage = currentPath === AUTHOR_PATH;
 const isSourcesPage = currentPath === SOURCES_PATH;
 const isLegalPage = currentPath === LEGAL_PATH;
+
+// Le lien des sources n'apparaît que si le cours en cite : même
+// condition que la barre du haut.
+const showSources = hasSources(await getCourse());
 ---
 
 <footer class="c-footer">
-  <div class="c-footer__content o-wrapper o-wrapper--large">
+  <div class="c-footer__content o-wrapper">
     <div class="c-footer__top o-cluster o-cluster--between o-cluster--middle">
       <a href="/" class="c-footer__brand">
         <span class="u-hidden-visually">{title} - retour à l'accueil</span>
@@ -47,13 +53,17 @@ const isLegalPage = currentPath === LEGAL_PATH;
         >
           À propos de l'auteur
         </a>
-        <a
-          href={SOURCES_PATH}
-          aria-current={isSourcesPage ? 'page' : undefined}
-          class="c-footer__link"
-        >
-          Sources du cours
-        </a>
+        {
+          showSources && (
+            <a
+              href={SOURCES_PATH}
+              aria-current={isSourcesPage ? 'page' : undefined}
+              class="c-footer__link"
+            >
+              Sources du cours
+            </a>
+          )
+        }
         <a
           href={LEGAL_PATH}
           aria-current={isLegalPage ? 'page' : undefined}

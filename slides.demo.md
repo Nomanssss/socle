@@ -2,6 +2,8 @@
 marp: true
 theme: socle
 paginate: true
+header: "Module 1 · Banc d'essai du thème"
+footer: "Socle — Modèles de slides"
 ---
 
 <!-- Deck de démonstration des mises en page du thème.

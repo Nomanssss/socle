@@ -99,6 +99,42 @@
 }
 
 /**
+ * Light - bouton secondaire posé sur un fond teinté : un aplat blanc l'en
+ * détache, là où un simple contour s'y fondrait
+*******************************************************************************/
+
+.c-button--light {
+  background: colors.get("background");
+  border-color: colors.get("border-soft");
+
+  &:hover {
+    background-color: colors.get("background");
+    border-color: colors.get("primary");
+  }
+}
+
+/**
+ * Large - l'action principale d'une page (« Commencer le cours »)
+*******************************************************************************/
+
+.c-button--large {
+  min-height: rem.convert(52px);
+  padding-inline: spacing.get("lg");
+  font-size: rem.convert(17px);
+}
+
+/**
+ * Small - action secondaire posée dans une ligne de méta (« PDF du module »)
+*******************************************************************************/
+
+.c-button--small {
+  min-height: rem.convert(40px);
+  padding: 0 spacing.get("sm");
+  font-size: typography.size("sm");
+  border-radius: spacing.radius("sm");
+}
+
+/**
  * Compact
 *******************************************************************************/
 
