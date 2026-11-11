@@ -10,7 +10,7 @@
   "functions": {
     "api/admin.mjs": {
       "maxDuration": 30,
-      "includeFiles": "{admin/ui/**,src/styles/**,node_modules/@pierreburel/**}"
+      "includeFiles": "{admin/ui/**,src/styles/**,node_modules/sass-rem/**,node_modules/sass-em/**,node_modules/sass-mq/**,node_modules/@pierreburel/**}"
     }
   }
 }
