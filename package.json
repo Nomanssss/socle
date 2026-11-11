@@ -10,6 +10,7 @@
     "dev": "astro dev",
     "predev": "npm run brand",
     "build": "astro build",
+    "vercel-build": "npm run build && node scripts/admin-vendor.mjs",
     "prebuild": "npm run brand",
     "preview": "astro preview",
     "check": "astro check",
@@ -26,7 +27,8 @@
     "slides:modules:html": "npm run slides:theme && node scripts/build-slides.mjs --format=html --only=modules",
     "bundle": "npm run slides && npm run slides:html && npm run build && node scripts/bundle-dist.mjs",
     "reset": "node scripts/reset-content.mjs",
-    "test:admin": "node --test admin/test/admin.test.mjs"
+    "test:admin": "node --test admin/test/admin.test.mjs",
+    "admin:password": "node scripts/admin-password.mjs"
   },
   "keywords": [
     "astro",

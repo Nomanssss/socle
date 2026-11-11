@@ -14,15 +14,16 @@
 // d'être copiées à côté du deck, elles sont servies par l'API.
 // =============================================================
 
-import { readFile, writeFile, readdir, stat, unlink } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { readdir, stat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { join, resolve, relative, extname, sep } from 'node:path';
+import { join, resolve, relative, extname, dirname, sep } from 'node:path';
+import matter from 'gray-matter';
 import * as sass from 'sass';
 import { Marp } from '@marp-team/marp-core';
-import { AdminError, LESSONS_DIR, lessonPath } from './lessons.mjs';
-import { defaultBand, lessonHead, endSlide, moduleCovers, lessonParts, slidesFileOf } from '../../scripts/slides-deck.mjs';
-import { isLocked, normalizeId } from '../../scripts/config.mjs';
+import { AdminError, lessonPath, lockedIds } from './lessons.mjs';
+import { store, readConfig, LESSONS } from './store.mjs';
+import { lessonHead, endSlide, lessonParts, moduleDirOf } from '../../scripts/slides-deck.mjs';
+import { normalizeId } from '../../scripts/config.mjs';
 
 const ROOT = process.cwd();
 const STYLES_DIR = resolve(ROOT, 'src/styles');
@@ -38,12 +39,14 @@ const IMAGE_TYPES = {
   '.svg': 'image/svg+xml',
 };
 
+/** Le deck écrit à la main d'une leçon : « lecon-2.mdx » → « lecon-2.slides.md ». */
+const slidesPathOf = (/** @type {string} */ id) => `${LESSONS}/${id}.slides.md`;
+
 /** @param {unknown} rawId */
 export async function readSlides(rawId) {
-  const { id, file } = lessonPath(rawId);
-  const slidesFile = slidesFileOf(file);
-  if (!existsSync(slidesFile)) return { id, exists: false, markdown: '', hash: null };
-  const markdown = await readFile(slidesFile, 'utf8');
+  const { id } = lessonPath(rawId);
+  const markdown = await store().read(slidesPathOf(id));
+  if (markdown === null) return { id, exists: false, markdown: '', hash: null };
   return { id, exists: true, markdown, hash: hash(markdown) };
 }
 
@@ -54,23 +57,23 @@ export async function readSlides(rawId) {
  * @param {{ id: unknown, markdown: unknown, hash?: unknown, force?: unknown }} input
  */
 export async function writeSlides({ id: rawId, markdown, hash: expected, force }) {
-  const { id, file } = lessonPath(rawId);
-  if (!existsSync(file)) throw new AdminError(404, `La leçon « ${id} » n’existe pas.`);
-  const slidesFile = slidesFileOf(file);
-  const current = existsSync(slidesFile) ? await readFile(slidesFile, 'utf8') : null;
+  const { id, path } = lessonPath(rawId);
+  if ((await store().read(path)) === null) throw new AdminError(404, `La leçon « ${id} » n’existe pas.`);
+  const slidesPath = slidesPathOf(id);
+  const current = await store().read(slidesPath);
 
   if (!force && (current === null ? expected !== null && expected !== undefined : expected !== hash(current))) {
     throw new AdminError(409, 'Les slides ont été modifiées en dehors de l’admin depuis leur ouverture.', { conflict: true });
   }
 
   if (markdown === null) {
-    if (current !== null) await unlink(slidesFile);
+    if (current !== null) await store().commit([{ path: slidesPath, content: null }], `Admin : slides de « ${id} » retirées`);
     return { id, exists: false, hash: null };
   }
   if (typeof markdown !== 'string') throw new AdminError(400, 'Texte des slides manquant.');
   // Un fichier texte se termine par un saut de ligne, comme ceux écrits à la main.
   const text = markdown.endsWith('\n') ? markdown : `${markdown}\n`;
-  if (text !== current) await writeFile(slidesFile, text, 'utf8');
+  if (text !== current) await store().commit([{ path: slidesPath, content: text }], `Admin : slides de « ${id} »`);
   return { id, exists: true, hash: hash(text) };
 }
 
@@ -91,16 +94,12 @@ export async function previewSlides({ id: rawId, data, slides, knownCss }) {
   if (!data || typeof data !== 'object') throw new AdminError(400, 'En-tête manquant.');
   if (slides !== null && typeof slides !== 'string') throw new AdminError(400, 'Texte des slides manquant.');
 
-  const rels = (await readdir(LESSONS_DIR, { recursive: true }))
-    .map((entry) => String(entry).split(sep).join('/'))
-    .filter((entry) => entry.endsWith('.mdx') && !isLocked(normalizeId(entry)));
-
   const { lead, content } = lessonParts({
     rel: `${id}.mdx`,
     file,
     data: /** @type {Record<string, any>} */ (data),
-    covers: moduleCovers(LESSONS_DIR, rels),
-    band: defaultBand(ROOT),
+    covers: await moduleCovers(),
+    band: await defaultBand(),
     stage: imageUrl,
     slides,
   });
@@ -124,15 +123,50 @@ export async function previewSlides({ id: rawId, data, slides, knownCss }) {
 }
 
 /**
+ * La couverture de chaque module : celle de sa PREMIÈRE leçon ouverte qui
+ * en déclare une (même règle que build-slides, voir slides-deck.mjs), lue
+ * dans le stockage.
+ *
+ * @returns {Promise<Map<string, { order: number, path: string }>>}
+ */
+async function moduleCovers() {
+  const locked = await lockedIds();
+  const files = (await store().list(LESSONS)).filter((entry) => entry.path.endsWith('.mdx'));
+  /** @type {Map<string, { order: number, path: string }>} */
+  const covers = new Map();
+  for (const entry of files) {
+    const rel = entry.path.slice(LESSONS.length + 1);
+    if (locked.has(normalizeId(rel))) continue;
+    const dir = moduleDirOf(rel);
+    if (!dir) continue;
+    const { data } = matter((await store().read(entry.path)) ?? '', {});
+    if (!data.cover) continue;
+    const order = Number.isFinite(Number(data.order)) ? Number(data.order) : Infinity;
+    const known = covers.get(dir);
+    if (!known || order < known.order) {
+      covers.set(dir, { order, path: resolve(ROOT, dirname(entry.path), String(data.cover)) });
+    }
+  }
+  return covers;
+}
+
+/** Le bandeau des leçons sans couverture (« slides.band »), lu dans le stockage. */
+async function defaultBand() {
+  const band = (await readConfig())?.slides?.band;
+  return band ? resolve(ROOT, String(band)) : null;
+}
+
+/**
  * Une image citée par un deck, désignée par une adresse de l'API. Le
  * chemin doit rester dans le projet et désigner une image : l'aperçu ne
- * doit pas devenir un moyen de lire n'importe quel fichier.
+ * doit pas devenir un moyen de lire n'importe quel fichier. Une image
+ * absente est signalée à sa lecture (404), dans l'aperçu.
  *
  * @param {string} absPath
  */
 function imageUrl(absPath) {
   const rel = relative(ROOT, absPath);
-  if (rel.startsWith('..') || !(extname(absPath).toLowerCase() in IMAGE_TYPES) || !existsSync(absPath)) return null;
+  if (rel.startsWith('..') || !(extname(absPath).toLowerCase() in IMAGE_TYPES)) return null;
   return `/admin/api/slides/image?path=${encodeURIComponent(rel.split(sep).join('/'))}`;
 }
 
@@ -143,11 +177,9 @@ export async function readSlideImage(raw) {
   if (!file.startsWith(ROOT + sep) || !type || file.includes(`${sep}node_modules${sep}`)) {
     throw new AdminError(400, `Image invalide : « ${raw} ».`);
   }
-  try {
-    return { content: await readFile(file), type };
-  } catch {
-    throw new AdminError(404, `Image introuvable : « ${raw} ».`);
-  }
+  const content = await store().readBytes(relative(ROOT, file).split(sep).join('/'));
+  if (content === null) throw new AdminError(404, `Image introuvable : « ${raw} ».`);
+  return { content, type };
 }
 
 /** @type {{ stamp: number, css: string } | null} */

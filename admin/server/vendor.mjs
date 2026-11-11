@@ -8,22 +8,51 @@
 // première demande - environ un dixième de seconde - puis le garde en
 // mémoire jusqu'à l'arrêt du serveur.
 //
-// Rien n'est écrit sur le disque : l'empaquetage n'existe que pendant
-// `npm run dev`, et n'a aucune chance de finir dans dist/.
+// En local, rien n'est écrit sur le disque. En ligne, le module est
+// empaqueté d'avance pendant la construction (PREBUILT, ci-dessous).
 // =============================================================
 
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { build } from 'esbuild';
+import { readFile } from 'node:fs/promises';
 
-const ENTRY = join(dirname(fileURLToPath(import.meta.url)), '..', 'ui', 'vendor', 'codemirror.entry.js');
+const VENDOR = join(dirname(fileURLToPath(import.meta.url)), '..', 'ui', 'vendor');
+const ENTRY = join(VENDOR, 'codemirror.entry.js');
+
+/**
+ * Le module empaqueté d'avance pour l'admin en ligne (scripts/admin-vendor.mjs,
+ * lancé par `npm run vercel-build`). Présent, il est servi tel quel : la
+ * fonction Vercel n'a pas à faire tourner esbuild.
+ */
+export const PREBUILT = join(VENDOR, 'codemirror.js');
 
 /** @type {Promise<string> | null} */
 let bundle = null;
 
-/** Le module CodeMirror, empaqueté et minifié. */
-export function codemirrorBundle() {
-  bundle ??= build({
+/**
+ * Le module CodeMirror, empaqueté et minifié.
+ *
+ * @param {{ prebuilt?: boolean, fresh?: boolean }} [options]
+ *   `prebuilt` : servir le module empaqueté d'avance s'il existe (l'admin
+ *   en ligne). En local, on réempaquette toujours : un module d'avance
+ *   resté sur le disque après un `vercel-build` serait peut-être périmé.
+ *   `fresh` : ne rien garder en cache (c'est le script qui le fabrique).
+ */
+export function codemirrorBundle({ prebuilt = false, fresh = false } = {}) {
+  if (fresh) return pack();
+  bundle ??= (prebuilt ? readFile(PREBUILT, 'utf8').catch(() => pack()) : pack()).catch((error) => {
+    // Un échec ne doit pas rester en cache : la prochaine demande réessaie.
+    bundle = null;
+    throw error;
+  });
+  return bundle;
+}
+
+/** @returns {Promise<string>} */
+function pack() {
+  // esbuild n'est chargé qu'ici : en ligne, avec le module d'avance, il
+  // n'est jamais importé.
+  return import('esbuild').then(({ build }) => build({
     entryPoints: [ENTRY],
     bundle: true,
     format: 'esm',
@@ -31,12 +60,5 @@ export function codemirrorBundle() {
     write: false,
     target: 'es2022',
     legalComments: 'none',
-  })
-    .then((result) => result.outputFiles[0].text)
-    .catch((error) => {
-      // Un échec ne doit pas rester en cache : la prochaine demande réessaie.
-      bundle = null;
-      throw error;
-    });
-  return bundle;
+  })).then((result) => result.outputFiles[0].text);
 }

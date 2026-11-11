@@ -276,3 +276,395 @@ test('régler un module : nom et rang réécrits dans toutes ses leçons, rien d
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('stockage local : un commit écrit tout, ou rien', async () => {
+  const { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const { localStore } = await import('../server/store.mjs');
+  const root = mkdtempSync(join(tmpdir(), 'socle-store-'));
+  const cwd = process.cwd();
+  process.chdir(root);
+  try {
+    const store = localStore();
+    writeFileSync(join(root, 'a.txt'), 'A');
+    writeFileSync(join(root, 'bloque'), 'un fichier, pas un dossier');
+
+    // Le second changement ne peut pas s'écrire (« bloque » n'est pas un
+    // dossier) : le premier ne doit pas avoir eu lieu non plus.
+    await assert.rejects(
+      store.commit([
+        { path: 'a.txt', content: 'A modifié' },
+        { path: 'bloque/b.txt', content: 'B' },
+      ])
+    );
+    assert.equal(readFileSync(join(root, 'a.txt'), 'utf8'), 'A');
+    assert.deepEqual(readdirSync(root).filter((f) => f.endsWith('.tmp')), []);
+
+    // Création dans un dossier neuf, suppression, lecture, liste.
+    await store.commit([
+      { path: 'neuf/c.txt', content: 'C' },
+      { path: 'a.txt', content: null },
+    ]);
+    assert.equal(await store.read('neuf/c.txt'), 'C');
+    assert.equal(existsSync(join(root, 'a.txt')), false);
+    assert.equal(await store.read('a.txt'), null);
+    assert.deepEqual((await store.list('neuf')).map((e) => e.path), ['neuf/c.txt']);
+    assert.deepEqual(await store.list('absent'), []);
+    await assert.rejects(store.read('../dehors'), /refusé/);
+  } finally {
+    process.chdir(cwd);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// -------------------------------------------------------------
+// Le stockage GitHub (admin en ligne), contre une fausse API
+// -------------------------------------------------------------
+
+const LESSON = (title, module, moduleOrder, order) =>
+  `---\ntitle: "${title}"\nmodule: "${module}"\nmoduleOrder: ${moduleOrder}\norder: ${order}\n---\n\nCorps de ${title}.\n`;
+
+async function githubFixture() {
+  const { fakeGitHub } = await import('./fake-github.mjs');
+  const { githubStore } = await import('../server/github-store.mjs');
+  const github = fakeGitHub({
+    'socle.config.json': '{\n  "locked": []\n}\n',
+    'src/content/lecons/a/l1.mdx': LESSON('A1', 'Module 1 - A', 1, 1),
+    'src/content/lecons/a/l2.mdx': LESSON('A2', 'Module 1 - A', 1, 2),
+    'src/content/lecons/b/l1.mdx': LESSON('B1', 'Module 2 - B', 2, 1),
+    'README.md': 'Le dépôt.\n',
+  });
+  const store = githubStore({ token: 'jeton', repo: 'moi/cours', fetch: github.fetch });
+  return { github, store };
+}
+
+test('GitHub : le brouillon naît de main, et s’y lit comme un disque', async () => {
+  const { github, store } = await githubFixture();
+  assert.equal(await store.read('README.md'), 'Le dépôt.\n');
+  assert.equal(await store.read('absent.md'), null);
+  assert.deepEqual((await store.list('src/content/lecons/a')).map((e) => e.path).sort(), [
+    'src/content/lecons/a/l1.mdx',
+    'src/content/lecons/a/l2.mdx',
+  ]);
+  assert.ok(github.refs.has('brouillon'), 'le brouillon a été créé');
+  assert.equal(github.refs.get('brouillon'), github.refs.get('main'));
+});
+
+test('GitHub : plusieurs fichiers, un seul commit, sur le brouillon seulement', async () => {
+  const { github, store } = await githubFixture();
+  const before = github.commits.size;
+  await store.commit(
+    [
+      { path: 'src/content/lecons/a/l1.mdx', content: 'nouveau' },
+      { path: 'src/assets/image.png', content: Buffer.from([0x89, 0x50, 0x4e, 0x47]) },
+      { path: 'README.md', content: null },
+    ],
+    'Admin : essai'
+  );
+  assert.equal(github.commits.size, before + 1, 'un seul commit');
+  assert.equal(github.file('brouillon', 'src/content/lecons/a/l1.mdx'), 'nouveau');
+  assert.equal(github.file('brouillon', 'README.md'), null);
+  assert.deepEqual([...(await store.readBytes('src/assets/image.png'))], [0x89, 0x50, 0x4e, 0x47]);
+  assert.equal(github.file('main', 'src/content/lecons/a/l1.mdx'), LESSON('A1', 'Module 1 - A', 1, 1), 'main intact');
+  assert.deepEqual(await store.status().then((s) => [s.ahead, s.behind]), [1, 0]);
+});
+
+test('GitHub : un commit poussé entre-temps n’est jamais écrasé', async () => {
+  const { github, store } = await githubFixture();
+  await store.read('README.md'); // le stockage connaît l'état du brouillon
+  github.push('brouillon', { 'autre.md': 'écrit ailleurs' });
+  await store.commit([{ path: 'README.md', content: 'par l’admin' }], 'Admin : essai');
+  assert.equal(github.file('brouillon', 'autre.md'), 'écrit ailleurs');
+  assert.equal(github.file('brouillon', 'README.md'), 'par l’admin');
+});
+
+test('GitHub : synchroniser, publier, abandonner', async () => {
+  const { github, store } = await githubFixture();
+  await store.read('README.md');
+
+  // main avance sans que le brouillon ait rien : il la rejoint.
+  github.push('main', { 'code.js': 'v2' });
+  await store.sync();
+  assert.equal(github.refs.get('brouillon'), github.refs.get('main'));
+
+  // Une modification en attente, et main qui avance encore : fusion.
+  await store.commit([{ path: 'README.md', content: 'brouillon' }], 'Admin : essai');
+  github.push('main', { 'code.js': 'v3' });
+  await store.sync();
+  assert.equal(github.file('brouillon', 'code.js'), 'v3');
+  assert.equal(github.file('brouillon', 'README.md'), 'brouillon');
+
+  // Publier : main reçoit le brouillon.
+  assert.deepEqual(await store.publish(), { published: true });
+  assert.equal(github.file('main', 'README.md'), 'brouillon');
+  assert.equal((await store.status()).ahead, 0);
+
+  // Abandonner : le brouillon redevient main.
+  await store.commit([{ path: 'README.md', content: 'à jeter' }], 'Admin : essai');
+  await store.discard();
+  assert.equal(github.refs.get('brouillon'), github.refs.get('main'));
+  assert.equal(await store.read('README.md'), 'brouillon');
+});
+
+test('GitHub : les modules de l’admin écrivent sur le brouillon sans le savoir', async () => {
+  const { github, store } = await githubFixture();
+  const { useStore, localStore } = await import('../server/store.mjs');
+  const lessons = await import('../server/lessons.mjs');
+  const settings = await import('../server/settings.mjs');
+  useStore(store);
+  try {
+    const lesson = await lessons.readLesson('a/l1');
+    await lessons.writeLesson({ id: 'a/l1', data: { ...lesson.data, title: 'A1 renommée' }, body: lesson.body, hash: lesson.hash });
+    assert.match(github.file('brouillon', 'src/content/lecons/a/l1.mdx'), /title: "A1 renommée"/);
+
+    const before = github.commits.size;
+    await lessons.updateModule({ from: 'Module 1 - A', name: 'Module 1 - A', position: 2 });
+    assert.equal(github.commits.size, before + 1, 'tout le module en un commit');
+    assert.match(github.file('brouillon', 'src/content/lecons/b/l1.mdx'), /module: "Module 1 - B"\nmoduleOrder: 1/);
+    assert.match(github.file('brouillon', 'src/content/lecons/a/l2.mdx'), /module: "Module 2 - A"\nmoduleOrder: 2/);
+
+    await settings.setLocked({ id: 'b/l1', locked: true });
+    assert.deepEqual(JSON.parse(github.file('brouillon', 'socle.config.json')).locked, ['b/l1']);
+    assert.equal((await lessons.listLessons()).find((l) => l.id === 'b/l1').locked, true);
+    assert.equal(github.file('main', 'socle.config.json'), '{\n  "locked": []\n}\n', 'rien en ligne avant publication');
+  } finally {
+    useStore(localStore());
+  }
+});
+
+// -------------------------------------------------------------
+// La connexion de l'admin en ligne
+// -------------------------------------------------------------
+
+test('mot de passe : empreinte salée, vérification, longueur minimale', async () => {
+  const { hashPassword, verifyPassword } = await import('../server/auth.mjs');
+  const hash = hashPassword('un mot de passe solide');
+  assert.match(hash, /^scrypt\$\d+\$\d+\$\d+\$[\w+/=]+\$[\w+/=]+$/);
+  assert.notEqual(hash, hashPassword('un mot de passe solide'), 'salé : deux empreintes différentes');
+  assert.equal(verifyPassword('un mot de passe solide', hash), true);
+  assert.equal(verifyPassword('un mot de passe solidE', hash), false);
+  assert.equal(verifyPassword('un mot de passe solide', 'n’importe quoi'), false);
+  assert.throws(() => hashPassword('court'), /12 caractères/);
+});
+
+test('session : cookie signé, falsifié, expiré, mot de passe changé', async () => {
+  const { hashPassword, createAuth } = await import('../server/auth.mjs');
+  let now = 1_000_000;
+  const secret = 's'.repeat(40);
+  const passwordHash = hashPassword('un mot de passe solide');
+  const auth = createAuth({ passwordHash, secret, now: () => now });
+  const req = (/** @type {string} */ cookie) => /** @type {any} */ ({ headers: { cookie } });
+
+  const login = auth.login('un mot de passe solide', '1.2.3.4');
+  assert.equal(login.ok, true);
+  const cookie = /** @type {any} */ (login).cookie;
+  assert.match(cookie, /HttpOnly; Secure; SameSite=Strict/);
+  const value = cookie.split(';')[0];
+  assert.equal(auth.isAuthenticated(req(value)), true);
+
+  const [name, payload] = value.split('=');
+  const [expires, signature] = payload.split('.');
+  assert.equal(auth.isAuthenticated(req(`${name}=${Number(expires) + 1e9}.${signature}`)), false, 'date repoussée');
+  assert.equal(auth.isAuthenticated(req(`${name}=${expires}.${signature.slice(1)}x`)), false, 'signature altérée');
+  assert.equal(auth.isAuthenticated(req('')), false);
+
+  now += 13 * 3600 * 1000;
+  assert.equal(auth.isAuthenticated(req(value)), false, 'expiré après 12 h');
+
+  now = 1_000_000;
+  const other = createAuth({ passwordHash: hashPassword('un autre mot de passe'), secret, now: () => now });
+  assert.equal(other.isAuthenticated(req(value)), false, 'changer le mot de passe déconnecte');
+
+  assert.throws(() => createAuth({ passwordHash: 'clair', secret }), /admin:password/);
+  assert.throws(() => createAuth({ passwordHash, secret: 'court' }), /32 caractères/);
+});
+
+test('connexion : cinq essais, puis quinze minutes d’attente', async () => {
+  const { hashPassword, createAuth } = await import('../server/auth.mjs');
+  let now = 0;
+  const auth = createAuth({ passwordHash: hashPassword('un mot de passe solide'), secret: 's'.repeat(40), now: () => now });
+  for (let i = 0; i < 5; i++) assert.equal(auth.login('mauvais', '9.9.9.9').status, 401);
+  assert.equal(auth.login('un mot de passe solide', '9.9.9.9').status, 429, 'même le bon est refusé pendant l’attente');
+  assert.equal(auth.login('un mot de passe solide', '8.8.8.8').ok, true, 'une autre adresse n’est pas bloquée');
+  now += 16 * 60 * 1000;
+  assert.equal(auth.login('un mot de passe solide', '9.9.9.9').ok, true, 'débloqué après 15 minutes');
+});
+
+test('admin en ligne : rien sans connexion, tout avec', async () => {
+  const http = await import('node:http');
+  const { createHandler } = await import('../server/handler.mjs');
+  const { hashPassword, createAuth } = await import('../server/auth.mjs');
+  const auth = createAuth({ passwordHash: hashPassword('un mot de passe solide'), secret: 's'.repeat(40) });
+  const handler = createHandler('/admin', { auth });
+  const server = http.createServer((req, res) => handler(req, res, () => res.writeHead(404).end()));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${/** @type {any} */ (server.address()).port}`;
+  const go = (path, init = {}) => fetch(`${origin}${path}`, { redirect: 'manual', ...init });
+  const json = { 'Content-Type': 'application/json', Origin: origin };
+  try {
+    const page = await (await go('/admin/')).text();
+    assert.match(page, /Mot de passe/, 'la page de connexion');
+    assert.doesNotMatch(page, /lesson-form/, 'pas l’admin');
+    assert.equal((await go('/admin/api/lessons')).status, 401);
+    assert.equal((await go('/admin/app.js')).status, 302, 'le code de l’admin reste fermé');
+
+    assert.equal((await go('/admin/api/login', { method: 'POST', headers: json, body: '{"password":"mauvais"}' })).status, 401);
+    const foreign = await go('/admin/api/login', {
+      method: 'POST',
+      headers: { ...json, Origin: 'https://ailleurs.example' },
+      body: '{"password":"un mot de passe solide"}',
+    });
+    assert.equal(foreign.status, 403, 'une connexion venue d’un autre site est refusée');
+
+    const ok = await go('/admin/api/login', { method: 'POST', headers: json, body: '{"password":"un mot de passe solide"}' });
+    assert.equal(ok.status, 200);
+    const cookie = String(ok.headers.get('set-cookie')).split(';')[0];
+    const session = await go('/admin/api/session', { headers: { cookie } });
+    assert.deepEqual(await session.json(), { online: true });
+    assert.equal((await go('/admin/api/lessons', { headers: { cookie } })).status, 200);
+    assert.match(await (await go('/admin/', { headers: { cookie } })).text(), /lesson-form/, 'connecté : l’admin');
+    assert.equal((await go('/admin/', { headers: { cookie } })).headers.get('x-frame-options'), 'DENY');
+
+    const out = await go('/admin/api/logout', { method: 'POST', headers: { ...json, cookie }, body: '{}' });
+    assert.match(String(out.headers.get('set-cookie')), /Max-Age=0/);
+  } finally {
+    server.close();
+  }
+});
+
+// -------------------------------------------------------------
+// La fonction Vercel (api/admin.mjs), de bout en bout
+// -------------------------------------------------------------
+
+test('fonction Vercel : variables manquantes, connexion, écriture sur le brouillon', async () => {
+  const http = await import('node:http');
+  const { fakeGitHub } = await import('./fake-github.mjs');
+  const { hashPassword } = await import('../server/auth.mjs');
+  const { useStore, localStore } = await import('../server/store.mjs');
+
+  // Sans variables : la fonction le dit, sans rien montrer d'autre.
+  const { readEnv } = await import('../../api/admin.mjs');
+  assert.deepEqual(readEnv({}).missing, ['ADMIN_PASSWORD_HASH', 'ADMIN_SESSION_SECRET', 'GITHUB_TOKEN', 'GITHUB_REPO']);
+  assert.equal(readEnv({ VERCEL_GIT_REPO_OWNER: 'moi', VERCEL_GIT_REPO_SLUG: 'cours' }).repo, 'moi/cours');
+
+  const github = fakeGitHub({
+    'socle.config.json': '{\n  "site": { "title": "Cours en ligne" },\n  "locked": []\n}\n',
+    'src/content/lecons/a/l1.mdx': LESSON('A1', 'Module 1 - A', 1, 1),
+  });
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (url, init) =>
+    String(url).startsWith('https://api.github.com') ? github.fetch(url, init) : realFetch(url, init);
+  Object.assign(process.env, {
+    ADMIN_PASSWORD_HASH: hashPassword('un mot de passe solide'),
+    ADMIN_SESSION_SECRET: 's'.repeat(40),
+    GITHUB_TOKEN: 'jeton',
+    GITHUB_REPO: 'moi/cours',
+  });
+
+  const { default: fn } = await import(`../../api/admin.mjs?vercel=${Date.now()}`);
+  // Comme Vercel : /admin/<chemin> arrive réécrit en /api/admin?__admin=<chemin>.
+  const server = http.createServer((req, res) => {
+    const url = new URL(req.url, 'http://x');
+    const path = url.pathname.replace(/^\/admin\/?/, '');
+    url.searchParams.set('__admin', path);
+    req.url = `/api/admin?${url.searchParams}`;
+    fn(req, res);
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${/** @type {any} */ (server.address()).port}`;
+  const go = (path, init = {}) => fetch(`${origin}${path}`, { redirect: 'manual', ...init });
+  const json = { 'Content-Type': 'application/json', Origin: origin };
+  try {
+    assert.match(await (await go('/admin/')).text(), /Connexion · Cours en ligne/, 'le titre vient du brouillon');
+    assert.equal((await go('/admin/api/lessons')).status, 401);
+
+    const ok = await go('/admin/api/login', { method: 'POST', headers: json, body: '{"password":"un mot de passe solide"}' });
+    const cookie = String(ok.headers.get('set-cookie')).split(';')[0];
+    const lessons = await (await go('/admin/api/lessons', { headers: { cookie } })).json();
+    assert.deepEqual(lessons.lessons.map((l) => l.id), ['a/l1']);
+
+    const lesson = await (await go('/admin/api/lesson?id=a/l1', { headers: { cookie } })).json();
+    const saved = await go('/admin/api/lesson', {
+      method: 'PUT',
+      headers: { ...json, cookie },
+      body: JSON.stringify({ id: 'a/l1', data: { ...lesson.data, title: 'A1 en ligne' }, body: lesson.body, hash: lesson.hash }),
+    });
+    assert.equal(saved.status, 200);
+    assert.match(github.file('brouillon', 'src/content/lecons/a/l1.mdx'), /title: "A1 en ligne"/);
+    assert.match(github.file('main', 'src/content/lecons/a/l1.mdx'), /title: "A1"/, 'main intact');
+
+    const big = await go('/admin/api/media?name=gros.png', {
+      method: 'POST',
+      headers: { 'Content-Type': 'image/png', Origin: origin, cookie },
+      body: Buffer.alloc(5 * 1024 * 1024),
+    });
+    assert.equal(big.status, 413, 'une image de 5 Mo est refusée avant Vercel');
+  } finally {
+    server.close();
+    globalThis.fetch = realFetch;
+    for (const key of ['ADMIN_PASSWORD_HASH', 'ADMIN_SESSION_SECRET', 'GITHUB_TOKEN', 'GITHUB_REPO']) delete process.env[key];
+    useStore(localStore());
+  }
+});
+
+test('brouillon : état, aperçu Vercel, publier, abandonner', async () => {
+  const http = await import('node:http');
+  const { createHandler } = await import('../server/handler.mjs');
+  const { hashPassword, createAuth } = await import('../server/auth.mjs');
+  const { useStore, localStore } = await import('../server/store.mjs');
+  const { github, store } = await githubFixture();
+  useStore(store);
+  const auth = createAuth({ passwordHash: hashPassword('un mot de passe solide'), secret: 's'.repeat(40) });
+  const handler = createHandler('/admin', { auth });
+  const server = http.createServer((req, res) => handler(req, res, () => res.writeHead(404).end()));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${/** @type {any} */ (server.address()).port}`;
+  const json = { 'Content-Type': 'application/json', Origin: origin };
+  try {
+    const login = await fetch(`${origin}/admin/api/login`, { method: 'POST', headers: json, body: '{"password":"un mot de passe solide"}' });
+    const cookie = String(login.headers.get('set-cookie')).split(';')[0];
+    const get = async (path) => (await fetch(`${origin}/admin/api${path}`, { headers: { cookie } })).json();
+    const post = (path) => fetch(`${origin}/admin/api${path}`, { method: 'POST', headers: { ...json, cookie }, body: '{}' });
+
+    let draft = await get('/draft');
+    assert.deepEqual([draft.ahead, draft.preview.state], [0, 'none'], 'rien à publier au départ');
+
+    await store.commit([{ path: 'README.md', content: 'modifié' }], 'Admin : essai');
+    draft = await get('/draft');
+    assert.deepEqual([draft.ahead, draft.files], [1, ['README.md']]);
+    assert.equal(draft.preview.state, 'none');
+
+    github.deploy('brouillon', 'pending', '');
+    assert.equal((await get('/draft')).preview.state, 'building');
+    github.deploy('brouillon', 'success', 'https://cours-git-brouillon.vercel.app');
+    assert.deepEqual((await get('/draft')).preview, { state: 'ready', url: 'https://cours-git-brouillon.vercel.app' });
+
+    assert.equal((await post('/draft/publish')).status, 200);
+    assert.equal(github.file('main', 'README.md'), 'modifié', 'publié sur main');
+    assert.equal((await get('/draft')).ahead, 0);
+
+    await store.commit([{ path: 'README.md', content: 'à jeter' }], 'Admin : essai');
+    assert.equal((await post('/draft/discard')).status, 200);
+    assert.equal(github.file('brouillon', 'README.md'), 'modifié', 'abandonné : retour à la version publiée');
+
+    // Un conflit à la publication est expliqué, pas masqué.
+    await store.commit([{ path: 'README.md', content: 'version du brouillon' }], 'Admin : essai');
+    github.push('main', { 'README.md': 'version poussée sur main' });
+    const conflict = await post('/draft/publish');
+    assert.equal(conflict.status, 409);
+    assert.match((await conflict.json()).error, /conflit/);
+    const diverged = await get('/draft');
+    assert.equal(diverged.conflict, true, 'le bandeau le signale, sans erreur');
+    assert.equal(github.file('brouillon', 'README.md'), 'version du brouillon', 'le brouillon n’est pas touché');
+  } finally {
+    server.close();
+    useStore(localStore());
+  }
+
+  // En local, pas de brouillon.
+  const local = createHandler('/admin');
+  const res = { statusCode: 0, writeHead(code) { this.statusCode = code; return this; }, setHeader() {}, end() {} };
+  await local(/** @type {any} */ ({ url: '/admin/api/draft', method: 'GET', headers: {}, socket: { remoteAddress: '127.0.0.1' } }), /** @type {any} */ (res), () => {});
+  assert.equal(res.statusCode, 404);
+});

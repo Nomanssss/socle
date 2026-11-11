@@ -2,6 +2,8 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
+    <!-- Les chemins relatifs (scripts, styles, appels à l’API) partent de /admin/, que l’adresse finisse par « / » ou non : en ligne, la réécriture de vercel.json sert « /admin » sans rediriger. -->
+    <base href="/admin/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <title>Admin · {{TITLE}}</title>
@@ -25,6 +27,14 @@
         Enregistrer <kbd id="save-shortcut">Ctrl S</kbd>
       </button>
     </header>
+
+    <!-- Admin en ligne : le brouillon, ce qui n'est pas encore publié. -->
+    <div class="draft" id="draft" role="region" aria-label="Brouillon" hidden>
+      <p class="draft__status" id="draft-status" aria-live="polite"></p>
+      <a class="draft__preview" id="draft-preview" target="_blank" rel="noopener" hidden>Voir le brouillon ↗</a>
+      <button type="button" class="button button--small" id="draft-discard" hidden>Abandonner</button>
+      <button type="button" class="button button--small button--primary" id="draft-publish" hidden>Publier</button>
+    </div>
 
     <div class="layout" id="layout">
       <nav class="toc" id="toc" aria-label="Leçons du cours"></nav>

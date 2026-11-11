@@ -116,12 +116,22 @@ de code, et l'on n'a plus à connaître la syntaxe Markdown.*
 - [x] Couleurs et polices, avec `npm run brand` relancé à l'enregistrement (refusée par lui, la configuration est remise en l'état)
 - [x] La photo de l'auteur choisie dans la médiathèque (copiée dans `public/photos/`)
 
-## Phase 8 - En ligne (plus tard, si le besoin se confirme)
+## Phase 8 - En ligne, sur Vercel
 
-- [ ] Connexion sans base : empreinte du mot de passe en variable d'environnement, session en cookie signé
-- [ ] Enregistrement par commit via l'API GitHub, la CI reconstruit le site
-- [ ] `/admin/` rendu côté serveur (adaptateur), le reste du site toujours statique
-- [ ] Deux éditions simultanées : détecter le conflit plutôt qu'écraser
+*Un mot de passe par cours ; les enregistrements partent sur une branche
+de brouillon, que Vercel construit en aperçu ; « Publier » la verse dans
+`main`. Branche `feat/admin-en-ligne`.*
+
+- [x] L'admin ne touche plus le disque : un « stockage » (`admin/server/store.mjs`), le disque en local, une branche GitHub en ligne - commits tout-ou-rien dans les deux cas
+- [x] Le stockage GitHub (`admin/server/github-store.mjs`) : le brouillon créé depuis `main`, un commit par opération posé sans forcer, synchroniser / publier / abandonner - testé contre une fausse API (`admin/test/fake-github.mjs`)
+
+- [x] Connexion sans base : empreinte du mot de passe en variable d'environnement (`npm run admin:password`), session en cookie signé, 5 essais puis 15 minutes d'attente
+- [x] Enregistrement par commit via l'API GitHub, sur le brouillon ; Vercel en construit l'aperçu
+- [x] `/admin/` dans une fonction Vercel (`api/admin.mjs`, réécritures de `vercel.json`), le reste du site toujours statique ; CodeMirror empaqueté à la construction (`npm run vercel-build`), images limitées à 4 Mo, polices vérifiées auprès de Google Fonts avant d'enregistrer
+- [x] Deux éditions simultanées : détecter le conflit plutôt qu'écraser (empreinte de chaque fichier lu, commits posés sans forcer)
+- [x] Le brouillon dans l'interface : un bandeau « N fichiers modifiés », l'état de l'aperçu Vercel (lu dans les déploiements GitHub), « Voir le brouillon », « Publier », « Abandonner » ; « Voir la page » ouvre l'aperçu ; un conflit avec `main` est expliqué
+
+- [x] Documentation de la mise en ligne : projet Vercel, jeton GitHub, mot de passe, variables d'environnement, limites et sécurité (guide, « L'admin en ligne »)
 
 ## Phase 9 - Documenter
 

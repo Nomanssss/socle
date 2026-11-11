@@ -32,7 +32,7 @@ import { listMedia, readMedia, uploadMedia, deleteMedia, MAX_UPLOAD } from './me
 import { readSlides, writeSlides, previewSlides, readSlideImage } from './slides.mjs';
 import { setLocked, readSettings, writeSettings, pickPhoto } from './settings.mjs';
 import { codemirrorBundle } from './vendor.mjs';
-import { readConfig } from '../../scripts/config.mjs';
+import { readConfig, store } from './store.mjs';
 
 const UI_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'ui');
 
@@ -47,16 +47,31 @@ const UI_FILES = {
   '/text-editor.js': { file: 'text-editor.js', type: 'text/javascript; charset=utf-8' },
   '/slides-editor.js': { file: 'slides-editor.js', type: 'text/javascript; charset=utf-8' },
   '/settings.js': { file: 'settings.js', type: 'text/javascript; charset=utf-8' },
+  '/login.js': { file: 'login.js', type: 'text/javascript; charset=utf-8' },
   '/admin.css': { file: 'admin.css', type: 'text/css; charset=utf-8' },
 };
+
+// La page de connexion, servie à la place de l'admin tant qu'on n'est pas connecté.
+const LOGIN_PAGE = { file: 'login.html', type: 'text/html; charset=utf-8' };
 
 // Un corps de requête plus gros qu'une leçon ne le sera jamais.
 const MAX_BODY = 2 * 1024 * 1024;
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
-/** @param {string} base Le préfixe d'URL de l'admin (« /admin »). */
-export function createHandler(base) {
+// Ce qui reste accessible sans être connecté, en ligne : la page de
+// connexion et de quoi l'afficher.
+const PUBLIC_UI = new Set(['/', '/admin.css', '/login.js']);
+
+/**
+ * @param {string} base Le préfixe d'URL de l'admin (« /admin »).
+ * @param {{ auth?: ReturnType<typeof import('./auth.mjs').createAuth> | null, uploadLimit?: number }} [options]
+ *   `auth` : la connexion de l'admin en ligne (auth.mjs). Absente, c'est
+ *   l'admin locale - réservée à la machine elle-même, sans mot de passe.
+ *   `uploadLimit` : la taille maximale d'une image envoyée (plus basse en
+ *   ligne, où une fonction Vercel ne reçoit pas plus de 4,5 Mo).
+ */
+export function createHandler(base, { auth = null, uploadLimit = MAX_UPLOAD } = {}) {
   /**
    * @param {import('node:http').IncomingMessage} req
    * @param {import('node:http').ServerResponse} res
@@ -66,7 +81,9 @@ export function createHandler(base) {
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname !== base && !url.pathname.startsWith(`${base}/`)) return next();
 
-    if (!LOOPBACK.has(req.socket.remoteAddress ?? '')) {
+    // En local : la machine elle-même, et personne d'autre. En ligne,
+    // tout le monde peut frapper à la porte - c'est la connexion qui trie.
+    if (!auth && !LOOPBACK.has(req.socket.remoteAddress ?? '')) {
       return send(res, 403, { error: 'L’admin n’est accessible que depuis cette machine.' });
     }
 
@@ -80,18 +97,75 @@ export function createHandler(base) {
     const path = url.pathname.slice(base.length);
 
     try {
+      if (auth) {
+        if (path === '/api/login' && req.method === 'POST') {
+          assertSameOrigin(req);
+          const { password } = await readJson(req);
+          const result = auth.login(password, clientAddress(req));
+          if (!result.ok) return send(res, result.status, { error: result.message });
+          res.setHeader('Set-Cookie', result.cookie);
+          return send(res, 200, { ok: true });
+        }
+        if (path === '/api/logout' && req.method === 'POST') {
+          assertSameOrigin(req);
+          res.setHeader('Set-Cookie', auth.logoutCookie());
+          return send(res, 200, { ok: true });
+        }
+        if (!auth.isAuthenticated(req)) {
+          if (path.startsWith('/api/')) return send(res, 401, { error: 'Session expirée : reconnectez-vous.', login: true });
+          if (req.method === 'GET' && PUBLIC_UI.has(path)) {
+            return await serveUi(res, path === '/' ? LOGIN_PAGE : UI_FILES[path]);
+          }
+          res.writeHead(302, { Location: `${base}/` }).end();
+          return;
+        }
+      }
+
+      if (path === '/api/session' && req.method === 'GET') {
+        return send(res, 200, { online: Boolean(auth) });
+      }
+
+      // Le brouillon de l'admin en ligne : où il en est, le publier,
+      // l'abandonner. En local, il n'y a pas de brouillon - le disque est
+      // la seule version.
+      if (path.startsWith('/api/draft')) {
+        const draft = /** @type {any} */ (store());
+        if (draft.kind !== 'github') return send(res, 404, { error: 'Pas de brouillon en local.' });
+        if (req.method !== 'GET') assertSameOrigin(req);
+        if (path === '/api/draft' && req.method === 'GET') {
+          const { conflict } = await draft.sync();
+          const [status, preview] = await Promise.all([draft.status(), draft.preview().catch(() => ({ state: 'none', url: null }))]);
+          return send(res, 200, { branch: draft.branch, base: draft.base, ...status, preview, conflict });
+        }
+        if (path === '/api/draft/publish' && req.method === 'POST') {
+          try {
+            return send(res, 200, await draft.publish());
+          } catch (error) {
+            if (/** @type {any} */ (error).status === 409) {
+              throw new AdminError(409, `Le brouillon ne se fusionne pas sans conflit avec « ${draft.base} » : une même partie d’un fichier a changé des deux côtés. À régler dans le dépôt.`);
+            }
+            throw error;
+          }
+        }
+        if (path === '/api/draft/discard' && req.method === 'POST') {
+          await draft.discard();
+          return send(res, 200, { discarded: true });
+        }
+        return send(res, 404, { error: 'Rien à cette adresse.' });
+      }
+
       if (path.startsWith('/api/')) {
         if (req.method !== 'GET') assertSameOrigin(req);
         const route = path.slice('/api'.length);
         if (req.method === 'GET' && route === '/media/file') return serveImage(res, await readMedia(url.searchParams.get('path')));
         if (req.method === 'GET' && route === '/slides/image') return serveImage(res, await readSlideImage(url.searchParams.get('path')));
-        const result = await api(req, route, url.searchParams);
+        const result = await api(req, route, url.searchParams, { uploadLimit });
         return send(res, 200, result);
       }
       if (req.method === 'GET' && UI_FILES[path]) return await serveUi(res, UI_FILES[path]);
       if (req.method === 'GET' && path === '/vendor/codemirror.js') {
         res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
-        res.end(await codemirrorBundle());
+        res.end(await codemirrorBundle({ prebuilt: Boolean(auth) }));
         return;
       }
       return send(res, 404, { error: 'Rien à cette adresse.' });
@@ -107,8 +181,9 @@ export function createHandler(base) {
  * @param {import('node:http').IncomingMessage} req
  * @param {string} route
  * @param {URLSearchParams} params
+ * @param {{ uploadLimit: number }} options
  */
-async function api(req, route, params) {
+async function api(req, route, params, { uploadLimit }) {
   const key = `${req.method} ${route}`;
   switch (key) {
     case 'GET /lessons':
@@ -152,7 +227,7 @@ async function api(req, route, params) {
     case 'GET /media':
       return { media: await listMedia() };
     case 'POST /media':
-      return { media: await uploadMedia(params.get('name'), await readBody(req, MAX_UPLOAD)) };
+      return { media: await uploadMedia(params.get('name'), await readBody(req, uploadLimit)) };
     case 'DELETE /media':
       return await deleteMedia(params.get('path'));
     case 'GET /slides':
@@ -184,6 +259,17 @@ function assertSameOrigin(req) {
   if (!type.startsWith('application/json') && !type.startsWith('image/')) {
     throw new AdminError(415, 'Requête refusée : un corps JSON est attendu.');
   }
+}
+
+/**
+ * L'adresse du visiteur, pour limiter les essais de mot de passe. Derrière
+ * Vercel, c'est le premier maillon de X-Forwarded-For.
+ *
+ * @param {import('node:http').IncomingMessage} req
+ */
+function clientAddress(req) {
+  const forwarded = String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim();
+  return forwarded || req.socket.remoteAddress || 'inconnue';
 }
 
 /**
@@ -239,14 +325,21 @@ function serveImage(res, { content, type }) {
  */
 async function serveUi(res, entry) {
   let content = await readFile(join(UI_DIR, entry.file), 'utf8');
-  if (entry.file === 'index.html') {
-    const config = readConfig();
+  if (entry.file === 'index.html' || entry.file === 'login.html') {
+    const config = await readConfig();
     const primary = /^#[0-9a-f]{3,8}$/i.test(config.colors?.primary ?? '') ? config.colors.primary : '#4647AE';
     content = content
       .replaceAll('{{PRIMARY}}', primary)
       .replaceAll('{{TITLE}}', escapeHtml(config.site?.title || 'Socle'));
   }
-  res.writeHead(200, { 'Content-Type': entry.type, 'Cache-Control': 'no-store' });
+  res.writeHead(200, {
+    'Content-Type': entry.type,
+    'Cache-Control': 'no-store',
+    // L'admin ne s'affiche jamais dans le cadre d'une autre page : un site
+    // malveillant ne peut pas la superposer à ses boutons.
+    'X-Frame-Options': 'DENY',
+    'Content-Security-Policy': "frame-ancestors 'none'",
+  });
   res.end(content);
 }
 

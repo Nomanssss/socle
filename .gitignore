@@ -21,6 +21,10 @@ dist/
 slides/
 # Types générés par Astro
 .astro/
+# CodeMirror empaqueté d'avance pour l'admin en ligne (npm run vercel-build)
+admin/ui/vendor/codemirror.js
+# Vercel (vercel dev, vercel link)
+.vercel/
 
 # Decks publiés par `npm run slides` et `npm run slides:html` pour que le
 # site puisse les servir (« PDF du module », « Voir en slides », page

@@ -106,6 +106,13 @@ async function request(path, { json, ...options } = {}) {
     body: json === undefined ? undefined : JSON.stringify(json),
   });
   const payload = await response.json().catch(() => ({}));
+  // En ligne, une session expirée : la page de connexion reprend la main.
+  if (response.status === 401 && payload.login) {
+    location.reload();
+    return new Promise(() => {});
+  }
+  // Une écriture réussie change le brouillon : le bandeau suit.
+  if (response.ok && options.method && options.method !== 'GET' && !path.startsWith('/draft')) refreshDraft(500);
   if (!response.ok) {
     const error = /** @type {any} */ (new Error(payload.error ?? `Erreur ${response.status}`));
     error.status = response.status;
@@ -118,6 +125,118 @@ async function request(path, { json, ...options } = {}) {
 // -------------------------------------------------------------
 // Sommaire
 // -------------------------------------------------------------
+
+// -------------------------------------------------------------
+// Le brouillon (admin en ligne)
+//
+// En ligne, chaque enregistrement part sur une branche de brouillon, que
+// Vercel construit en aperçu. Le bandeau dit ce qui attend d'être publié,
+// où en est l'aperçu, et propose de publier - ou de tout abandonner.
+// -------------------------------------------------------------
+
+const draft = {
+  online: false,
+  /** L'adresse de l'aperçu du brouillon, quand il est prêt et que le brouillon a des modifications. */
+  previewUrl: /** @type {string | null} */ (null),
+  timer: 0,
+  el: $('#draft'),
+  status: $('#draft-status'),
+  preview: /** @type {HTMLAnchorElement} */ ($('#draft-preview')),
+  publish: $('#draft-publish'),
+  discard: $('#draft-discard'),
+};
+
+/** Relit l'état du brouillon - tout de suite, ou un peu plus tard. */
+function refreshDraft(delay = 0) {
+  if (!draft.online) return;
+  clearTimeout(draft.timer);
+  draft.timer = window.setTimeout(async () => {
+    try {
+      const info = await request('/draft');
+      renderDraft(info);
+      // L'aperçu se construit, ou Vercel ne l'a pas encore annoncé (il lui
+      // faut quelques secondes après un commit) : on revient voir.
+      if (info.ahead && (info.preview.state === 'building' || info.preview.state === 'none')) refreshDraft(15000);
+    } catch (error) {
+      draft.status.textContent = /** @type {Error} */ (error).message;
+    }
+  }, delay);
+}
+
+/** @param {{ ahead: number, files: string[], base: string, conflict?: boolean, preview: { state: string, url: string | null } }} info */
+function renderDraft({ ahead, files, base, preview, conflict }) {
+  draft.el.hidden = false;
+  draft.el.dataset.pending = String(ahead > 0);
+  const count = files.length;
+  if (conflict) {
+    draft.status.textContent = `Le brouillon et « ${base} » ont modifié le même passage d’un fichier : la publication demande de régler ce conflit dans le dépôt.`;
+  } else if (!ahead) {
+    draft.status.textContent = 'Tout est publié : le site en ligne est à jour.';
+  } else {
+    const what = count ? `${count} fichier${count > 1 ? 's' : ''} modifié${count > 1 ? 's' : ''}` : 'des modifications';
+    const state = {
+      building: 'aperçu en construction…',
+      ready: 'aperçu prêt',
+      failed: 'la construction de l’aperçu a échoué',
+      none: 'aperçu pas encore lancé',
+    }[preview.state] ?? '';
+    draft.status.textContent = `Brouillon : ${what}, pas encore en ligne - ${state}.`;
+  }
+  draft.preview.hidden = !ahead || !preview.url;
+  if (preview.url) draft.preview.href = preview.url;
+  // « Voir la page » suit : l'aperçu du brouillon s'il a quelque chose de
+  // plus que le site en ligne, le site en ligne sinon.
+  draft.previewUrl = ahead && preview.state === 'ready' && preview.url ? preview.url.replace(/\/+$/, '') : null;
+  updateViewLink();
+  draft.publish.hidden = !ahead;
+  draft.discard.hidden = !ahead;
+  draft.publish.title = `Verser le brouillon dans « ${base} » : le site en ligne se met à jour en une à deux minutes.`;
+}
+
+draft.publish.addEventListener('click', async () => {
+  if (isDirty() || settings?.isDirty()) {
+    setStatus('Enregistrez d’abord : une modification non enregistrée ne serait pas publiée.', 'error');
+    return;
+  }
+  if (!confirm('Publier le brouillon ?\n\nLe site en ligne sera mis à jour dans une à deux minutes.')) return;
+  try {
+    setStatus('Publication…');
+    await request('/draft/publish', { method: 'POST', json: {} });
+    setStatus('Publié : le site en ligne se met à jour.', 'ok');
+  } catch (error) {
+    setStatus(/** @type {Error} */ (error).message, 'error');
+  }
+  refreshDraft();
+});
+
+draft.discard.addEventListener('click', async () => {
+  if (!confirm('Abandonner le brouillon ?\n\nToutes les modifications pas encore publiées seront perdues : l’admin revient à la version en ligne. C’est définitif.')) return;
+  try {
+    await request('/draft/discard', { method: 'POST', json: {} });
+    // Tout ce que l'admin a en mémoire vient du brouillon abandonné.
+    location.reload();
+  } catch (error) {
+    setStatus(/** @type {Error} */ (error).message, 'error');
+  }
+});
+
+// Revenir sur l'onglet de l'admin (après avoir regardé l'aperçu, par
+// exemple) relit l'état du brouillon.
+window.addEventListener('focus', () => refreshDraft());
+
+// En ligne, la barre propose de se déconnecter, et le brouillon s'affiche.
+request('/session').then(({ online }) => {
+  if (!online) return;
+  draft.online = true;
+  refreshDraft();
+  const logout = h('button', { type: 'button', class: 'button', id: 'logout' }, 'Se déconnecter');
+  logout.addEventListener('click', async () => {
+    if ((isDirty() || settings?.isDirty()) && !confirm('Des modifications ne sont pas enregistrées. Se déconnecter quand même ?')) return;
+    await request('/logout', { method: 'POST', json: {} });
+    location.reload();
+  });
+  ui.save.after(logout);
+});
 
 async function loadToc() {
   const { lessons } = await request('/lessons');
@@ -684,10 +803,16 @@ function updateViewLink() {
     ui.viewPage.removeAttribute('href');
     ui.viewPage.setAttribute('aria-disabled', 'true');
     ui.viewPage.title = 'Leçon verrouillée : sa page n’est pas générée. Déverrouillez-la depuis le sommaire (🔒) pour la voir.';
+  } else if (draft.previewUrl) {
+    ui.viewPage.href = `${draft.previewUrl}/lecons/${lesson.id}/`;
+    ui.viewPage.removeAttribute('aria-disabled');
+    ui.viewPage.title = 'Ouvrir la page dans l’aperçu du brouillon (nouvel onglet).';
   } else {
     ui.viewPage.href = `/lecons/${lesson.id}/`;
     ui.viewPage.removeAttribute('aria-disabled');
-    ui.viewPage.title = 'Ouvrir la page dans un nouvel onglet : elle se recharge à chaque enregistrement.';
+    ui.viewPage.title = draft.online
+      ? 'Ouvrir la page en ligne (nouvel onglet). Les modifications du brouillon y arrivent à la publication.'
+      : 'Ouvrir la page dans un nouvel onglet : elle se recharge à chaque enregistrement.';
   }
 }
 
