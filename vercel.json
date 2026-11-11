@@ -5,12 +5,12 @@
   "rewrites": [
     { "source": "/admin", "destination": "/api/admin?__admin=" },
     { "source": "/admin/", "destination": "/api/admin?__admin=" },
-    { "source": "/admin/:path*", "destination": "/api/admin?__admin=:path*" }
+    { "source": "/admin/:__admin*", "destination": "/api/admin?__admin=:__admin*" }
   ],
   "functions": {
     "api/admin.mjs": {
       "maxDuration": 30,
-      "includeFiles": "{admin/ui/**,src/styles/**,node_modules/sass-rem/**,node_modules/sass-em/**,node_modules/sass-mq/**}"
+      "includeFiles": "{admin/ui/**,src/styles/**,node_modules/@pierreburel/**}"
     }
   }
 }
