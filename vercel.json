@@ -4,6 +4,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/admin", "destination": "/api/admin?__admin=" },
+    { "source": "/admin/", "destination": "/api/admin?__admin=" },
     { "source": "/admin/:path*", "destination": "/api/admin?__admin=:path*" }
   ],
   "functions": {
