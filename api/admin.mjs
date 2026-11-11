@@ -85,7 +85,9 @@ export default async function admin(req, res) {
 
   // vercel.json réécrit /admin/<chemin> vers cette fonction en passant le
   // chemin dans « __admin » : on reconstitue l'adresse d'origine, que le
-  // handler attend.
+  // handler attend. Le nom est choisi pour ne croiser aucun paramètre de
+  // l'admin : Vercel ajoute le paramètre nommé de la réécriture à la
+  // requête, et un « :path » écrasait le « ?path= » des images.
   const url = new URL(req.url ?? '/', 'http://localhost');
   const path = url.searchParams.get('__admin');
   url.searchParams.delete('__admin');
